@@ -52,7 +52,7 @@ func InitialSettings(forcesetup bool) *settings.WServerSettings {
 
 		AskString("Укажите пароль суперпользователя PostgreSQL: ", &ServerSettings.SQL.Pass)
 
-		ServerSettings.SQL.Roles = ServerSettings.SQL.AutoFillRoles()
+		ServerSettings.SQL.AutoFillRoles()
 
 		bytes, err := json.Marshal(ServerSettings)
 

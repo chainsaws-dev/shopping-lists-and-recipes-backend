@@ -52,7 +52,7 @@ type TRule struct {
 }
 
 // AutoFillRoles - автозаполняет список ролей для SQL сервера
-func (SQLsrv SQLServer) AutoFillRoles() SQLRoles {
+func (SQLsrv *SQLServer) AutoFillRoles() {
 
 	rand.Seed(time.Now().Unix())
 
@@ -76,8 +76,6 @@ func (SQLsrv SQLServer) AutoFillRoles() SQLRoles {
 		Default: false,
 		Admin:   true,
 	})
-
-	return SQLsrv.Roles
 }
 
 // GetTRulesForGuest - Возвращает заполненный список ролей по всем таблицам будущей базы данных
