@@ -2,15 +2,20 @@
 package setup
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"myprojects/Shopping-lists-and-recipes/packages/settings"
 	"os"
 	"strconv"
 )
 
+// ServerSettings - Общие настройки сервера
+var ServerSettings settings.WServerSettings
+
 // InitialSettings - интерактивно спрашивает у пользователя параметры настроек
-func InitialSettings(forcesetup bool) {
+func InitialSettings(forcesetup bool) *settings.WServerSettings {
 
 	if !СheckExists("settings.json") || forcesetup {
 
@@ -19,8 +24,6 @@ func InitialSettings(forcesetup bool) {
 		} else {
 			log.Println("Принудительно запущена процедура начальной настройки.")
 		}
-
-		var ServerSettings settings.WServerSettings
 
 		fmt.Println("")
 		fmt.Println("*******************************************************************")
@@ -51,7 +54,28 @@ func InitialSettings(forcesetup bool) {
 
 		ServerSettings.SQL.AutoFillRoles()
 
+		bytes, err := json.Marshal(ServerSettings)
+
+		WriteErrToLog(err)
+
+		setfile, err := os.Create("settings.json")
+		defer setfile.Close()
+
+		WriteErrToLog(err)
+
+		setfile.Write(bytes)
+
+	} else {
+		bytes, err := ioutil.ReadFile("settings.json")
+
+		WriteErrToLog(err)
+
+		err = json.Unmarshal(bytes, &ServerSettings)
+
+		WriteErrToLog(err)
 	}
+
+	return &ServerSettings
 }
 
 // AskString - Спрашивает вопрос и сохраняет ответ как строку в заданное поле
@@ -100,7 +124,7 @@ func FolderCreate() {
 	}
 }
 
-// СheckExists - проверяем что файл существует
+// СheckExists - проверяем что файл или папка существует
 func СheckExists(filename string) bool {
 
 	if _, err := os.Stat(filename); err == nil {
@@ -110,7 +134,7 @@ func СheckExists(filename string) bool {
 	return false
 }
 
-// WriteErrToLog - пишем ошибку в лог (лог файл должен быть уже задан)
+// WriteErrToLog - пишем ошибку в лог
 func WriteErrToLog(err error) {
 	if err != nil {
 		log.Fatalln(err)
