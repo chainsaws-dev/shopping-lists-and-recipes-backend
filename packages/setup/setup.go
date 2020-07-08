@@ -31,11 +31,25 @@ func InitialSettings(forcesetup bool) {
 		fmt.Println("*  Некоторые значения настроек потребуют запуска сервера от sudo  *")
 		fmt.Println("*******************************************************************")
 
+		// WEB
+
 		AskInt("Укажите порт для http соединений (например 80): ", &ServerSettings.HTTP)
 
 		AskInt("Укажите порт для https соединений (например 443): ", &ServerSettings.HTTPS)
 
+		// SQL
+
+		ServerSettings.SQL.Type = "PostgreSQL"
+
 		AskString("Укажите адрес сервера баз данных PostgreSQL: ", &ServerSettings.SQL.Addr)
+
+		AskString("Укажите желаемое имя базы данных PostgreSQL: ", &ServerSettings.SQL.DbName)
+
+		AskString("Укажите имя суперпользователя PostgreSQL: ", &ServerSettings.SQL.Login)
+
+		AskString("Укажите пароль суперпользователя PostgreSQL: ", &ServerSettings.SQL.Pass)
+
+		ServerSettings.SQL.AutoFillRoles()
 
 	}
 }
