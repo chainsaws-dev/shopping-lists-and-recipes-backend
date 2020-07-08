@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
+	"net/http"
 	"os"
 )
 
@@ -37,24 +38,22 @@ func main() {
 		}
 	}
 
-	// Проверяем и запускаем установщик если нужно
-	setup.InitialSettings(forcesetup)
+	// Проверяем и запускаем мастер настройки если нужно
+	// Иначе просто читаем данные из файла settings.json
+	ServerSettings := setup.InitialSettings(forcesetup)
 
 	// Устанавливаем пути, по которым будут происходить http запросы
-	/*
-		http.Handle("/", http.FileServer(http.Dir("./public/frontend")))
+	http.Handle("/", http.FileServer(http.Dir("./public/frontend")))
 
-		// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
+	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
 
-		if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
-			//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
-			fmt.Println("SSL web server up")
-			log.Println("Started SSL web server")
-			log.Fatalln(http.ListenAndServeTLS(":10443", "cert.pem", "key.pem", nil))
-		} else {
-			fmt.Println("Plain web server up")
-			log.Println("Started plain web server")
-			log.Fatalln(http.ListenAndServe(":8080", nil))
-		}
-	*/
+	if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
+		//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
+		log.Println("Started SSL web server")
+		log.Fatalln(http.ListenAndServeTLS(":"+string(ServerSettings.HTTPS), "cert.pem", "key.pem", nil))
+	} else {
+		log.Println("Started plain web server")
+		log.Fatalln(http.ListenAndServe(":"+string(ServerSettings.HTTP), nil))
+	}
+
 }
