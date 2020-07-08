@@ -4,98 +4,85 @@ package setup
 import (
 	"fmt"
 	"log"
+	"myprojects/Shopping-lists-and-recipes/packages/settings"
 	"os"
 	"strconv"
 )
-
-// WServerSettings - Настройки веб сервера
-type WServerSettings struct {
-	http  int
-	https int
-	SQL   SQLServer
-}
-
-// SQLServer - Данные для подключения к SQL серверу
-type SQLServer struct {
-	Type   string
-	DbName string
-	Addr   string
-	Login  string
-	Pass   string
-	Roles  []SQLRole
-}
-
-// SQLRole - Роль, которая должна быть создана на сервере
-type SQLRole struct {
-	Name    string
-	Desc    string
-	Login   string
-	Pass    string
-	TRules  []TRule
-	Default bool
-	Admin   bool
-}
-
-// TRule - права для конкретной таблицы
-type TRule struct {
-	TName      string
-	SELECT     bool
-	INSERT     bool
-	UPDATE     bool
-	DELETE     bool
-	REFERENCES bool
-}
 
 // InitialSettings - интерактивно спрашивает у пользователя параметры настроек
 func InitialSettings(forcesetup bool) {
 
 	if !СheckExists("settings.json") || forcesetup {
 
-		log.Println("Не найден файл settings.json. Запущена процедура начальной настройки.")
+		if !forcesetup {
+			log.Println("Не найден файл settings.json. Запущена процедура начальной настройки.")
+		} else {
+			log.Println("Принудительно запущена процедура начальной настройки.")
+		}
 
-		var inputstring string
-		var settings WServerSettings
+		var ServerSettings settings.WServerSettings
 
-		fmt.Println("Добро пожаловать в мастер настройки сервера рецептов и покупок!")
-		fmt.Println("Для начальной настройки сервера необходимо создать конфигурационный файл.")
-		fmt.Println("Он будет создан автоматически по результатам ваших ответов на вопросы.")
-		fmt.Println("ВНИМАНИЕ! Для некоторых значений настроек потребуются права суперпользователя!")
+		fmt.Println("")
+		fmt.Println("*******************************************************************")
+		fmt.Println("* Добро пожаловать в мастер настройки сервера рецептов и покупок! *")
+		fmt.Println("* Для настройки сервера необходимо создать конфигурационный файл. *")
+		fmt.Println("* Он будет создан по результатам ваших ответов на вопросы.        *")
+		fmt.Println("*                           ВНИМАНИЕ!                             *")
+		fmt.Println("*  Некоторые значения настроек потребуют запуска сервера от sudo  *")
+		fmt.Println("*******************************************************************")
 
-		fmt.Println("Укажите порт для http соединений: ")
-		fmt.Scanln(&inputstring)
-		value, err := strconv.Atoi(inputstring)
-		WriteErrToConsole(err)
-		settings.http = value
+		AskInt("Укажите порт для http соединений (например 80): ", &ServerSettings.HTTP)
 
-		inputstring = ""
-		value = 0
+		AskInt("Укажите порт для https соединений (например 443): ", &ServerSettings.HTTPS)
 
-		fmt.Println("Укажите порт для https соединений: ")
-		fmt.Scanln(&inputstring)
-		value, err = strconv.Atoi(inputstring)
-		WriteErrToConsole(err)
-		settings.https = value
+		AskString("Укажите адрес сервера баз данных PostgreSQL: ", &ServerSettings.SQL.Addr)
 
 	}
+}
+
+// AskString - Спрашивает вопрос и сохраняет ответ как строку в заданное поле
+func AskString(Question string, fieldToWriteIn *string) {
+
+	var inputstring string
+
+	fmt.Println("")
+	fmt.Println(Question)
+	fmt.Scanln(&inputstring)
+	*fieldToWriteIn = inputstring
+
+}
+
+// AskInt - Спрашивает вопрос и сохраняет ответ как int в заданное поле
+func AskInt(Question string, fieldToWriteIn *int) {
+
+	var inputstring string
+
+	fmt.Println("")
+	fmt.Println(Question)
+	fmt.Scanln(&inputstring)
+	value, err := strconv.Atoi(inputstring)
+	WriteErrToLog(err)
+	*fieldToWriteIn = value
+
 }
 
 // FolderCreate - создаёт всю необходимую структуру папок на сервере
 func FolderCreate() {
 
 	if !СheckExists("public") {
-		WriteErrToConsole(os.Mkdir("public", 0700))
+		WriteErrToLog(os.Mkdir("public", 0700))
 	}
 
 	if !СheckExists("public/frontend") {
-		WriteErrToConsole(os.Mkdir("public/frontend", 0700))
+		WriteErrToLog(os.Mkdir("public/frontend", 0700))
 	}
 
 	if !СheckExists("public/uploads") {
-		WriteErrToConsole(os.Mkdir("public/uploads", 0700))
+		WriteErrToLog(os.Mkdir("public/uploads", 0700))
 	}
 
 	if !СheckExists("logs") {
-		WriteErrToConsole(os.Mkdir("logs", 0700))
+		WriteErrToLog(os.Mkdir("logs", 0700))
 	}
 }
 
@@ -109,13 +96,7 @@ func СheckExists(filename string) bool {
 	return false
 }
 
-// WriteErrToConsole - до создания лога пишем ошибку в консоль
-func WriteErrToConsole(err error) {
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
+// WriteErrToLog - пишем ошибку в лог (лог файл должен быть уже задан)
 func WriteErrToLog(err error) {
 	if err != nil {
 		log.Fatalln(err)

@@ -1,6 +1,8 @@
+// Package main - Сервер книги рецептов и списка покупок
 package main
 
 import (
+	"io"
 	"log"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"os"
@@ -20,7 +22,9 @@ func main() {
 
 	defer file.Close()
 
-	log.SetOutput(file)
+	mw := io.MultiWriter(os.Stdout, file)
+
+	log.SetOutput(mw)
 
 	// Если первый аргумент -set - запускаем конфигуратор
 	// вне зависимости от наличия файла settings.json
