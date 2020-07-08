@@ -73,8 +73,8 @@ func (SQLsrv SQLServer) AutoFillRoles() {
 		Desc:    "Администратор",
 		Login:   "recipes_admin",
 		Pass:    GeneratePassword(20, 5, 5, 5),
-		Default: true,
-		Admin:   false,
+		Default: false,
+		Admin:   true,
 	})
 
 }
