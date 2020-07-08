@@ -52,7 +52,7 @@ func InitialSettings(forcesetup bool) *settings.WServerSettings {
 
 		AskString("Укажите пароль суперпользователя PostgreSQL: ", &ServerSettings.SQL.Pass)
 
-		ServerSettings.SQL.AutoFillRoles()
+		ServerSettings.SQL.Roles = ServerSettings.SQL.AutoFillRoles()
 
 		bytes, err := json.Marshal(ServerSettings)
 
@@ -63,9 +63,15 @@ func InitialSettings(forcesetup bool) *settings.WServerSettings {
 
 		WriteErrToLog(err)
 
-		setfile.Write(bytes)
+		_, err = setfile.Write(bytes)
+
+		WriteErrToLog(err)
+
+		log.Println("Файл настроек settings.json успешно создан")
 
 	} else {
+		log.Println("Читаем файл настроек settings.json...")
+
 		bytes, err := ioutil.ReadFile("settings.json")
 
 		WriteErrToLog(err)
@@ -73,6 +79,8 @@ func InitialSettings(forcesetup bool) *settings.WServerSettings {
 		err = json.Unmarshal(bytes, &ServerSettings)
 
 		WriteErrToLog(err)
+
+		log.Println("Файл настроек settings.json успешно прочитан")
 	}
 
 	return &ServerSettings

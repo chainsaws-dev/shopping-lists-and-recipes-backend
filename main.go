@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
@@ -50,10 +51,10 @@ func main() {
 	if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
 		//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
 		log.Println("Started SSL web server")
-		log.Fatalln(http.ListenAndServeTLS(":"+string(ServerSettings.HTTPS), "cert.pem", "key.pem", nil))
+		log.Fatalln(http.ListenAndServeTLS(fmt.Sprintf(":%v", ServerSettings.HTTPS), "cert.pem", "key.pem", nil))
 	} else {
 		log.Println("Started plain web server")
-		log.Fatalln(http.ListenAndServe(":"+string(ServerSettings.HTTP), nil))
+		log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%v", ServerSettings.HTTP), nil))
 	}
 
 }
