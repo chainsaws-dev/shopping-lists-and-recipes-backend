@@ -9,7 +9,8 @@ import (
 func main() {
 	http.Handle("/", http.FileServer(http.Dir("./public/frontend")))
 
-	if checkExists("cert.pem") && checkExists("key.pem") {
+	if СheckExists("cert.pem") && СheckExists("key.pem") {
+		//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
 		fmt.Println("SSL web server up")
 		http.ListenAndServeTLS(":10443", "cert.pem", "key.pem", nil)
 	} else {
@@ -18,7 +19,8 @@ func main() {
 	}
 }
 
-func checkExists(filename string) bool {
+// СheckExists - проверяем что файл существует
+func СheckExists(filename string) bool {
 
 	if _, err := os.Stat(filename); err == nil {
 		return true
