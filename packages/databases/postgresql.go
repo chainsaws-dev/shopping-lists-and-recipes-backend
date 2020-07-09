@@ -140,7 +140,7 @@ func PostgreSQLCreateTables() {
 				ADD CONSTRAINT "Recipes_image_id_fkey" FOREIGN KEY (image_id)
 				REFERENCES public."Files" (id) MATCH FULL
 				ON UPDATE RESTRICT
-				ON DELETE SET NULL;
+				ON DELETE CASCADE;
 			CREATE INDEX "fki_Recipes_image_id_fkey"
 				ON public."Recipes"(image_id);`
 
@@ -226,6 +226,58 @@ func PostgreSQLCreateTables() {
 				ON DELETE SET NULL;
 			CREATE INDEX "fki_ShoppingList_ingredient_id_fkey"
 				ON public."ShoppingList"(ingredient_id);`
+
+	_, err = dbc.Exec(sql)
+
+	PostgreSQLRollbackIfError(err)
+
+	sql = `CREATE SCHEMA secret
+			AUTHORIZATION postgres;`
+
+	_, err = dbc.Exec(sql)
+
+	PostgreSQLRollbackIfError(err)
+
+	sql = `CREATE TABLE secret.users
+			(
+				id uuid NOT NULL,
+				role character varying(50) NOT NULL,
+				email character varying(50) NOT NULL,
+				phone character varying(50),
+				name character varying(150),
+				isadmin boolean,
+				PRIMARY KEY (id)
+			);
+			
+			ALTER TABLE secret.users
+				OWNER to postgres;`
+
+	_, err = dbc.Exec(sql)
+
+	PostgreSQLRollbackIfError(err)
+
+	sql = `CREATE TABLE secret.tokens
+		(
+			id bigserial NOT NULL,
+			user_id uuid NOT NULL,
+			value bytea NOT NULL,
+			PRIMARY KEY (id)
+		);
+
+		ALTER TABLE secret.tokens
+			OWNER to postgres;`
+
+	_, err = dbc.Exec(sql)
+
+	PostgreSQLRollbackIfError(err)
+
+	sql = `ALTER TABLE secret.tokens
+				ADD CONSTRAINT tokens_user_id_fkey FOREIGN KEY (user_id)
+				REFERENCES secret.users (id) MATCH FULL
+				ON UPDATE RESTRICT
+				ON DELETE CASCADE;
+			CREATE INDEX fki_tokens_user_id_fkey
+				ON secret.tokens(user_id);`
 
 	_, err = dbc.Exec(sql)
 
