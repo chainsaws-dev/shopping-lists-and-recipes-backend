@@ -73,14 +73,102 @@ func (SQLsrv *SQLServer) AutoFillRoles() {
 		Desc:    "Администратор",
 		Login:   "recipes_admin",
 		Pass:    GeneratePassword(20, 5, 5, 5),
+		TRules:  GetTRulesForAdmin(),
 		Default: false,
 		Admin:   true,
 	})
 }
 
-// GetTRulesForGuest - Возвращает заполненный список ролей по всем таблицам будущей базы данных
+// GetTRulesForGuest - Возвращает заполненный список ролей по всем таблицам будущей базы данных для гостя
 func GetTRulesForGuest() SQLTRules {
-	return SQLTRules{}
+	return SQLTRules{
+		TRule{
+			TName:      "public.\"Files\"",
+			SELECT:     true,
+			INSERT:     false,
+			UPDATE:     false,
+			DELETE:     false,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "public.\"Recipes\"",
+			SELECT:     true,
+			INSERT:     false,
+			UPDATE:     false,
+			DELETE:     false,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "public.\"RecipesIngredients\"",
+			SELECT:     true,
+			INSERT:     false,
+			UPDATE:     false,
+			DELETE:     false,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "public.\"Ingredients\"",
+			SELECT:     true,
+			INSERT:     false,
+			UPDATE:     false,
+			DELETE:     false,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "public.\"ShoppingList\"",
+			SELECT:     true,
+			INSERT:     false,
+			UPDATE:     false,
+			DELETE:     false,
+			REFERENCES: true,
+		},
+	}
+}
+
+// GetTRulesForAdmin - Возвращает заполненный список ролей по всем таблицам будущей базы данных для админа
+func GetTRulesForAdmin() SQLTRules {
+	return SQLTRules{
+		TRule{
+			TName:      "public.\"Files\"",
+			SELECT:     true,
+			INSERT:     true,
+			UPDATE:     true,
+			DELETE:     true,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "public.\"Recipes\"",
+			SELECT:     true,
+			INSERT:     true,
+			UPDATE:     true,
+			DELETE:     true,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "public.\"RecipesIngredients\"",
+			SELECT:     true,
+			INSERT:     true,
+			UPDATE:     true,
+			DELETE:     true,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "public.\"Ingredients\"",
+			SELECT:     true,
+			INSERT:     true,
+			UPDATE:     true,
+			DELETE:     true,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "public.\"ShoppingList\"",
+			SELECT:     true,
+			INSERT:     true,
+			UPDATE:     true,
+			DELETE:     true,
+			REFERENCES: true,
+		},
+	}
 }
 
 // GeneratePassword - генерирует случайный пароль
