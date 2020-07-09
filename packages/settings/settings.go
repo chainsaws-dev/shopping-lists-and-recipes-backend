@@ -173,11 +173,51 @@ func GetTRulesForAdmin() SQLTRules {
 func (SQLsrv *SQLServer) CreateDatabase() {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
+		// Глобальные настройки
 		cs := databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, "", true)
-		databases.PostgreSQLCreateDatabase(SQLsrv.DbName, cs)
+		databases.PostgreSQLConnect(cs)
+		databases.PostgreSQLCreateDatabase(SQLsrv.DbName)
+		databases.PostgreSQLCloseConn()
+
+		cs = databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, SQLsrv.DbName, false)
+		databases.PostgreSQLCreateTables()
+		for _, currole := range SQLsrv.Roles {
+
+			databases.PostgreSQLCreateRole(currole.Name, currole.Pass, SQLsrv.DbName)
+
+			for _, tablerule := range currole.TRules {
+
+				databases.PostgreSQLGrantRightsToRole(currole.Name, tablerule.TName, formRightsArray(tablerule))
+			}
+		}
+		databases.PostgreSQLCloseConn()
+
 	default:
 		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)
 	}
+}
+
+// formRightsArray - формирует массив прав для таблицы
+func formRightsArray(rule TRule) []string {
+	var result []string
+
+	if rule.SELECT {
+		result = append(result, "SELECT")
+		result = append(result, "REFERENCES")
+	}
+
+	if rule.INSERT {
+		result = append(result, "INSERT")
+	}
+
+	if rule.UPDATE {
+		result = append(result, "UPDATE")
+	}
+
+	if rule.DELETE {
+		result = append(result, "DELETE")
+	}
+	return result
 }
 
 // GeneratePassword - генерирует случайный пароль
