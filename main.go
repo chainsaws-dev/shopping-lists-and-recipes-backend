@@ -48,8 +48,8 @@ func main() {
 
 	// Устанавливаем пути, по которым будут происходить http запросы
 	http.Handle("/", http.FileServer(http.Dir("./public/frontend")))
-	http.Handle("/recipes/", http.RedirectHandler("/", http.StatusFound))
-	http.Handle("/shopping-list/", http.RedirectHandler("/", http.StatusFound))
+	http.HandleFunc("/recipes/", RedirectToIndex)
+	http.HandleFunc("/shopping-list/", RedirectToIndex)
 	http.Handle("/uploads/", http.StripPrefix("/uploads", http.FileServer(http.Dir("./public/uploads"))))
 	http.HandleFunc("/api/SaveRecipePhoto", files.UploadFile)
 
@@ -64,4 +64,9 @@ func main() {
 		log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%v", setup.ServerSettings.HTTP), nil))
 	}
 
+}
+
+// RedirectToIndex - перенаправляет на файл index.html
+func RedirectToIndex(w http.ResponseWriter, req *http.Request) {
+	http.ServeFile(w, req, "./public/frontend/index.html")
 }
