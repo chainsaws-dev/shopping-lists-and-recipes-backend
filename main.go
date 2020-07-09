@@ -8,6 +8,8 @@ import (
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"net/http"
 	"os"
+
+	_ "github.com/lib/pq" // Драйвер PostgreSQL
 )
 
 func main() {

@@ -171,6 +171,11 @@ func GetTRulesForAdmin() SQLTRules {
 	}
 }
 
+// CreateDatabasePostgreSQL - Создаёт базу данных если её нет
+func (SQLsrv *SQLServer) CreateDatabasePostgreSQL() {
+	//`SELECT datname FROM pg_catalog.pg_database WHERE datname = ?;`
+}
+
 // GeneratePassword - генерирует случайный пароль
 func GeneratePassword(passwordLength, minSpecialChar, minNum, minUpperCase int) string {
 

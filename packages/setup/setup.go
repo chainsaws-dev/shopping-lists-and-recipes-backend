@@ -9,6 +9,7 @@ import (
 	"myprojects/Shopping-lists-and-recipes/packages/settings"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // ServerSettings - Общие настройки сервера
@@ -43,6 +44,7 @@ func InitialSettings(forcesetup bool) *settings.WServerSettings {
 		// SQL
 
 		ServerSettings.SQL.Type = "PostgreSQL"
+		ServerSettings.SQL.AutoFillRoles()
 
 		AskString("Укажите адрес сервера баз данных PostgreSQL: ", &ServerSettings.SQL.Addr)
 
@@ -52,7 +54,13 @@ func InitialSettings(forcesetup bool) *settings.WServerSettings {
 
 		AskString("Укажите пароль суперпользователя PostgreSQL: ", &ServerSettings.SQL.Pass)
 
-		ServerSettings.SQL.AutoFillRoles()
+		var CreateDB string
+		AskString("Создать базу данных с таблицами и ролями (Да или Нет): ", &CreateDB)
+		CreateDB = strings.ToLower(CreateDB)
+
+		if CreateDB == "да" || CreateDB == "д" {
+			ServerSettings.SQL.CreateDatabasePostgreSQL()
+		}
 
 		bytes, err := json.Marshal(ServerSettings)
 
