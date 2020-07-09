@@ -2,7 +2,9 @@
 package settings
 
 import (
+	"log"
 	"math/rand"
+	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"strings"
 	"time"
 )
@@ -171,9 +173,15 @@ func GetTRulesForAdmin() SQLTRules {
 	}
 }
 
-// CreateDatabasePostgreSQL - Создаёт базу данных если её нет
-func (SQLsrv *SQLServer) CreateDatabasePostgreSQL() {
-	//`SELECT datname FROM pg_catalog.pg_database WHERE datname = ?;`
+// CreateDatabase - Создаёт базу данных если её нет
+func (SQLsrv *SQLServer) CreateDatabase() {
+	switch {
+	case SQLsrv.Type == "PostgreSQL":
+		cs := databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, "", true)
+		databases.PostgreSQLCreateDatabase(SQLsrv.DbName, cs)
+	default:
+		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)
+	}
 }
 
 // GeneratePassword - генерирует случайный пароль

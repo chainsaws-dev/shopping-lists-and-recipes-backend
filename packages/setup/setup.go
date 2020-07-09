@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"myprojects/Shopping-lists-and-recipes/packages/settings"
 	"os"
 	"strconv"
@@ -42,38 +43,38 @@ func InitialSettings(forcesetup bool) *settings.WServerSettings {
 		AskInt("Укажите порт для https соединений (например 443): ", &ServerSettings.HTTPS)
 
 		// SQL
-
-		ServerSettings.SQL.Type = "PostgreSQL"
 		ServerSettings.SQL.AutoFillRoles()
 
-		AskString("Укажите адрес сервера баз данных PostgreSQL: ", &ServerSettings.SQL.Addr)
+		AskString("Укажите тип сервера баз данных (поддерживается PostgreSQL): ", &ServerSettings.SQL.Type)
 
-		AskString("Укажите желаемое имя базы данных PostgreSQL: ", &ServerSettings.SQL.DbName)
+		AskString("Укажите адрес сервера баз данных: ", &ServerSettings.SQL.Addr)
 
-		AskString("Укажите имя суперпользователя PostgreSQL: ", &ServerSettings.SQL.Login)
+		AskString("Укажите желаемое имя базы данных: ", &ServerSettings.SQL.DbName)
 
-		AskString("Укажите пароль суперпользователя PostgreSQL: ", &ServerSettings.SQL.Pass)
+		AskString("Укажите имя суперпользователя базы данных: ", &ServerSettings.SQL.Login)
+
+		AskString("Укажите пароль суперпользователя базы данных: ", &ServerSettings.SQL.Pass)
 
 		var CreateDB string
 		AskString("Создать базу данных с таблицами и ролями (Да или Нет): ", &CreateDB)
 		CreateDB = strings.ToLower(CreateDB)
 
 		if CreateDB == "да" || CreateDB == "д" {
-			ServerSettings.SQL.CreateDatabasePostgreSQL()
+			ServerSettings.SQL.CreateDatabase()
 		}
 
 		bytes, err := json.Marshal(ServerSettings)
 
-		WriteErrToLog(err)
+		databases.WriteErrToLog(err)
 
 		setfile, err := os.Create("settings.json")
 		defer setfile.Close()
 
-		WriteErrToLog(err)
+		databases.WriteErrToLog(err)
 
 		_, err = setfile.Write(bytes)
 
-		WriteErrToLog(err)
+		databases.WriteErrToLog(err)
 
 		log.Println("Файл настроек settings.json успешно создан")
 
@@ -82,11 +83,11 @@ func InitialSettings(forcesetup bool) *settings.WServerSettings {
 
 		bytes, err := ioutil.ReadFile("settings.json")
 
-		WriteErrToLog(err)
+		databases.WriteErrToLog(err)
 
 		err = json.Unmarshal(bytes, &ServerSettings)
 
-		WriteErrToLog(err)
+		databases.WriteErrToLog(err)
 
 		log.Println("Файл настроек settings.json успешно прочитан")
 	}
@@ -115,7 +116,7 @@ func AskInt(Question string, fieldToWriteIn *int) {
 	fmt.Println(Question)
 	fmt.Scanln(&inputstring)
 	value, err := strconv.Atoi(inputstring)
-	WriteErrToLog(err)
+	databases.WriteErrToLog(err)
 	*fieldToWriteIn = value
 
 }
@@ -124,19 +125,19 @@ func AskInt(Question string, fieldToWriteIn *int) {
 func FolderCreate() {
 
 	if !СheckExists("public") {
-		WriteErrToLog(os.Mkdir("public", 0700))
+		databases.WriteErrToLog(os.Mkdir("public", 0700))
 	}
 
 	if !СheckExists("public/frontend") {
-		WriteErrToLog(os.Mkdir("public/frontend", 0700))
+		databases.WriteErrToLog(os.Mkdir("public/frontend", 0700))
 	}
 
 	if !СheckExists("public/uploads") {
-		WriteErrToLog(os.Mkdir("public/uploads", 0700))
+		databases.WriteErrToLog(os.Mkdir("public/uploads", 0700))
 	}
 
 	if !СheckExists("logs") {
-		WriteErrToLog(os.Mkdir("logs", 0700))
+		databases.WriteErrToLog(os.Mkdir("logs", 0700))
 	}
 }
 
@@ -148,11 +149,4 @@ func СheckExists(filename string) bool {
 	}
 
 	return false
-}
-
-// WriteErrToLog - пишем ошибку в лог
-func WriteErrToLog(err error) {
-	if err != nil {
-		log.Fatalln(err)
-	}
 }

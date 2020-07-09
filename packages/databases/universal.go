@@ -24,3 +24,10 @@ func SQLConnect(DbType string, ConStr string) *sql.DB {
 
 	return db
 }
+
+// WriteErrToLog - пишем ошибку в лог
+func WriteErrToLog(err error) {
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
