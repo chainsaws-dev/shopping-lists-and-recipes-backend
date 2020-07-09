@@ -26,7 +26,7 @@ type FileUploadResponse struct {
 // UploadFile - Обработчик для загрузки файлов
 func UploadFile(w http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPost {
-
+		log.Println("Начинаем получение файла...")
 		var furesp FileUploadResponse
 
 		f, fh, err := req.FormFile("image")
@@ -69,6 +69,8 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 			f.Seek(0, 0)
 
 			io.Copy(nf, f)
+
+			log.Printf("Файл получен и сохранён под именем %s", filename)
 
 			furesp = FileUploadResponse{
 				FileName: fh.Filename,
