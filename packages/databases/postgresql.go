@@ -44,6 +44,7 @@ func PostgreSQLCreateDatabase(dbName string) {
 
 		// Если баз данных больше нуля, тогда ничего не делаем
 		if dbq > 0 {
+			log.Printf("Уже существует база данных с именем %s\n", dbName)
 			return
 		}
 
@@ -92,6 +93,7 @@ func PostgreSQLCreateTables() {
 	}
 
 	if tbq > 0 {
+		log.Println("В базе найдены таблицы, дубликаты не создаём")
 		return
 	}
 
@@ -306,6 +308,21 @@ func PostgreSQLCreateTables() {
 // PostgreSQLCreateRole - Создание отдельной роли для базы данных
 func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
+	rows, err := dbc.Query(`SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE  rolname = $1`, roleName)
+
+	WriteErrToLog(err)
+
+	var rq int
+
+	for rows.Next() {
+		rows.Scan(&rq)
+	}
+
+	if rq > 0 {
+		log.Printf("В базе данных найдена роль %s, дубликаты не создаём\n", roleName)
+		return
+	}
+
 	log.Println("Создаём роль " + roleName)
 
 	// Делаем MD5 хеш
@@ -316,7 +333,7 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	rolecreatesql := fmt.Sprintf(`CREATE ROLE %s WITH LOGIN ENCRYPTED PASSWORD 'md5%x';`, roleName, h.Sum(nil))
 
-	_, err := dbc.Exec(rolecreatesql)
+	_, err = dbc.Exec(rolecreatesql)
 
 	PostgreSQLRollbackIfError(err)
 

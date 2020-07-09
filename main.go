@@ -43,7 +43,7 @@ func main() {
 
 	// Проверяем и запускаем мастер настройки если нужно
 	// Иначе просто читаем данные из файла settings.json
-	ServerSettings := setup.InitialSettings(forcesetup)
+	setup.InitialSettings(forcesetup)
 
 	// Устанавливаем пути, по которым будут происходить http запросы
 	http.Handle("/", http.FileServer(http.Dir("./public/frontend")))
@@ -53,10 +53,10 @@ func main() {
 	if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
 		//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
 		log.Println("Запущен SSL веб сервер")
-		log.Fatalln(http.ListenAndServeTLS(fmt.Sprintf(":%v", ServerSettings.HTTPS), "cert.pem", "key.pem", nil))
+		log.Fatalln(http.ListenAndServeTLS(fmt.Sprintf(":%v", setup.ServerSettings.HTTPS), "cert.pem", "key.pem", nil))
 	} else {
 		log.Println("Запущен веб сервер без шифрования")
-		log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%v", ServerSettings.HTTP), nil))
+		log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%v", setup.ServerSettings.HTTP), nil))
 	}
 
 }

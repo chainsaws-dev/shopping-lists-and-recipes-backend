@@ -17,7 +17,7 @@ import (
 var ServerSettings settings.WServerSettings
 
 // InitialSettings - интерактивно спрашивает у пользователя параметры настроек
-func InitialSettings(forcesetup bool) *settings.WServerSettings {
+func InitialSettings(forcesetup bool) {
 
 	if !СheckExists("settings.json") || forcesetup {
 
@@ -97,7 +97,6 @@ func InitialSettings(forcesetup bool) *settings.WServerSettings {
 		log.Println("Файл настроек settings.json успешно прочитан")
 	}
 
-	return &ServerSettings
 }
 
 // AskString - Спрашивает вопрос и сохраняет ответ как строку в заданное поле
