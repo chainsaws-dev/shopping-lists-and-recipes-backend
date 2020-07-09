@@ -1,4 +1,4 @@
-# shopping-lists-and-recipes-backend
+# Web server for recipes and shopping list
 Backend for shopping lists and recipes based on GO
 
 ## Build
