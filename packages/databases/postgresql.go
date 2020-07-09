@@ -2,6 +2,7 @@ package databases
 
 import (
 	"fmt"
+	"log"
 )
 
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
@@ -19,6 +20,9 @@ func PostgreSQLGetConnString(Login string, Password string, Addr string, DbName 
 
 // PostgreSQLCreateDatabase - создаём базу данных для СУБД PostgreSQL
 func PostgreSQLCreateDatabase(dbName string, ConnString string) {
+
+	log.Println("Идёт создание базы данных...")
+
 	// Подключаемся к базе данных
 	dbc := SQLConnect("postgres", ConnString)
 	defer dbc.Close()
@@ -40,7 +44,9 @@ func PostgreSQLCreateDatabase(dbName string, ConnString string) {
 	}
 
 	// Иначе создаём базу данных с заданным именем
-	createsql := `CREATE DATABASE "$1"
+	// Параметром не подставляется не кртично ибо не используется в обычной работе
+	// а только при установке, а так то это место для SQL инъекций
+	createsql := `CREATE DATABASE "` + dbName + `"
 	WITH
 	OWNER = postgres
 	ENCODING = 'UTF8'
@@ -49,8 +55,10 @@ func PostgreSQLCreateDatabase(dbName string, ConnString string) {
 	TABLESPACE = pg_default
 	CONNECTION LIMIT = -1;`
 
-	_, err = dbc.Exec(createsql, dbName)
+	_, err = dbc.Exec(createsql)
 
 	WriteErrToLog(err)
+
+	log.Println("База данных успешно создана")
 
 }
