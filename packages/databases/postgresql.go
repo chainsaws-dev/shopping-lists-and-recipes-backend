@@ -1,3 +1,4 @@
+// Package databases - реализует весь функционал необходимый для взаимодействия с базами данных
 package databases
 
 import (
@@ -49,14 +50,14 @@ func PostgreSQLCreateDatabase(dbName string) {
 		// Иначе создаём базу данных с заданным именем
 		// Параметром не подставляется не кртично ибо не используется в обычной работе
 		// а только при установке, а так то это место для SQL инъекций
-		createsql := `CREATE DATABASE "` + dbName + `"
-		WITH
-		OWNER = postgres
-		ENCODING = 'UTF8'
-		LC_COLLATE = 'C.UTF-8'
-		LC_CTYPE = 'C.UTF-8'
-		TABLESPACE = pg_default
-		CONNECTION LIMIT = -1;`
+		createsql := fmt.Sprintf(`CREATE DATABASE "%s"
+									WITH
+									OWNER = postgres
+									ENCODING = 'UTF8'
+									LC_COLLATE = 'C.UTF-8'
+									LC_CTYPE = 'C.UTF-8'
+									TABLESPACE = pg_default
+									CONNECTION LIMIT = -1;`, dbName)
 
 		_, err = dbc.Exec(createsql)
 
@@ -243,17 +244,21 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 	h := md5.New()
 	io.WriteString(h, password)
 
+	dbc.Exec("BEGIN")
+
 	rolecreatesql := fmt.Sprintf(`CREATE ROLE %s WITH LOGIN ENCRYPTED PASSWORD 'md5%x';`, roleName, h.Sum(nil))
 
 	_, err := dbc.Exec(rolecreatesql)
 
-	WriteErrToLog(err)
+	PostgreSQLRollbackIfError(err)
 
-	grantsql := fmt.Sprintf(`GRANT CONNECT ON DATABASE %s TO %s;`, dbName, roleName)
+	grantsql := fmt.Sprintf(`GRANT CONNECT ON DATABASE "%s" TO %s;`, dbName, roleName)
 
 	_, err = dbc.Exec(grantsql)
 
-	WriteErrToLog(err)
+	PostgreSQLRollbackIfError(err)
+
+	dbc.Exec("COMMIT")
 
 	log.Println("Роль создана")
 
@@ -261,6 +266,8 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 // PostgreSQLGrantRightsToRole - предоставляем права заданной роли для заданной таблицы
 func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []string) {
+
+	dbc.Exec("BEGIN")
 
 	reqrights := strings.Join(rights, " ")
 
@@ -270,7 +277,9 @@ func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []str
 
 	_, err := dbc.Exec(grantsql)
 
-	WriteErrToLog(err)
+	PostgreSQLRollbackIfError(err)
+
+	dbc.Exec("COMMIT")
 
 	log.Println("Права выданы")
 
@@ -279,7 +288,7 @@ func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []str
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
 func PostgreSQLRollbackIfError(err error) {
 	if err != nil {
-		_, err = dbc.Exec("ROLLBACK")
+		dbc.Exec("ROLLBACK")
 		WriteErrToLog(err)
 	}
 }

@@ -183,7 +183,7 @@ func (SQLsrv *SQLServer) CreateDatabase() {
 		databases.PostgreSQLCreateTables()
 		for _, currole := range SQLsrv.Roles {
 
-			databases.PostgreSQLCreateRole(currole.Name, currole.Pass, SQLsrv.DbName)
+			databases.PostgreSQLCreateRole(currole.Login, currole.Pass, SQLsrv.DbName)
 
 			for _, tablerule := range currole.TRules {
 
