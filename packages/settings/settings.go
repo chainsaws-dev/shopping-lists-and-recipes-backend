@@ -2,11 +2,11 @@
 package settings
 
 import (
+	"crypto/rand"
 	"log"
-	"math/rand"
+	"math/big"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"strings"
-	"time"
 )
 
 // WServerSettings - Настройки веб сервера
@@ -56,8 +56,6 @@ type TRule struct {
 // AutoFillRoles - автозаполняет список ролей для SQL сервера
 func (SQLsrv *SQLServer) AutoFillRoles() {
 
-	rand.Seed(time.Now().Unix())
-
 	SQLsrv.Roles = append(SQLsrv.Roles, SQLRole{
 		Name:    "guest_role_read_only",
 		Desc:    "Гостевая роль",
@@ -67,8 +65,6 @@ func (SQLsrv *SQLServer) AutoFillRoles() {
 		Default: true,
 		Admin:   false,
 	})
-
-	rand.Seed(time.Now().Unix())
 
 	SQLsrv.Roles = append(SQLsrv.Roles, SQLRole{
 		Name:    "admin_role_CRUD",
@@ -199,30 +195,28 @@ func GeneratePassword(passwordLength, minSpecialChar, minNum, minUpperCase int) 
 
 	//Set special character
 	for i := 0; i < minSpecialChar; i++ {
-		random := rand.Intn(len(specialCharSet))
-		password.WriteString(string(specialCharSet[random]))
+
+		random, _ := rand.Int(rand.Reader, big.NewInt(int64(len(specialCharSet))))
+		password.WriteString(string(specialCharSet[random.Int64()]))
 	}
 
 	//Set numeric
 	for i := 0; i < minNum; i++ {
-		random := rand.Intn(len(numberSet))
-		password.WriteString(string(numberSet[random]))
+		random, _ := rand.Int(rand.Reader, big.NewInt(int64(len(numberSet))))
+		password.WriteString(string(numberSet[random.Int64()]))
 	}
 
 	//Set uppercase
 	for i := 0; i < minUpperCase; i++ {
-		random := rand.Intn(len(upperCharSet))
-		password.WriteString(string(upperCharSet[random]))
+		random, _ := rand.Int(rand.Reader, big.NewInt(int64(len(upperCharSet))))
+		password.WriteString(string(upperCharSet[random.Int64()]))
 	}
 
 	remainingLength := passwordLength - minSpecialChar - minNum - minUpperCase
 	for i := 0; i < remainingLength; i++ {
-		random := rand.Intn(len(allCharSet))
-		password.WriteString(string(allCharSet[random]))
+		random, _ := rand.Int(rand.Reader, big.NewInt(int64(len(lowerCharSet))))
+		password.WriteString(string(allCharSet[random.Int64()]))
 	}
-	inRune := []rune(password.String())
-	rand.Shuffle(len(inRune), func(i, j int) {
-		inRune[i], inRune[j] = inRune[j], inRune[i]
-	})
-	return string(inRune)
+
+	return password.String()
 }
