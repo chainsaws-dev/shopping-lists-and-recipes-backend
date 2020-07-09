@@ -1,5 +1,7 @@
 # Web server for recipes and shopping list
-Backend for shopping lists and recipes based on GO
+Web server made for storing data on shopping lists and recipes based on GO.
+Made as easy to handle as possible. 
+(in development)
 
 ## Build
 To install in bin directory run the following:
