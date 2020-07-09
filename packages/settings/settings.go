@@ -170,7 +170,7 @@ func GetTRulesForAdmin() SQLTRules {
 }
 
 // CreateDatabase - Создаёт базу данных если её нет
-func (SQLsrv *SQLServer) CreateDatabase() {
+func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
 		// Создаём базу данных
@@ -191,6 +191,8 @@ func (SQLsrv *SQLServer) CreateDatabase() {
 			}
 		}
 		databases.PostgreSQLCloseConn()
+
+		donech <- true
 
 	default:
 		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)

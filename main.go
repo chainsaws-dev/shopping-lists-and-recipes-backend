@@ -52,10 +52,10 @@ func main() {
 
 	if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
 		//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
-		log.Println("Started SSL web server")
+		log.Println("Запущен SSL веб сервер")
 		log.Fatalln(http.ListenAndServeTLS(fmt.Sprintf(":%v", ServerSettings.HTTPS), "cert.pem", "key.pem", nil))
 	} else {
-		log.Println("Started plain web server")
+		log.Println("Запущен веб сервер без шифрования")
 		log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%v", ServerSettings.HTTP), nil))
 	}
 

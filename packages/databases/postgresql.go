@@ -118,6 +118,8 @@ func PostgreSQLCreateTables() {
 
 	PostgreSQLRollbackIfError(err)
 
+	log.Println("Создали таблицу Files")
+
 	sql = `CREATE TABLE public."Recipes"
 			(
 				id bigserial NOT NULL,
@@ -135,6 +137,8 @@ func PostgreSQLCreateTables() {
 	_, err = dbc.Exec(sql)
 
 	PostgreSQLRollbackIfError(err)
+
+	log.Println("Создали таблицу Recipes")
 
 	sql = `ALTER TABLE public."Recipes"
 				ADD CONSTRAINT "Recipes_image_id_fkey" FOREIGN KEY (image_id)
@@ -164,6 +168,8 @@ func PostgreSQLCreateTables() {
 
 	PostgreSQLRollbackIfError(err)
 
+	log.Println("Создали таблицу RecipesIngredients")
+
 	sql = `CREATE TABLE public."Ingredients"
 			(
 				id bigserial NOT NULL,
@@ -179,6 +185,8 @@ func PostgreSQLCreateTables() {
 	_, err = dbc.Exec(sql)
 
 	PostgreSQLRollbackIfError(err)
+
+	log.Println("Создали таблицу Ingredients")
 
 	sql = `ALTER TABLE public."RecipesIngredients"
 			ADD CONSTRAINT "RecipesIngredients_recipe_id_fkey" FOREIGN KEY (recipe_id)
@@ -219,6 +227,8 @@ func PostgreSQLCreateTables() {
 
 	PostgreSQLRollbackIfError(err)
 
+	log.Println("Создали таблицу ShoppingList")
+
 	sql = `ALTER TABLE public."ShoppingList"
 				ADD CONSTRAINT "ShoppingList_ingredient_id_fkey" FOREIGN KEY (ingredient_id)
 				REFERENCES public."Ingredients" (id) MATCH FULL
@@ -256,6 +266,8 @@ func PostgreSQLCreateTables() {
 
 	PostgreSQLRollbackIfError(err)
 
+	log.Println("Создали таблицу users")
+
 	sql = `CREATE TABLE secret.hashes
 		(
 			id bigserial NOT NULL,
@@ -271,6 +283,8 @@ func PostgreSQLCreateTables() {
 
 	PostgreSQLRollbackIfError(err)
 
+	log.Println("Создали таблицу hashes")
+
 	sql = `ALTER TABLE secret.hashes
 				ADD CONSTRAINT hashes_user_id_fkey FOREIGN KEY (user_id)
 				REFERENCES secret.users (id) MATCH FULL
@@ -284,6 +298,8 @@ func PostgreSQLCreateTables() {
 	PostgreSQLRollbackIfError(err)
 
 	dbc.Exec("COMMIT")
+
+	log.Println("Таблицы созданы")
 
 }
 

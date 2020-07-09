@@ -60,7 +60,12 @@ func InitialSettings(forcesetup bool) *settings.WServerSettings {
 		CreateDB = strings.ToLower(CreateDB)
 
 		if CreateDB == "да" || CreateDB == "д" {
-			ServerSettings.SQL.CreateDatabase()
+			donech := make(chan bool)
+			go ServerSettings.SQL.CreateDatabase(donech)
+
+			if <-donech {
+				log.Println("Процедура создания базы данных завершена")
+			}
 		}
 
 		bytes, err := json.Marshal(ServerSettings)
