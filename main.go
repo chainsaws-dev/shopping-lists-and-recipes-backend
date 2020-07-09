@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"myprojects/Shopping-lists-and-recipes/packages/files"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"net/http"
 	"os"
@@ -47,6 +48,8 @@ func main() {
 
 	// Устанавливаем пути, по которым будут происходить http запросы
 	http.Handle("/", http.FileServer(http.Dir("./public/frontend")))
+	http.Handle("/uploads/", http.StripPrefix("/uploads", http.FileServer(http.Dir("./public/uploads"))))
+	http.HandleFunc("/api/SaveRecipePhoto", files.UploadFile)
 
 	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
 

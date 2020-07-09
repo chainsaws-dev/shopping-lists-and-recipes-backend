@@ -370,6 +370,27 @@ func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []str
 
 }
 
+// PostgreSQLFileUpload - создаёт записи в базе данных для хранения информации о загруженном файле
+func PostgreSQLFileUpload(filename string, filesize int64, filetype string, fileid string) sql.Result {
+
+	dbc.Exec("BEGIN")
+
+	sql := `INSERT INTO 
+			public."Files" 
+			(filename, filesize, filetype, file_id) 
+		  VALUES 
+			($1, $2, $3, $4) RETURNING id;`
+
+	result, err := dbc.Exec(sql, filename, filesize, filetype, fileid)
+
+	PostgreSQLRollbackIfError(err)
+
+	dbc.Exec("COMMIT")
+
+	return result
+
+}
+
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
 func PostgreSQLRollbackIfError(err error) {
 	if err != nil {
