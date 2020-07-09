@@ -173,13 +173,13 @@ func GetTRulesForAdmin() SQLTRules {
 func (SQLsrv *SQLServer) CreateDatabase() {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
-		// Глобальные настройки
-		cs := databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, "", true)
-		databases.PostgreSQLConnect(cs)
+		// Создаём базу данных
+		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, "", true))
 		databases.PostgreSQLCreateDatabase(SQLsrv.DbName)
 		databases.PostgreSQLCloseConn()
 
-		cs = databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, SQLsrv.DbName, false)
+		// Заполняем базу данных
+		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, SQLsrv.DbName, false))
 		databases.PostgreSQLCreateTables()
 		for _, currole := range SQLsrv.Roles {
 
