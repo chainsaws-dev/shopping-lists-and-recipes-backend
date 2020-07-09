@@ -187,7 +187,7 @@ func (SQLsrv *SQLServer) CreateDatabase() {
 
 			for _, tablerule := range currole.TRules {
 
-				databases.PostgreSQLGrantRightsToRole(currole.Name, tablerule.TName, formRightsArray(tablerule))
+				databases.PostgreSQLGrantRightsToRole(currole.Login, tablerule.TName, formRightsArray(tablerule))
 			}
 		}
 		databases.PostgreSQLCloseConn()

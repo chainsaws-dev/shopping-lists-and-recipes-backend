@@ -269,7 +269,7 @@ func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []str
 
 	dbc.Exec("BEGIN")
 
-	reqrights := strings.Join(rights, " ")
+	reqrights := strings.Join(rights, ", ")
 
 	log.Printf("Даём доступ %s к таблице %s c правами %s ", roleName, tableName, reqrights)
 
