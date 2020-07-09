@@ -48,6 +48,8 @@ func main() {
 
 	// Устанавливаем пути, по которым будут происходить http запросы
 	http.Handle("/", http.FileServer(http.Dir("./public/frontend")))
+	http.Handle("/recipes/", http.RedirectHandler("/", http.StatusFound))
+	http.Handle("/shopping-list/", http.RedirectHandler("/", http.StatusFound))
 	http.Handle("/uploads/", http.StripPrefix("/uploads", http.FileServer(http.Dir("./public/uploads"))))
 	http.HandleFunc("/api/SaveRecipePhoto", files.UploadFile)
 
