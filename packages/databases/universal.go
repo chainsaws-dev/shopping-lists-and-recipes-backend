@@ -24,29 +24,3 @@ func SQLConnect(DbType string, ConStr string) *sql.DB {
 
 	return db
 }
-
-// SQLSelect - Выполняет выборку данных с параметрами или без
-// Не забываем в точке вызова defer rows.Close()
-func SQLSelect(Db *sql.DB, SelectStmnt string, Args ...interface{}) (*sql.Rows, error) {
-
-	var rows *sql.Rows
-	var err error
-
-	if Args == nil {
-		rows, err = Db.Query(SelectStmnt)
-	} else {
-		rows, err = Db.Query(SelectStmnt, Args)
-	}
-
-	return rows, err
-
-}
-
-// SQLExecute - Выполняет TSQL выражение с параметрами
-func SQLExecute(db *sql.DB, SelectStmnt string, Args ...interface{}) (sql.Result, error) {
-
-	result, err := db.Exec(SelectStmnt, Args)
-
-	return result, err
-
-}
