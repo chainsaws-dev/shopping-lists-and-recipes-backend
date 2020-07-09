@@ -256,7 +256,7 @@ func PostgreSQLCreateTables() {
 
 	PostgreSQLRollbackIfError(err)
 
-	sql = `CREATE TABLE secret.tokens
+	sql = `CREATE TABLE secret.hashes
 		(
 			id bigserial NOT NULL,
 			user_id uuid NOT NULL,
@@ -264,20 +264,20 @@ func PostgreSQLCreateTables() {
 			PRIMARY KEY (id)
 		);
 
-		ALTER TABLE secret.tokens
+		ALTER TABLE secret.hashes
 			OWNER to postgres;`
 
 	_, err = dbc.Exec(sql)
 
 	PostgreSQLRollbackIfError(err)
 
-	sql = `ALTER TABLE secret.tokens
-				ADD CONSTRAINT tokens_user_id_fkey FOREIGN KEY (user_id)
+	sql = `ALTER TABLE secret.hashes
+				ADD CONSTRAINT hashes_user_id_fkey FOREIGN KEY (user_id)
 				REFERENCES secret.users (id) MATCH FULL
 				ON UPDATE RESTRICT
 				ON DELETE CASCADE;
-			CREATE INDEX fki_tokens_user_id_fkey
-				ON secret.tokens(user_id);`
+			CREATE INDEX fki_hashes_user_id_fkey
+				ON secret.hashes(user_id);`
 
 	_, err = dbc.Exec(sql)
 
