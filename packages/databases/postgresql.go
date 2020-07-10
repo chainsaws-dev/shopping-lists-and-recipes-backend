@@ -382,8 +382,8 @@ func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []str
 
 }
 
-// PostgreSQLFileUpload - создаёт записи в базе данных для хранения информации о загруженном файле
-func PostgreSQLFileUpload(filename string, filesize int64, filetype string, fileid string) int64 {
+// PostgreSQLFileInsert - создаёт записи в базе данных для хранения информации о загруженном файле
+func PostgreSQLFileInsert(filename string, filesize int64, filetype string, fileid string) int64 {
 
 	dbc.Exec("BEGIN")
 
@@ -407,20 +407,144 @@ func PostgreSQLFileUpload(filename string, filesize int64, filetype string, file
 	return curid
 }
 
+// PostgreSQLFileUpdate - обновляет записи в базе данных для хранения информации о загруженном файле
+func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, fileid string, id string) int64 {
+
+	dbc.Exec("BEGIN")
+
+	sql := `UPDATE
+				public."Files" 
+			SET 
+				(filename, filesize, filetype, file_id) = ($1, $2, $3, $4) 
+			WHERE 
+				id = $5
+			RETURNING id;`
+
+	row := dbc.QueryRow(sql, filename, filesize, filetype, fileid, id)
+
+	var curid int64
+	err := row.Scan(&curid)
+
+	log.Printf("Данные о файле сохранены в базу данных под индексом %v", curid)
+
+	PostgreSQLRollbackIfError(err)
+
+	dbc.Exec("COMMIT")
+
+	return curid
+}
+
 // PostgreSQLFileDelete - удаляет запись в базе данных о загруженном файле
 func PostgreSQLFileDelete(fileid string) sql.Result {
 
 	dbc.Exec("BEGIN")
 
 	sql := `DELETE FROM 
-			public."Files" 
-			WHERE file_id=$1;`
+				public."Files" 
+			WHERE id=$1;`
 
 	result, err := dbc.Exec(sql, fileid)
 
 	PostgreSQLRollbackIfError(err)
 
 	dbc.Exec("COMMIT")
+
+	return result
+}
+
+// PostgreSQLFilesSelect - получает информацию о файлах
+func PostgreSQLFilesSelect(offset int64, limit int64) FilesResponse {
+
+	sql := `SELECT 
+				COUNT(*)
+			FROM 
+				public."Files"`
+
+	row := dbc.QueryRow(sql)
+
+	var countRows int64
+
+	err := row.Scan(&countRows)
+
+	WriteErrToLog(err)
+
+	sql = fmt.Sprintf(`SELECT 
+							"Files".id,
+							"Files".filename,
+							"Files".filesize,
+							"Files".filetype,
+							"Files".file_id
+						FROM 
+							public."Files"
+						OFFSET %v LIMIT %v`, offset, limit)
+
+	rows, err := dbc.Query(sql)
+
+	WriteErrToLog(err)
+
+	var result FilesResponse
+
+	for rows.Next() {
+		var cur FileDB
+		rows.Scan(&cur.id, &cur.filename, &cur.filesize, &cur.filetype, &cur.fileID)
+		result.Files = append(result.Files, cur)
+	}
+
+	result.Total = countRows
+	result.Limit = limit
+	result.Offset = offset
+
+	return result
+}
+
+// PostgreSQLRecipesSelect - получает информацию о рецептах и связанном файле обложки
+func PostgreSQLRecipesSelect(offset int64, limit int64) RecipesResponse {
+
+	sql := `SELECT 
+				COUNT(*)
+			FROM 
+				public."Recipes"
+				LEFT JOIN 
+				public."Files"
+				ON "Recipes".image_id="Files".id`
+
+	row := dbc.QueryRow(sql)
+
+	var countRows int64
+
+	err := row.Scan(&countRows)
+
+	WriteErrToLog(err)
+
+	sql = fmt.Sprintf(`SELECT 
+							"Recipes".id, 
+							"Recipes".name, 
+							"Recipes".description,
+							"Files".filename,
+							"Files".filesize,
+							"Files".filetype	
+						FROM 
+							public."Recipes"
+							LEFT JOIN 
+							public."Files"
+							ON "Recipes".image_id="Files".id
+						OFFSET %v LIMIT %v`, offset, limit)
+
+	rows, err := dbc.Query(sql)
+
+	WriteErrToLog(err)
+
+	var result RecipesResponse
+
+	for rows.Next() {
+		var cur Recipe
+		rows.Scan(&cur.id, &cur.name, &cur.description, &cur.filename, &cur.filesize, &cur.filetype)
+		result.Recipes = append(result.Recipes, cur)
+	}
+
+	result.Total = countRows
+	result.Limit = limit
+	result.Offset = offset
 
 	return result
 }
