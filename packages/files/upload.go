@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"myprojects/Shopping-lists-and-recipes/packages/databases"
+	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -88,6 +90,14 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 				Error:    "Unsupported file type",
 			}
 		}
+
+		ActiveRole := setup.ServerSettings.SQL.Roles[1]
+
+		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass, setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
+
+		databases.PostgreSQLFileUpload(furesp.FileName, furesp.FileSize, furesp.FileType, furesp.FileID)
+
+		databases.PostgreSQLCloseConn()
 
 		js, err := json.Marshal(furesp)
 

@@ -327,7 +327,7 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	// Делаем MD5 хеш
 	h := md5.New()
-	io.WriteString(h, password)
+	io.WriteString(h, password+roleName)
 
 	dbc.Exec("BEGIN")
 
@@ -381,7 +381,7 @@ func PostgreSQLFileUpload(filename string, filesize int64, filetype string, file
 		  VALUES 
 			($1, $2, $3, $4) RETURNING id;`
 
-	result, err := dbc.Exec(sql, filename, filesize, filetype, fileid)
+	result, err := dbc.Exec(sql, filename, string(filesize), filetype, fileid)
 
 	PostgreSQLRollbackIfError(err)
 

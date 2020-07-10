@@ -60,7 +60,7 @@ func (SQLsrv *SQLServer) AutoFillRoles() {
 		Name:    "guest_role_read_only",
 		Desc:    "Гостевая роль",
 		Login:   "recipes_guest",
-		Pass:    GeneratePassword(20, 5, 5, 5),
+		Pass:    GeneratePassword(20, 5, 5),
 		TRules:  GetTRulesForGuest(),
 		Default: true,
 		Admin:   false,
@@ -70,7 +70,7 @@ func (SQLsrv *SQLServer) AutoFillRoles() {
 		Name:    "admin_role_CRUD",
 		Desc:    "Администратор",
 		Login:   "recipes_admin",
-		Pass:    GeneratePassword(20, 5, 5, 5),
+		Pass:    GeneratePassword(20, 5, 5),
 		TRules:  GetTRulesForAdmin(),
 		Default: false,
 		Admin:   true,
@@ -223,24 +223,16 @@ func formRightsArray(rule TRule) []string {
 }
 
 // GeneratePassword - генерирует случайный пароль
-func GeneratePassword(passwordLength, minSpecialChar, minNum, minUpperCase int) string {
+func GeneratePassword(passwordLength, minNum, minUpperCase int) string {
 
 	var (
-		lowerCharSet   = "abcdedfghijklmnopqrst"
-		upperCharSet   = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		specialCharSet = "!@#$%&*"
-		numberSet      = "0123456789"
-		allCharSet     = lowerCharSet + upperCharSet + specialCharSet + numberSet
+		lowerCharSet = "abcdedfghijklmnopqrst"
+		upperCharSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		numberSet    = "0123456789"
+		allCharSet   = lowerCharSet + upperCharSet + numberSet
 	)
 
 	var password strings.Builder
-
-	//Set special character
-	for i := 0; i < minSpecialChar; i++ {
-
-		random, _ := rand.Int(rand.Reader, big.NewInt(int64(len(specialCharSet))))
-		password.WriteString(string(specialCharSet[random.Int64()]))
-	}
 
 	//Set numeric
 	for i := 0; i < minNum; i++ {
@@ -254,7 +246,8 @@ func GeneratePassword(passwordLength, minSpecialChar, minNum, minUpperCase int) 
 		password.WriteString(string(upperCharSet[random.Int64()]))
 	}
 
-	remainingLength := passwordLength - minSpecialChar - minNum - minUpperCase
+	//Set lowercase
+	remainingLength := passwordLength - minNum - minUpperCase
 	for i := 0; i < remainingLength; i++ {
 		random, _ := rand.Int(rand.Reader, big.NewInt(int64(len(lowerCharSet))))
 		password.WriteString(string(allCharSet[random.Int64()]))
