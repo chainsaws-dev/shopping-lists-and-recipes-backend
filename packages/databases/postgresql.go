@@ -337,7 +337,19 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	PostgreSQLRollbackIfError(err)
 
-	grantsql := fmt.Sprintf(`GRANT CONNECT ON DATABASE "%s" TO %s;`, dbName, roleName)
+	grantsql := fmt.Sprintf(`GRANT CONNECT, TEMPORARY ON DATABASE "%s" TO %s;`, dbName, roleName)
+
+	_, err = dbc.Exec(grantsql)
+
+	PostgreSQLRollbackIfError(err)
+
+	grantsql = fmt.Sprintf(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "public", roleName)
+
+	_, err = dbc.Exec(grantsql)
+
+	PostgreSQLRollbackIfError(err)
+
+	grantsql = fmt.Sprintf(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "secret", roleName)
 
 	_, err = dbc.Exec(grantsql)
 
@@ -381,7 +393,7 @@ func PostgreSQLFileUpload(filename string, filesize int64, filetype string, file
 		  VALUES 
 			($1, $2, $3, $4) RETURNING id;`
 
-	result, err := dbc.Exec(sql, filename, string(filesize), filetype, fileid)
+	result, err := dbc.Exec(sql, filename, filesize, filetype, fileid)
 
 	PostgreSQLRollbackIfError(err)
 

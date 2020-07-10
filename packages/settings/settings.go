@@ -219,6 +219,7 @@ func formRightsArray(rule TRule) []string {
 	if rule.DELETE {
 		result = append(result, "DELETE")
 	}
+
 	return result
 }
 
