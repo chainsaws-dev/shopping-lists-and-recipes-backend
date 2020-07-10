@@ -1,24 +1,30 @@
 package databases
 
-// Recipe - тип для хранения информации о рецепте в базе данных
-type Recipe struct {
-	id          int
-	name        string
-	description string
-	imagePath   string
-	ingredients []Ingredient
+// RecipeDB - тип для хранения информации о рецепте в базе данных
+type RecipeDB struct {
+	ID          int
+	Name        string
+	Description string
+	ImagePath   string
+	Ingredients IngredientsDB
 }
 
-// Ingredient - тип для хранения информации о ингредиенте
-type Ingredient struct {
-	name   string
-	amount int
+// RecipesDB - тип для хранения массива рецептов
+type RecipesDB []RecipeDB
+
+// IngredientDB - тип для хранения информации о ингредиенте
+type IngredientDB struct {
+	Name   string
+	Amount int
 }
+
+// IngredientsDB - тип для хранения слайсов ингредиентов
+type IngredientsDB []IngredientDB
 
 // RecipesResponse  - тип для возврата с ответом,
 // описывающий список рецептов с обложками для постраничной разбивки
 type RecipesResponse struct {
-	Recipes []Recipe
+	Recipes RecipesDB
 	Total   int
 	Offset  int
 	Limit   int
@@ -26,11 +32,11 @@ type RecipesResponse struct {
 
 // FileDB - тип для хранения информации о файле в базе данных
 type FileDB struct {
-	id       int
-	filename string
-	filesize int64
-	filetype string
-	fileID   string
+	ID       int
+	Filename string
+	Filesize int64
+	Filetype string
+	FileID   string
 }
 
 // FilesResponse - тип для возврата с ответом,

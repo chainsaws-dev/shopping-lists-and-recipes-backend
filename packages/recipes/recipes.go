@@ -44,7 +44,12 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(js)
+
+		_, err = w.Write(js)
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
 
 	case req.Method == http.MethodPost:
 		//TODO

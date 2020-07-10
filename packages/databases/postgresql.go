@@ -4,6 +4,7 @@ package databases
 import (
 	"crypto/md5"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -488,7 +489,7 @@ func PostgreSQLFilesSelect(offset int64, limit int64) FilesResponse {
 
 	for rows.Next() {
 		var cur FileDB
-		rows.Scan(&cur.id, &cur.filename, &cur.filesize, &cur.filetype, &cur.fileID)
+		rows.Scan(&cur.ID, &cur.Filename, &cur.Filesize, &cur.Filetype, &cur.FileID)
 		result.Files = append(result.Files, cur)
 	}
 
@@ -501,6 +502,8 @@ func PostgreSQLFilesSelect(offset int64, limit int64) FilesResponse {
 
 // PostgreSQLRecipesSelect - получает информацию о рецептах и связанном файле обложки
 func PostgreSQLRecipesSelect(page int) RecipesResponse {
+
+	var result RecipesResponse
 
 	sql := `SELECT 
 				COUNT(*)
@@ -518,8 +521,13 @@ func PostgreSQLRecipesSelect(page int) RecipesResponse {
 
 	shared.WriteErrToLog(err)
 
-	offset := int(math.RoundToEven(float64(countRows / page)))
 	limit := 4
+	offset := int(math.RoundToEven(float64((page - 1) * limit)))
+
+	if offset < 0 {
+		log.Println(errors.New("В запросе ошибочно указана страница меньше, либо равная нулю"))
+		return result
+	}
 
 	sql = fmt.Sprintf(`SELECT 
 							"Recipes".id, 
@@ -537,13 +545,11 @@ func PostgreSQLRecipesSelect(page int) RecipesResponse {
 
 	shared.WriteErrToLog(err)
 
-	var result RecipesResponse
-
 	for rows.Next() {
 
-		var cur Recipe
-		rows.Scan(&cur.id, &cur.name, &cur.description, &cur.imagePath)
-		cur.imagePath = "/uploads/" + cur.imagePath
+		var cur RecipeDB
+		rows.Scan(&cur.ID, &cur.Name, &cur.Description, &cur.ImagePath)
+		cur.ImagePath = "/uploads/" + cur.ImagePath
 
 		sql = `SELECT 	
 				Ing.name,
@@ -561,14 +567,14 @@ func PostgreSQLRecipesSelect(page int) RecipesResponse {
 				public."Ingredients" AS Ing
 			ON Ing.id = RecIng.ingredient_id`
 
-		ings, err := dbc.Query(sql, cur.id)
+		ings, err := dbc.Query(sql, cur.ID)
 
 		shared.WriteErrToLog(err)
 
 		for ings.Next() {
-			var ing Ingredient
-			ings.Scan(&ing.name, &ing.amount)
-			cur.ingredients = append(cur.ingredients, ing)
+			var ing IngredientDB
+			ings.Scan(&ing.Name, &ing.Amount)
+			cur.Ingredients = append(cur.Ingredients, ing)
 		}
 
 		result.Recipes = append(result.Recipes, cur)
