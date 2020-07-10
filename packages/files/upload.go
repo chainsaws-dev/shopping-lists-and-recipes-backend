@@ -38,6 +38,14 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 		}
 		defer f.Close()
 
+		//recid := req.FormValue("id")
+
+		// TODO
+		// Должна назначаться аутентификацией
+		ActiveRole := setup.ServerSettings.SQL.Roles[1]
+		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass, setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
+		//databases.PostgreSQLFileDelete(recid)
+
 		// Проверяем тип файла
 		buff := make([]byte, 512)
 		_, err = f.Read(buff)
@@ -78,24 +86,21 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 				FileName: fh.Filename,
 				FileID:   filename,
 				FileType: ext,
+				DbID:     databases.PostgreSQLFileUpload(fh.Filename, fh.Size, ext, filename),
 				FileSize: fh.Size,
 				Error:    "",
 			}
+
 		} else {
 			furesp = FileUploadResponse{
 				FileName: fh.Filename,
 				FileID:   "",
 				FileType: "",
+				DbID:     -1,
 				FileSize: fh.Size,
 				Error:    "Unsupported file type",
 			}
 		}
-
-		ActiveRole := setup.ServerSettings.SQL.Roles[1]
-
-		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass, setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
-
-		databases.PostgreSQLFileUpload(furesp.FileName, furesp.FileSize, furesp.FileType, furesp.FileID)
 
 		databases.PostgreSQLCloseConn()
 

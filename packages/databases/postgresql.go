@@ -383,7 +383,7 @@ func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []str
 }
 
 // PostgreSQLFileUpload - создаёт записи в базе данных для хранения информации о загруженном файле
-func PostgreSQLFileUpload(filename string, filesize int64, filetype string, fileid string) sql.Result {
+func PostgreSQLFileUpload(filename string, filesize int64, filetype string, fileid string) int64 {
 
 	dbc.Exec("BEGIN")
 
@@ -393,14 +393,36 @@ func PostgreSQLFileUpload(filename string, filesize int64, filetype string, file
 		  VALUES 
 			($1, $2, $3, $4) RETURNING id;`
 
-	result, err := dbc.Exec(sql, filename, filesize, filetype, fileid)
+	row := dbc.QueryRow(sql, filename, filesize, filetype, fileid)
+
+	var curid int64
+	err := row.Scan(&curid)
+
+	log.Printf("Данные о файле сохранены в базу данных под индексом %v", curid)
+
+	PostgreSQLRollbackIfError(err)
+
+	dbc.Exec("COMMIT")
+
+	return curid
+}
+
+// PostgreSQLFileDelete - удаляет запись в базе данных о загруженном файле
+func PostgreSQLFileDelete(fileid string) sql.Result {
+
+	dbc.Exec("BEGIN")
+
+	sql := `DELETE FROM 
+			public."Files" 
+			WHERE file_id=$1;`
+
+	result, err := dbc.Exec(sql, fileid)
 
 	PostgreSQLRollbackIfError(err)
 
 	dbc.Exec("COMMIT")
 
 	return result
-
 }
 
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
