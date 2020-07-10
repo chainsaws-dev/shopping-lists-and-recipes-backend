@@ -5,9 +5,14 @@ type Recipe struct {
 	id          int
 	name        string
 	description string
-	filename    string
-	filesize    int64
-	filetype    string
+	imagePath   string
+	ingredients []Ingredient
+}
+
+// Ingredient - тип для хранения информации о ингредиенте
+type Ingredient struct {
+	name   string
+	amount int
 }
 
 // RecipesResponse  - тип для возврата с ответом,

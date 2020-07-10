@@ -520,9 +520,7 @@ func PostgreSQLRecipesSelect(offset int64, limit int64) RecipesResponse {
 							"Recipes".id, 
 							"Recipes".name, 
 							"Recipes".description,
-							"Files".filename,
-							"Files".filesize,
-							"Files".filetype	
+							"Files".file_id	
 						FROM 
 							public."Recipes"
 							LEFT JOIN 
@@ -537,8 +535,37 @@ func PostgreSQLRecipesSelect(offset int64, limit int64) RecipesResponse {
 	var result RecipesResponse
 
 	for rows.Next() {
+
 		var cur Recipe
-		rows.Scan(&cur.id, &cur.name, &cur.description, &cur.filename, &cur.filesize, &cur.filetype)
+		rows.Scan(&cur.id, &cur.name, &cur.description, &cur.imagePath)
+		cur.imagePath = "/uploads/" + cur.imagePath
+
+		sql = `SELECT 	
+				Ing.name,
+				RecIng.quantity
+			FROM 
+				(SELECT 
+					recipe_id,
+					ingredient_id,
+					quantity
+				FROM 
+					public."RecipesIngredients"
+				WHERE
+					recipe_id=$1) AS RecIng
+			LEFT JOIN 
+				public."Ingredients" AS Ing
+			ON Ing.id = RecIng.ingredient_id`
+
+		ings, err := dbc.Query(sql, cur.id)
+
+		WriteErrToLog(err)
+
+		for ings.Next() {
+			var ing Ingredient
+			ings.Scan(&ing.name, &ing.amount)
+			cur.ingredients = append(cur.ingredients, ing)
+		}
+
 		result.Recipes = append(result.Recipes, cur)
 	}
 
