@@ -13,7 +13,9 @@ import (
 
 // HandleRecipes - обрабатывает POST, GET и DELETE запросы для изменения рецептов
 func HandleRecipes(w http.ResponseWriter, req *http.Request) {
-	if req.Method == http.MethodGet {
+
+	switch {
+	case req.Method == http.MethodGet:
 
 		PageStr := req.Header.Get("Page")
 
@@ -44,13 +46,13 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(js)
 
-	} else if req.Method == http.MethodPost {
+	case req.Method == http.MethodPost:
 		//TODO
 		http.Error(w, "Method is not implemented", http.StatusNotImplemented)
-	} else if req.Method == http.MethodDelete {
+	case req.Method == http.MethodDelete:
 		//TODO
 		http.Error(w, "Method is not implemented", http.StatusNotImplemented)
-	} else {
+	default:
 		http.Error(w, "Method is not allowed", http.StatusMethodNotAllowed)
 	}
 }
