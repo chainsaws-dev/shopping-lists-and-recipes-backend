@@ -86,7 +86,7 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 				FileName: fh.Filename,
 				FileID:   filename,
 				FileType: ext,
-				DbID:     databases.PostgreSQLFileUpload(fh.Filename, fh.Size, ext, filename),
+				DbID:     databases.PostgreSQLFileInsert(fh.Filename, fh.Size, ext, filename),
 				FileSize: fh.Size,
 				Error:    "",
 			}
