@@ -19,9 +19,9 @@ type Ingredient struct {
 // описывающий список рецептов с обложками для постраничной разбивки
 type RecipesResponse struct {
 	Recipes []Recipe
-	Total   int64
-	Offset  int64
-	Limit   int64
+	Total   int
+	Offset  int
+	Limit   int
 }
 
 // FileDB - тип для хранения информации о файле в базе данных

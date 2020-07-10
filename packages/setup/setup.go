@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"myprojects/Shopping-lists-and-recipes/packages/settings"
+	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"os"
 	"strconv"
 	"strings"
@@ -70,16 +70,16 @@ func InitialSettings(forcesetup bool) {
 
 		bytes, err := json.Marshal(ServerSettings)
 
-		databases.WriteErrToLog(err)
+		shared.WriteErrToLog(err)
 
 		setfile, err := os.Create("settings.json")
 		defer setfile.Close()
 
-		databases.WriteErrToLog(err)
+		shared.WriteErrToLog(err)
 
 		_, err = setfile.Write(bytes)
 
-		databases.WriteErrToLog(err)
+		shared.WriteErrToLog(err)
 
 		log.Println("Файл настроек settings.json успешно создан")
 
@@ -88,11 +88,11 @@ func InitialSettings(forcesetup bool) {
 
 		bytes, err := ioutil.ReadFile("settings.json")
 
-		databases.WriteErrToLog(err)
+		shared.WriteErrToLog(err)
 
 		err = json.Unmarshal(bytes, &ServerSettings)
 
-		databases.WriteErrToLog(err)
+		shared.WriteErrToLog(err)
 
 		log.Println("Файл настроек settings.json успешно прочитан")
 	}
@@ -120,7 +120,7 @@ func AskInt(Question string, fieldToWriteIn *int) {
 	fmt.Println(Question)
 	fmt.Scanln(&inputstring)
 	value, err := strconv.Atoi(inputstring)
-	databases.WriteErrToLog(err)
+	shared.WriteErrToLog(err)
 	*fieldToWriteIn = value
 
 }
@@ -129,19 +129,19 @@ func AskInt(Question string, fieldToWriteIn *int) {
 func FolderCreate() {
 
 	if !СheckExists("public") {
-		databases.WriteErrToLog(os.Mkdir("public", 0700))
+		shared.WriteErrToLog(os.Mkdir("public", 0700))
 	}
 
 	if !СheckExists("public/frontend") {
-		databases.WriteErrToLog(os.Mkdir("public/frontend", 0700))
+		shared.WriteErrToLog(os.Mkdir("public/frontend", 0700))
 	}
 
 	if !СheckExists("public/uploads") {
-		databases.WriteErrToLog(os.Mkdir("public/uploads", 0700))
+		shared.WriteErrToLog(os.Mkdir("public/uploads", 0700))
 	}
 
 	if !СheckExists("logs") {
-		databases.WriteErrToLog(os.Mkdir("logs", 0700))
+		shared.WriteErrToLog(os.Mkdir("logs", 0700))
 	}
 }
 

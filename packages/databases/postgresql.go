@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
+	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"strings"
 )
 
@@ -34,7 +36,7 @@ func PostgreSQLCreateDatabase(dbName string) {
 		// Считаем количество баз данных с заданным именем
 		rows, err := dbc.Query(`SELECT COUNT(datname) FROM pg_catalog.pg_database WHERE datname = $1;`, dbName)
 
-		WriteErrToLog(err)
+		shared.WriteErrToLog(err)
 
 		var dbq int
 
@@ -62,7 +64,7 @@ func PostgreSQLCreateDatabase(dbName string) {
 
 		_, err = dbc.Exec(createsql)
 
-		WriteErrToLog(err)
+		shared.WriteErrToLog(err)
 
 		log.Println("База данных успешно создана")
 	}
@@ -84,7 +86,7 @@ func PostgreSQLCreateTables() {
 
 	rows, err := dbc.Query(sql)
 
-	WriteErrToLog(err)
+	shared.WriteErrToLog(err)
 
 	var tbq int
 
@@ -310,7 +312,7 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	rows, err := dbc.Query(`SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE  rolname = $1`, roleName)
 
-	WriteErrToLog(err)
+	shared.WriteErrToLog(err)
 
 	var rq int
 
@@ -466,7 +468,7 @@ func PostgreSQLFilesSelect(offset int64, limit int64) FilesResponse {
 
 	err := row.Scan(&countRows)
 
-	WriteErrToLog(err)
+	shared.WriteErrToLog(err)
 
 	sql = fmt.Sprintf(`SELECT 
 							"Files".id,
@@ -480,7 +482,7 @@ func PostgreSQLFilesSelect(offset int64, limit int64) FilesResponse {
 
 	rows, err := dbc.Query(sql)
 
-	WriteErrToLog(err)
+	shared.WriteErrToLog(err)
 
 	var result FilesResponse
 
@@ -498,7 +500,7 @@ func PostgreSQLFilesSelect(offset int64, limit int64) FilesResponse {
 }
 
 // PostgreSQLRecipesSelect - получает информацию о рецептах и связанном файле обложки
-func PostgreSQLRecipesSelect(offset int64, limit int64) RecipesResponse {
+func PostgreSQLRecipesSelect(page int) RecipesResponse {
 
 	sql := `SELECT 
 				COUNT(*)
@@ -510,11 +512,14 @@ func PostgreSQLRecipesSelect(offset int64, limit int64) RecipesResponse {
 
 	row := dbc.QueryRow(sql)
 
-	var countRows int64
+	var countRows int
 
 	err := row.Scan(&countRows)
 
-	WriteErrToLog(err)
+	shared.WriteErrToLog(err)
+
+	offset := int(math.RoundToEven(float64(countRows / page)))
+	limit := 4
 
 	sql = fmt.Sprintf(`SELECT 
 							"Recipes".id, 
@@ -530,7 +535,7 @@ func PostgreSQLRecipesSelect(offset int64, limit int64) RecipesResponse {
 
 	rows, err := dbc.Query(sql)
 
-	WriteErrToLog(err)
+	shared.WriteErrToLog(err)
 
 	var result RecipesResponse
 
@@ -558,7 +563,7 @@ func PostgreSQLRecipesSelect(offset int64, limit int64) RecipesResponse {
 
 		ings, err := dbc.Query(sql, cur.id)
 
-		WriteErrToLog(err)
+		shared.WriteErrToLog(err)
 
 		for ings.Next() {
 			var ing Ingredient
@@ -580,7 +585,7 @@ func PostgreSQLRecipesSelect(offset int64, limit int64) RecipesResponse {
 func PostgreSQLRollbackIfError(err error) {
 	if err != nil {
 		dbc.Exec("ROLLBACK")
-		WriteErrToLog(err)
+		shared.WriteErrToLog(err)
 	}
 }
 
@@ -591,5 +596,5 @@ func PostgreSQLCloseConn() {
 
 // PostgreSQLConnect - Подключаемся к базе данных
 func PostgreSQLConnect(ConnString string) {
-	dbc = SQLConnect("postgres", ConnString)
+	dbc = shared.SQLConnect("postgres", ConnString)
 }

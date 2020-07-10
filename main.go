@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"myprojects/Shopping-lists-and-recipes/packages/files"
+	"myprojects/Shopping-lists-and-recipes/packages/recipes"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"net/http"
 	"os"
@@ -47,10 +48,17 @@ func main() {
 	setup.InitialSettings(forcesetup)
 
 	// Устанавливаем пути, по которым будут происходить http запросы
+
+	// Раздаём файл сервером фронтенд и загрузки
 	http.Handle("/", http.FileServer(http.Dir("./public/frontend")))
+	http.Handle("/uploads/", http.StripPrefix("/uploads", http.FileServer(http.Dir("./public/uploads"))))
+
+	// Перенаправляем все запросы по разделам на индекс
 	http.HandleFunc("/recipes/", RedirectToIndex)
 	http.HandleFunc("/shopping-list/", RedirectToIndex)
-	http.Handle("/uploads/", http.StripPrefix("/uploads", http.FileServer(http.Dir("./public/uploads"))))
+
+	// REST API
+	http.HandleFunc("/api/Recipes", recipes.HandleRecipes)
 	http.HandleFunc("/api/SaveRecipePhoto", files.UploadFile)
 
 	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером

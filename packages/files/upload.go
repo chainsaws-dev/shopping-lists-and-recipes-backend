@@ -9,6 +9,7 @@ import (
 	"log"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
+	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -33,24 +34,23 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 
 		f, fh, err := req.FormFile("image")
 
-		if HandleInternalServerError(w, err) {
+		if shared.HandleInternalServerError(w, err) {
 			return
 		}
 		defer f.Close()
 
-		//recid := req.FormValue("id")
-
 		// TODO
 		// Должна назначаться аутентификацией
 		ActiveRole := setup.ServerSettings.SQL.Roles[1]
-		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass, setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
-		//databases.PostgreSQLFileDelete(recid)
+		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
+			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
+		defer databases.PostgreSQLCloseConn()
 
 		// Проверяем тип файла
 		buff := make([]byte, 512)
 		_, err = f.Read(buff)
 
-		if HandleInternalServerError(w, err) {
+		if shared.HandleInternalServerError(w, err) {
 			return
 		}
 
@@ -71,7 +71,7 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 
 			nf, err := os.Create(path)
 
-			if HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, err) {
 				return
 			}
 
@@ -102,11 +102,9 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 
-		databases.PostgreSQLCloseConn()
-
 		js, err := json.Marshal(furesp)
 
-		if HandleInternalServerError(w, err) {
+		if shared.HandleInternalServerError(w, err) {
 			return
 		}
 
@@ -116,16 +114,4 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 	} else {
 		http.Error(w, "Request method is not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-// HandleInternalServerError - Обработчик внутренних ошибок сервера
-func HandleInternalServerError(w http.ResponseWriter, err error) bool {
-
-	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		log.Println(err)
-		return true
-	}
-
-	return false
 }
