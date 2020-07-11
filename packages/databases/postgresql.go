@@ -533,6 +533,7 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 							LEFT JOIN 
 							public."Files"
 							ON "Recipes".image_id="Files".id
+						ORDER BY "Recipes".id
 						OFFSET %v LIMIT %v`, offset, limit)
 	} else {
 		offset = 0
@@ -546,7 +547,8 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 							public."Recipes"
 							LEFT JOIN 
 							public."Files"
-							ON "Recipes".image_id="Files".id`)
+							ON "Recipes".image_id="Files".id
+						ORDER BY "Recipes".id`)
 	}
 	rows, err := dbc.Query(sql)
 
