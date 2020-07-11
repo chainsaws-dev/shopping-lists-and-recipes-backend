@@ -3,7 +3,6 @@ package recipes
 
 import (
 	"encoding/json"
-	"errors"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
@@ -17,16 +16,12 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 	switch {
 	case req.Method == http.MethodGet:
 
+		w.Header().Set("Content-Type", "application/json")
+
 		PageStr := req.Header.Get("Page")
+		LimitStr := req.Header.Get("Limit")
 
-		if PageStr == "" {
-			shared.HandleInternalServerError(w, errors.New("При GET запросе рецептов не указана страница в заголовке Page"))
-			return
-		}
-
-		Page, err := strconv.Atoi(PageStr)
-
-		shared.HandleInternalServerError(w, err)
+		var recipesresp databases.RecipesResponse
 
 		// TODO
 		// Должна назначаться аутентификацией
@@ -35,15 +30,31 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
 		defer databases.PostgreSQLCloseConn()
 
-		recipesresp := databases.PostgreSQLRecipesSelect(Page)
+		if PageStr != "" && LimitStr != "" {
+
+			Page, err := strconv.Atoi(PageStr)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+
+			Limit, err := strconv.Atoi(LimitStr)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+
+			recipesresp = databases.PostgreSQLRecipesSelect(Page, Limit)
+
+		} else {
+			recipesresp = databases.PostgreSQLRecipesSelect(0, 0)
+		}
 
 		js, err := json.Marshal(recipesresp)
 
 		if shared.HandleInternalServerError(w, err) {
 			return
 		}
-
-		w.Header().Set("Content-Type", "application/json")
 
 		_, err = w.Write(js)
 
@@ -53,11 +64,11 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 	case req.Method == http.MethodPost:
 		//TODO
-		http.Error(w, "Method is not implemented", http.StatusNotImplemented)
+		shared.HandleOtherError(w, "POST method is not implemented", http.StatusNotImplemented)
 	case req.Method == http.MethodDelete:
 		//TODO
-		http.Error(w, "Method is not implemented", http.StatusNotImplemented)
+		shared.HandleOtherError(w, "DELETE method is not implemented", http.StatusNotImplemented)
 	default:
-		http.Error(w, "Method is not allowed", http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, "Method is not allowed", http.StatusMethodNotAllowed)
 	}
 }

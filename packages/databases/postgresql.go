@@ -4,7 +4,6 @@ package databases
 import (
 	"crypto/md5"
 	"database/sql"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -501,7 +500,7 @@ func PostgreSQLFilesSelect(offset int64, limit int64) FilesResponse {
 }
 
 // PostgreSQLRecipesSelect - получает информацию о рецептах и связанном файле обложки
-func PostgreSQLRecipesSelect(page int) RecipesResponse {
+func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 
 	var result RecipesResponse
 
@@ -521,15 +520,10 @@ func PostgreSQLRecipesSelect(page int) RecipesResponse {
 
 	shared.WriteErrToLog(err)
 
-	limit := 4
 	offset := int(math.RoundToEven(float64((page - 1) * limit)))
 
-	if offset < 0 {
-		log.Println(errors.New("В запросе ошибочно указана страница меньше, либо равная нулю"))
-		return result
-	}
-
-	sql = fmt.Sprintf(`SELECT 
+	if offset >= 0 && limit > 0 {
+		sql = fmt.Sprintf(`SELECT 
 							"Recipes".id, 
 							"Recipes".name, 
 							"Recipes".description,
@@ -540,7 +534,20 @@ func PostgreSQLRecipesSelect(page int) RecipesResponse {
 							public."Files"
 							ON "Recipes".image_id="Files".id
 						OFFSET %v LIMIT %v`, offset, limit)
-
+	} else {
+		offset = 0
+		limit = 0
+		sql = fmt.Sprintln(`SELECT 
+							"Recipes".id, 
+							"Recipes".name, 
+							"Recipes".description,
+							"Files".file_id	
+						FROM 
+							public."Recipes"
+							LEFT JOIN 
+							public."Files"
+							ON "Recipes".image_id="Files".id`)
+	}
 	rows, err := dbc.Query(sql)
 
 	shared.WriteErrToLog(err)
