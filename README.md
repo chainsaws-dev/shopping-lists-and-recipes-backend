@@ -7,7 +7,9 @@ Frontend source for this backend is available [here](https://github.com/chainsaw
 
 ## Docs
 Run this command to start documentation server on localhost:6060
+
 `godoc -http=:6060` 
+
 Documentation on this server will be available [here](http://localhost:6060/pkg/myprojects/Shopping-lists-and-recipes/)
 
 ## Run
