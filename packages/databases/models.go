@@ -34,7 +34,7 @@ type RecipesResponse struct {
 type FileDB struct {
 	ID       int
 	Filename string
-	Filesize int64
+	Filesize int
 	Filetype string
 	FileID   string
 }
@@ -43,7 +43,7 @@ type FileDB struct {
 // описывающий список файлов для постраничной разбивки
 type FilesResponse struct {
 	Files  []FileDB
-	Total  int64
-	Offset int64
-	Limit  int64
+	Total  int
+	Offset int
+	Limit  int
 }

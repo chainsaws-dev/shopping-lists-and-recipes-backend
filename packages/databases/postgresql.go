@@ -410,7 +410,7 @@ func PostgreSQLFileInsert(filename string, filesize int64, filetype string, file
 }
 
 // PostgreSQLFileUpdate - обновляет записи в базе данных для хранения информации о загруженном файле
-func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, fileid string, id string) int64 {
+func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, fileid string, id string) int {
 
 	dbc.Exec("BEGIN")
 
@@ -424,7 +424,7 @@ func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, file
 
 	row := dbc.QueryRow(sql, filename, filesize, filetype, fileid, id)
 
-	var curid int64
+	var curid int
 	err := row.Scan(&curid)
 
 	log.Printf("Данные о файле сохранены в базу данных под индексом %v", curid)
@@ -455,7 +455,7 @@ func PostgreSQLFileDelete(fileid string) sql.Result {
 }
 
 // PostgreSQLFilesSelect - получает информацию о файлах
-func PostgreSQLFilesSelect(offset int64, limit int64) FilesResponse {
+func PostgreSQLFilesSelect(offset int, limit int) FilesResponse {
 
 	sql := `SELECT 
 				COUNT(*)
@@ -464,13 +464,14 @@ func PostgreSQLFilesSelect(offset int64, limit int64) FilesResponse {
 
 	row := dbc.QueryRow(sql)
 
-	var countRows int64
+	var countRows int
 
 	err := row.Scan(&countRows)
 
 	shared.WriteErrToLog(err)
 
-	sql = fmt.Sprintf(`SELECT 
+	if offset > 0 && limit > 0 {
+		sql = fmt.Sprintf(`SELECT 
 							"Files".id,
 							"Files".filename,
 							"Files".filesize,
@@ -478,7 +479,21 @@ func PostgreSQLFilesSelect(offset int64, limit int64) FilesResponse {
 							"Files".file_id
 						FROM 
 							public."Files"
+						ORDER BY "Files".id
 						OFFSET %v LIMIT %v`, offset, limit)
+	} else {
+		offset = 0
+		limit = 0
+		sql = fmt.Sprintln(`SELECT 
+							"Files".id,
+							"Files".filename,
+							"Files".filesize,
+							"Files".filetype,
+							"Files".file_id
+						FROM 
+							public."Files"
+						ORDER BY "Files".id`)
+	}
 
 	rows, err := dbc.Query(sql)
 
@@ -507,10 +522,7 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 	sql := `SELECT 
 				COUNT(*)
 			FROM 
-				public."Recipes"
-				LEFT JOIN 
-				public."Files"
-				ON "Recipes".image_id="Files".id`
+				public."Recipes"`
 
 	row := dbc.QueryRow(sql)
 
@@ -594,6 +606,84 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 	result.Offset = offset
 
 	return result
+}
+
+// PostgreSQLRecipesUpdate - обновляет данные рецепта новой информацией
+func PostgreSQLRecipesUpdate(RecipeUpd RecipeDB, ImageID int) {
+
+	dbc.Exec("BEGIN")
+
+	sql := `UPDATE 
+				public."Recipes" 
+			SET 
+				(name, description, image_id) = ($1, $2, $3) 
+			WHERE 
+				id=$4;`
+
+	_, err := dbc.Exec(sql, RecipeUpd.Name, RecipeUpd.Description, ImageID, RecipeUpd.ID)
+
+	PostgreSQLRollbackIfError(err)
+
+	sql = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
+
+	_, err = dbc.Exec(sql)
+
+	PostgreSQLRollbackIfError(err)
+
+	for _, OneRecipe := range RecipeUpd.Ingredients {
+
+		sql = `SELECT 
+					COUNT(*)
+				FROM 
+					public."Ingredients" 
+				WHERE 
+					name = $1
+				LIMIT 1;`
+
+		row := dbc.QueryRow(sql, OneRecipe.Name)
+
+		var count int
+		err := row.Scan(&count)
+
+		var curid int
+
+		if count > 0 {
+
+			sql = `SELECT 
+						id, 
+						name 
+					FROM 
+						public."Ingredients" 
+					WHERE 
+						name = $1
+					LIMIT 1;`
+
+			row := dbc.QueryRow(sql, OneRecipe.Name)
+
+			err := row.Scan(&curid)
+
+			PostgreSQLRollbackIfError(err)
+
+		} else {
+			sql = `INSERT INTO public."Ingredients" (name) VALUES ($1) RETURNING id;`
+
+			row := dbc.QueryRow(sql, OneRecipe.Name)
+
+			err := row.Scan(&curid)
+
+			PostgreSQLRollbackIfError(err)
+		}
+
+		sql = `INSERT INTO public."RecipesIngredients" (recipe_id, ingredient_id, quantity) VALUES ($1,$2,$3);`
+
+		_, err = dbc.Exec(sql, RecipeUpd.ID, curid, OneRecipe.Amount)
+
+		PostgreSQLRollbackIfError(err)
+
+	}
+
+	dbc.Exec("COMMIT")
+
 }
 
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
