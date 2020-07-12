@@ -72,6 +72,10 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 		err := json.NewDecoder(req.Body).Decode(&Recipe)
 
+		if Recipe.ImageDbID == 0 {
+			err = errors.New("Не заполнен индекс обложки рецепта, невозможно записать рецепт")
+		}
+
 		if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
 			return
 		}
