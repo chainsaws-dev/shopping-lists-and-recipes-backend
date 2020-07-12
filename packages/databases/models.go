@@ -6,6 +6,7 @@ type RecipeDB struct {
 	Name        string
 	Description string
 	ImagePath   string
+	ImageDbID   int
 	Ingredients IngredientsDB
 }
 

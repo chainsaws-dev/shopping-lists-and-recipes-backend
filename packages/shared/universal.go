@@ -64,12 +64,16 @@ func HandleForbiddenError(w http.ResponseWriter, err error) bool {
 }
 
 // HandleOtherError - Обработчик прочих ошибок
-func HandleOtherError(w http.ResponseWriter, err string, statuscode int) {
+func HandleOtherError(w http.ResponseWriter, message string, err error, statuscode int) bool {
 
-	errortext := fmt.Sprintf(`{"Error":{"code":%v, "message":"%v"}}`, statuscode, err)
-	ReturnJSONError(w, errortext, statuscode)
-	log.Println(err)
+	if err != nil {
+		errortext := fmt.Sprintf(`{"Error":{"code":%v, "message":"%v"}}`, statuscode, message)
+		ReturnJSONError(w, errortext, statuscode)
+		log.Println(err)
+		return true
+	}
 
+	return false
 }
 
 // ReturnJSONError - возвращает ошибку в виде JSON

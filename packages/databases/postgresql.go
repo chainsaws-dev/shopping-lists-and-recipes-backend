@@ -539,6 +539,7 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 							"Recipes".id, 
 							"Recipes".name, 
 							"Recipes".description,
+							"Recipes".image_id,
 							"Files".file_id	
 						FROM 
 							public."Recipes"
@@ -554,6 +555,7 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 							"Recipes".id, 
 							"Recipes".name, 
 							"Recipes".description,
+							"Recipes".image_id,
 							"Files".file_id	
 						FROM 
 							public."Recipes"
@@ -569,7 +571,7 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 	for rows.Next() {
 
 		var cur RecipeDB
-		rows.Scan(&cur.ID, &cur.Name, &cur.Description, &cur.ImagePath)
+		rows.Scan(&cur.ID, &cur.Name, &cur.Description, &cur.ImageDbID, &cur.ImagePath)
 		cur.ImagePath = "/uploads/" + cur.ImagePath
 
 		sql = `SELECT 	
@@ -608,25 +610,51 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 	return result
 }
 
-// PostgreSQLRecipesUpdate - обновляет данные рецепта новой информацией
-func PostgreSQLRecipesUpdate(RecipeUpd RecipeDB, ImageID int) {
+// PostgreSQLRecipesInsertUpdate - обновляет существующий рецепт или вставляет новый рецепт в базу данных
+func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) RecipeDB {
+
+	sql := `SELECT 
+				COUNT(*)
+			FROM 
+				public."Recipes"
+			WHERE 
+				id=$1;`
+
+	row := dbc.QueryRow(sql, RecipeUpd.ID)
+
+	var recipecount int
+	err := row.Scan(&recipecount)
+
+	shared.WriteErrToLog(err)
 
 	dbc.Exec("BEGIN")
 
-	sql := `UPDATE 
-				public."Recipes" 
-			SET 
-				(name, description, image_id) = ($1, $2, $3) 
-			WHERE 
-				id=$4;`
+	if recipecount > 0 && RecipeUpd.ID != 0 {
+		// Если запись найдена по индексу и индекс не равен нулю (случай новой записи)
+		// Обновляем существующую запись
+		sql = `UPDATE 
+					public."Recipes" 
+				SET 
+					(name, description, image_id) = ($1, $2, $3) 
+				WHERE 
+					id=$4;`
 
-	_, err := dbc.Exec(sql, RecipeUpd.Name, RecipeUpd.Description, ImageID, RecipeUpd.ID)
+		_, err = dbc.Exec(sql, RecipeUpd.Name, RecipeUpd.Description, RecipeUpd.ImageDbID, RecipeUpd.ID)
+
+	} else {
+		// Иначе вставляем новую запись
+		sql = `INSERT INTO public."Recipes" (name, description, image_id) VALUES ($1, $2, $3) RETURNING id;`
+
+		row := dbc.QueryRow(sql, RecipeUpd.Name, RecipeUpd.Description, RecipeUpd.ImageDbID)
+
+		err = row.Scan(&RecipeUpd.ID)
+	}
 
 	PostgreSQLRollbackIfError(err)
 
 	sql = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sql, RecipeUpd.ID)
 
 	PostgreSQLRollbackIfError(err)
 
@@ -644,6 +672,8 @@ func PostgreSQLRecipesUpdate(RecipeUpd RecipeDB, ImageID int) {
 
 		var count int
 		err := row.Scan(&count)
+
+		PostgreSQLRollbackIfError(err)
 
 		var curid int
 
@@ -683,6 +713,8 @@ func PostgreSQLRecipesUpdate(RecipeUpd RecipeDB, ImageID int) {
 	}
 
 	dbc.Exec("COMMIT")
+
+	return RecipeUpd
 
 }
 
