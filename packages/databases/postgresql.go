@@ -680,8 +680,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) RecipeDB {
 		if count > 0 {
 
 			sql = `SELECT 
-						id, 
-						name 
+						id						 
 					FROM 
 						public."Ingredients" 
 					WHERE 
