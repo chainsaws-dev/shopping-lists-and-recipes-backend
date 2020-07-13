@@ -518,6 +518,7 @@ func PostgreSQLFilesSelect(offset int, limit int) FilesResponse {
 func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 
 	var result RecipesResponse
+	result.Recipes = RecipesDB{}
 
 	sql := `SELECT 
 				COUNT(*)
@@ -571,6 +572,7 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 	for rows.Next() {
 
 		var cur RecipeDB
+		cur.Ingredients = IngredientsDB{}
 		rows.Scan(&cur.ID, &cur.Name, &cur.Description, &cur.ImageDbID, &cur.ImagePath)
 		cur.ImagePath = "/uploads/" + cur.ImagePath
 
