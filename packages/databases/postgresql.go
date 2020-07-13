@@ -472,11 +472,14 @@ func PostgreSQLFileDelete(fileid int) error {
 
 	_, err = dbc.Exec(sql, fileid)
 
+	log.Println("Тут ошибка?", err, fileid)
+
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false)
 	}
 
-	err = os.Remove(strings.Join([]string{".", "public", "uploads", filename}, "/"))
+	path := strings.Join([]string{".", "public", "uploads", filename}, "/")
+	err = os.Remove(path)
 
 	if err != nil {
 		return err
@@ -801,33 +804,9 @@ func PostgreSQLRecipesDelete(ID int) error {
 		return errors.New("В таблице рецептов не найден указанный id")
 	}
 
-	sql = `SELECT
-				image_id
-			FROM
-				public."Recipes"
-			WHERE
-				id=$1`
-
-	row = dbc.QueryRow(sql, ID)
-
-	var imageid int
-	err = row.Scan(&imageid)
-
-	if err != nil {
-		return err
-	}
-
-	if imageid != 1 {
-		err = PostgreSQLFileDelete(imageid)
-
-		if err != nil {
-			return err
-		}
-	}
-
 	dbc.Exec("BEGIN")
 
-	sql = `DELETE FROM public."Recipes" WHERE id=$1;`
+	sql = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
 
 	_, err = dbc.Exec(sql, ID)
 
@@ -835,7 +814,7 @@ func PostgreSQLRecipesDelete(ID int) error {
 		return PostgreSQLRollbackIfError(err, false)
 	}
 
-	sql = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
+	sql = `DELETE FROM public."Recipes" WHERE id=$1;`
 
 	_, err = dbc.Exec(sql, ID)
 

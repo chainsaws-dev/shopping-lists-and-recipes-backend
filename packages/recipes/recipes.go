@@ -4,6 +4,7 @@ package recipes
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
@@ -96,6 +97,8 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
+		resulttext := fmt.Sprintf(`{"Error":{"code":%v, "message":"%v"}}`, http.StatusOK, "Запись данных прошла успешно")
+		fmt.Fprintln(w, resulttext)
 
 	case req.Method == http.MethodDelete:
 		// Обработка удаления отдельного рецепта из базы данных и его обложки с фаловой системы
@@ -121,11 +124,20 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 			err = databases.PostgreSQLRecipesDelete(RecipeID)
 
+			if err != nil {
+				if err.Error() == "В таблице рецептов не найден указанный id" {
+					shared.HandleOtherError(w, "Recipe not found and cannot be deleted", err, http.StatusBadRequest)
+					return
+				}
+			}
+
 			if shared.HandleInternalServerError(w, err) {
 				return
 			}
 
 			w.WriteHeader(http.StatusOK)
+			resulttext := fmt.Sprintf(`{"Error":{"code":%v, "message":"%v"}}`, http.StatusOK, "Удаление данных прошло успешно")
+			fmt.Fprintln(w, resulttext)
 
 		} else {
 			shared.HandleOtherError(w, "Bad request", errors.New("Не заполнен обязательный заголовок RecipeID в запросе на удаление рецепта"), http.StatusBadRequest)

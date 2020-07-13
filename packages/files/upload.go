@@ -4,6 +4,7 @@ package files
 import (
 	"crypto/sha1"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -21,7 +22,7 @@ type FileUploadResponse struct {
 	FileName string
 	FileSize int64
 	FileType string
-	DbID     int64
+	DbID     int
 	FileID   string
 	Error    string
 }
@@ -76,17 +77,32 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 			}
 
 			defer nf.Close()
-			f.Seek(0, 0)
 
-			io.Copy(nf, f)
+			_, err = f.Seek(0, 0)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+
+			_, err = io.Copy(nf, f)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
 
 			log.Printf("Файл получен и сохранён под именем %s", filename)
+
+			fileid, err := databases.PostgreSQLFileInsert(fh.Filename, fh.Size, ext, filename)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
 
 			furesp = FileUploadResponse{
 				FileName: fh.Filename,
 				FileID:   filename,
 				FileType: ext,
-				DbID:     databases.PostgreSQLFileInsert(fh.Filename, fh.Size, ext, filename),
+				DbID:     fileid,
 				FileSize: fh.Size,
 				Error:    "",
 			}
@@ -112,6 +128,6 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 		w.Write(js)
 
 	} else {
-		http.Error(w, "Request method is not allowed", http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, "Method is not allowed", errors.New("Запрошен недопустимый метод для рецептов"), http.StatusMethodNotAllowed)
 	}
 }
