@@ -4,11 +4,13 @@ package databases
 import (
 	"crypto/md5"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
+	"os"
 	"strings"
 )
 
@@ -120,7 +122,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу Files")
 
@@ -140,7 +142,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу Recipes")
 
@@ -154,7 +156,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	sql = `CREATE TABLE public."RecipesIngredients"
 			(
@@ -170,7 +172,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу RecipesIngredients")
 
@@ -188,7 +190,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу Ingredients")
 
@@ -200,7 +202,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	sql = `ALTER TABLE public."RecipesIngredients"
 			ADD CONSTRAINT "RecipesIngredients_ingredient_id_fkey" FOREIGN KEY (ingredient_id)
@@ -212,7 +214,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	sql = `CREATE TABLE public."ShoppingList"
 			(
@@ -229,7 +231,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу ShoppingList")
 
@@ -243,14 +245,14 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	sql = `CREATE SCHEMA secret
 			AUTHORIZATION postgres;`
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	sql = `CREATE TABLE secret.users
 			(
@@ -268,7 +270,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу users")
 
@@ -285,7 +287,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу hashes")
 
@@ -299,7 +301,7 @@ func PostgreSQLCreateTables() {
 
 	_, err = dbc.Exec(sql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	dbc.Exec("COMMIT")
 
@@ -337,25 +339,25 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	_, err = dbc.Exec(rolecreatesql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	grantsql := fmt.Sprintf(`GRANT CONNECT, TEMPORARY ON DATABASE "%s" TO %s;`, dbName, roleName)
 
 	_, err = dbc.Exec(grantsql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	grantsql = fmt.Sprintf(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "public", roleName)
 
 	_, err = dbc.Exec(grantsql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	grantsql = fmt.Sprintf(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "secret", roleName)
 
 	_, err = dbc.Exec(grantsql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	dbc.Exec("COMMIT")
 
@@ -376,7 +378,7 @@ func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []str
 
 	_, err := dbc.Exec(grantsql)
 
-	PostgreSQLRollbackIfError(err)
+	PostgreSQLRollbackIfError(err, true)
 
 	dbc.Exec("COMMIT")
 
@@ -385,7 +387,7 @@ func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []str
 }
 
 // PostgreSQLFileInsert - создаёт записи в базе данных для хранения информации о загруженном файле
-func PostgreSQLFileInsert(filename string, filesize int64, filetype string, fileid string) int64 {
+func PostgreSQLFileInsert(filename string, filesize int64, filetype string, fileid string) (int, error) {
 
 	dbc.Exec("BEGIN")
 
@@ -397,20 +399,22 @@ func PostgreSQLFileInsert(filename string, filesize int64, filetype string, file
 
 	row := dbc.QueryRow(sql, filename, filesize, filetype, fileid)
 
-	var curid int64
+	var curid int
 	err := row.Scan(&curid)
+
+	if err != nil {
+		return curid, PostgreSQLRollbackIfError(err, true)
+	}
 
 	log.Printf("Данные о файле сохранены в базу данных под индексом %v", curid)
 
-	PostgreSQLRollbackIfError(err)
-
 	dbc.Exec("COMMIT")
 
-	return curid
+	return curid, nil
 }
 
 // PostgreSQLFileUpdate - обновляет записи в базе данных для хранения информации о загруженном файле
-func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, fileid string, id string) int {
+func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, fileid string, id string) (int, error) {
 
 	dbc.Exec("BEGIN")
 
@@ -429,33 +433,64 @@ func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, file
 
 	log.Printf("Данные о файле сохранены в базу данных под индексом %v", curid)
 
-	PostgreSQLRollbackIfError(err)
+	if err != nil {
+		return 1, PostgreSQLRollbackIfError(err, true)
+	}
 
 	dbc.Exec("COMMIT")
 
-	return curid
+	return curid, nil
 }
 
 // PostgreSQLFileDelete - удаляет запись в базе данных о загруженном файле
-func PostgreSQLFileDelete(fileid string) sql.Result {
+func PostgreSQLFileDelete(fileid int) error {
+
+	if fileid == 1 {
+		return errors.New("Первая запись в списке файлов техническая и не подлежит удалению")
+	}
 
 	dbc.Exec("BEGIN")
 
-	sql := `DELETE FROM 
+	sql := `SELECT 
+				file_id
+			FROM 
 				public."Files" 
 			WHERE id=$1;`
 
-	result, err := dbc.Exec(sql, fileid)
+	row := dbc.QueryRow(sql, fileid)
 
-	PostgreSQLRollbackIfError(err)
+	var filename string
+	err := row.Scan(&filename)
+
+	if err != nil {
+		return err
+	}
+
+	sql = `DELETE FROM 
+				public."Files" 
+			WHERE id=$1;`
+
+	_, err = dbc.Exec(sql, fileid)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	err = os.Remove(strings.Join([]string{".", "public", "uploads", filename}, "/"))
+
+	if err != nil {
+		return err
+	}
 
 	dbc.Exec("COMMIT")
 
-	return result
+	return nil
 }
 
 // PostgreSQLFilesSelect - получает информацию о файлах
-func PostgreSQLFilesSelect(offset int, limit int) FilesResponse {
+func PostgreSQLFilesSelect(offset int, limit int) (FilesResponse, error) {
+
+	var result FilesResponse
 
 	sql := `SELECT 
 				COUNT(*)
@@ -499,8 +534,6 @@ func PostgreSQLFilesSelect(offset int, limit int) FilesResponse {
 
 	shared.WriteErrToLog(err)
 
-	var result FilesResponse
-
 	for rows.Next() {
 		var cur FileDB
 		rows.Scan(&cur.ID, &cur.Filename, &cur.Filesize, &cur.Filetype, &cur.FileID)
@@ -511,11 +544,11 @@ func PostgreSQLFilesSelect(offset int, limit int) FilesResponse {
 	result.Limit = limit
 	result.Offset = offset
 
-	return result
+	return result, nil
 }
 
 // PostgreSQLRecipesSelect - получает информацию о рецептах и связанном файле обложки
-func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
+func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 
 	var result RecipesResponse
 	result.Recipes = RecipesDB{}
@@ -531,7 +564,9 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 
 	err := row.Scan(&countRows)
 
-	shared.WriteErrToLog(err)
+	if err != nil {
+		return result, err
+	}
 
 	offset := int(math.RoundToEven(float64((page - 1) * limit)))
 
@@ -567,7 +602,9 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 	}
 	rows, err := dbc.Query(sql)
 
-	shared.WriteErrToLog(err)
+	if err != nil {
+		return result, err
+	}
 
 	for rows.Next() {
 
@@ -598,7 +635,9 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 
 		ings, err := dbc.Query(sql, cur.ID)
 
-		shared.WriteErrToLog(err)
+		if err != nil {
+			return result, err
+		}
 
 		for ings.Next() {
 			var ing IngredientDB
@@ -613,11 +652,11 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 	result.Limit = limit
 	result.Offset = offset
 
-	return result
+	return result, nil
 }
 
 // PostgreSQLRecipesInsertUpdate - обновляет существующий рецепт или вставляет новый рецепт в базу данных
-func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) RecipeDB {
+func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) error {
 
 	if RecipeUpd.ImageDbID == 0 {
 		RecipeUpd.ImageDbID = 1
@@ -635,7 +674,9 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) RecipeDB {
 	var recipecount int
 	err := row.Scan(&recipecount)
 
-	shared.WriteErrToLog(err)
+	if err != nil {
+		return err
+	}
 
 	dbc.Exec("BEGIN")
 
@@ -660,13 +701,17 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) RecipeDB {
 		err = row.Scan(&RecipeUpd.ID)
 	}
 
-	PostgreSQLRollbackIfError(err)
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
 
 	sql = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
 
 	_, err = dbc.Exec(sql, RecipeUpd.ID)
 
-	PostgreSQLRollbackIfError(err)
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
 
 	for _, OneRecipe := range RecipeUpd.Ingredients {
 
@@ -683,7 +728,9 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) RecipeDB {
 		var count int
 		err := row.Scan(&count)
 
-		PostgreSQLRollbackIfError(err)
+		if err != nil {
+			return PostgreSQLRollbackIfError(err, false)
+		}
 
 		var curid int
 
@@ -701,7 +748,9 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) RecipeDB {
 
 			err := row.Scan(&curid)
 
-			PostgreSQLRollbackIfError(err)
+			if err != nil {
+				return PostgreSQLRollbackIfError(err, false)
+			}
 
 		} else {
 			sql = `INSERT INTO public."Ingredients" (name) VALUES ($1) RETURNING id;`
@@ -710,29 +759,110 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) RecipeDB {
 
 			err := row.Scan(&curid)
 
-			PostgreSQLRollbackIfError(err)
+			if err != nil {
+				return PostgreSQLRollbackIfError(err, false)
+			}
 		}
 
 		sql = `INSERT INTO public."RecipesIngredients" (recipe_id, ingredient_id, quantity) VALUES ($1,$2,$3);`
 
 		_, err = dbc.Exec(sql, RecipeUpd.ID, curid, OneRecipe.Amount)
 
-		PostgreSQLRollbackIfError(err)
+		if err != nil {
+			return PostgreSQLRollbackIfError(err, false)
+		}
 
 	}
 
 	dbc.Exec("COMMIT")
 
-	return RecipeUpd
+	return nil
 
 }
 
+// PostgreSQLRecipesDelete - удаляет рецепт и связанные с ним ингредиенты по индексу рецепта
+func PostgreSQLRecipesDelete(ID int) error {
+
+	sql := `SELECT 
+				COUNT(*)
+			FROM 
+				public."Recipes"
+			WHERE 
+				id=$1;`
+
+	row := dbc.QueryRow(sql, ID)
+
+	var recipecount int
+	err := row.Scan(&recipecount)
+
+	shared.WriteErrToLog(err)
+
+	if recipecount <= 0 {
+		return errors.New("В таблице рецептов не найден указанный id")
+	}
+
+	sql = `SELECT
+				image_id
+			FROM
+				public."Recipes"
+			WHERE
+				id=$1`
+
+	row = dbc.QueryRow(sql, ID)
+
+	var imageid int
+	err = row.Scan(&imageid)
+
+	if err != nil {
+		return err
+	}
+
+	if imageid != 1 {
+		err = PostgreSQLFileDelete(imageid)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	dbc.Exec("BEGIN")
+
+	sql = `DELETE FROM public."Recipes" WHERE id=$1;`
+
+	_, err = dbc.Exec(sql, ID)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	sql = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
+
+	_, err = dbc.Exec(sql, ID)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	dbc.Exec("COMMIT")
+
+	return nil
+}
+
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
-func PostgreSQLRollbackIfError(err error) {
+func PostgreSQLRollbackIfError(err error, critical bool) error {
 	if err != nil {
 		dbc.Exec("ROLLBACK")
-		shared.WriteErrToLog(err)
+
+		if critical {
+			log.Fatalln(err)
+		} else {
+			log.Println(err)
+		}
+
+		return err
 	}
+
+	return nil
 }
 
 // PostgreSQLCloseConn - Закрываем соединение с базой данных
