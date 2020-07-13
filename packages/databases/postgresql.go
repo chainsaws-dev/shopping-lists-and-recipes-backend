@@ -574,7 +574,11 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 		var cur RecipeDB
 		cur.Ingredients = IngredientsDB{}
 		rows.Scan(&cur.ID, &cur.Name, &cur.Description, &cur.ImageDbID, &cur.ImagePath)
-		cur.ImagePath = "/uploads/" + cur.ImagePath
+		if cur.ImagePath != "" {
+			cur.ImagePath = "/uploads/" + cur.ImagePath
+		} else {
+			cur.ImageDbID = 1
+		}
 
 		sql = `SELECT 	
 				Ing.name,
@@ -614,6 +618,10 @@ func PostgreSQLRecipesSelect(page int, limit int) RecipesResponse {
 
 // PostgreSQLRecipesInsertUpdate - обновляет существующий рецепт или вставляет новый рецепт в базу данных
 func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) RecipeDB {
+
+	if RecipeUpd.ImageDbID == 0 {
+		RecipeUpd.ImageDbID = 1
+	}
 
 	sql := `SELECT 
 				COUNT(*)

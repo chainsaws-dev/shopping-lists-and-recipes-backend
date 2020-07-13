@@ -181,6 +181,8 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 		// Заполняем базу данных
 		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, SQLsrv.DbName, false))
 		databases.PostgreSQLCreateTables()
+		databases.PostgreSQLFileInsert("placeholder.jpg", 0, "jpg", "")
+
 		for _, currole := range SQLsrv.Roles {
 
 			databases.PostgreSQLCreateRole(currole.Login, currole.Pass, SQLsrv.DbName)
