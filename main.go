@@ -8,6 +8,7 @@ import (
 	"myprojects/Shopping-lists-and-recipes/packages/files"
 	"myprojects/Shopping-lists-and-recipes/packages/recipes"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
+	"myprojects/Shopping-lists-and-recipes/packages/shoppinglist"
 	"net/http"
 	"os"
 
@@ -60,6 +61,7 @@ func main() {
 	// REST API
 	http.HandleFunc("/api/Recipes", recipes.HandleRecipes)
 	http.HandleFunc("/api/SaveRecipePhoto", files.UploadFile)
+	http.HandleFunc("/api/ShoppingList", shoppinglist.HandleShoppingList)
 
 	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
 
