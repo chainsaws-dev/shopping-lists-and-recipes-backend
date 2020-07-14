@@ -836,6 +836,8 @@ func PostgreSQLShoppingListSelect(offset int, limit int) (ShoppingListResponse, 
 
 	var result ShoppingListResponse
 
+	result.Items = ShoppingListDB{}
+
 	sql := `SELECT 
 				COUNT(*)
 			FROM 
