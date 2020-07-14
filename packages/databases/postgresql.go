@@ -832,7 +832,7 @@ func PostgreSQLRecipesDelete(ID int) error {
 }
 
 // PostgreSQLShoppingListSelect - получает информацию о списке покупок
-func PostgreSQLShoppingListSelect(offset int, limit int) (ShoppingListResponse, error) {
+func PostgreSQLShoppingListSelect(page int, limit int) (ShoppingListResponse, error) {
 
 	var result ShoppingListResponse
 
@@ -852,6 +852,8 @@ func PostgreSQLShoppingListSelect(offset int, limit int) (ShoppingListResponse, 
 	if err != nil {
 		return result, err
 	}
+
+	offset := int(math.RoundToEven(float64((page - 1) * limit)))
 
 	if offset > 0 && limit > 0 {
 		sql = fmt.Sprintf(`SELECT 
