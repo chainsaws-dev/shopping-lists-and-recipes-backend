@@ -9,6 +9,7 @@ import (
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"net/http"
+	"net/url"
 	"strconv"
 )
 
@@ -144,5 +145,76 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		}
 	default:
 		shared.HandleOtherError(w, "Method is not allowed", errors.New("Запрошен недопустимый метод для рецептов"), http.StatusMethodNotAllowed)
+	}
+}
+
+// HandleRecipesSearch - обрабатывает GET запросы для поиска рецептов
+func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
+	switch {
+	case req.Method == http.MethodGet:
+		// Обработка получения списка рецептов с поддержкой постраничных порций
+		w.Header().Set("Content-Type", "application/json")
+
+		PageStr := req.Header.Get("Page")
+		LimitStr := req.Header.Get("Limit")
+		SearchStr := req.Header.Get("Search")
+
+		var recipesresp databases.RecipesResponse
+		var err error
+
+		// TODO
+		// Должна назначаться аутентификацией
+		ActiveRole := setup.ServerSettings.SQL.Roles[1]
+
+		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
+			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
+		defer databases.PostgreSQLCloseConn()
+
+		if PageStr != "" && LimitStr != "" && SearchStr != "" {
+
+			Page, err := strconv.Atoi(PageStr)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+
+			Limit, err := strconv.Atoi(LimitStr)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+
+			SearchStr, err := url.QueryUnescape(SearchStr)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+
+			recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr)
+
+		} else {
+			errtext := "Не заполнены обязательные параметры поискового запроса: Page, Limit, Search"
+			shared.HandleOtherError(w, errtext, errors.New(errtext), http.StatusBadRequest)
+			return
+		}
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+		js, err := json.Marshal(recipesresp)
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+		_, err = w.Write(js)
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+	default:
+		shared.HandleOtherError(w, "Method is not allowed", errors.New("Запрошен недопустимый метод для поиска рецептов"), http.StatusMethodNotAllowed)
 	}
 }

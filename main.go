@@ -60,6 +60,7 @@ func main() {
 
 	// REST API
 	http.HandleFunc("/api/Recipes", recipes.HandleRecipes)
+	http.HandleFunc("/api/Recipes/Search", recipes.HandleRecipesSearch)
 	http.HandleFunc("/api/SaveRecipePhoto", files.UploadFile)
 	http.HandleFunc("/api/ShoppingList", shoppinglist.HandleShoppingList)
 
