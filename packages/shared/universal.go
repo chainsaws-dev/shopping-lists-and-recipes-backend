@@ -40,7 +40,7 @@ func HandleInternalServerError(w http.ResponseWriter, err error) bool {
 
 	if err != nil {
 
-		errortext := fmt.Sprintf(`{"Error":{"code":%v, "message":"%v"}}`, http.StatusInternalServerError, "Internal server error")
+		errortext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusInternalServerError, "Internal server error")
 		ReturnJSONError(w, errortext, http.StatusInternalServerError)
 		log.Println(err)
 		return true
@@ -54,7 +54,7 @@ func HandleForbiddenError(w http.ResponseWriter, err error) bool {
 
 	if err != nil {
 
-		errortext := fmt.Sprintf(`{"Error":{"code":%v, "message":"%v"}}`, http.StatusForbidden, "Access forbidden")
+		errortext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusForbidden, "Access forbidden")
 		ReturnJSONError(w, errortext, http.StatusInternalServerError)
 		log.Println(err)
 		return true
@@ -67,7 +67,7 @@ func HandleForbiddenError(w http.ResponseWriter, err error) bool {
 func HandleOtherError(w http.ResponseWriter, message string, err error, statuscode int) bool {
 
 	if err != nil {
-		errortext := fmt.Sprintf(`{"Error":{"code":%v, "message":"%v"}}`, statuscode, message)
+		errortext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, statuscode, message)
 		ReturnJSONError(w, errortext, statuscode)
 		log.Println(err)
 		return true

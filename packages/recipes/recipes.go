@@ -97,7 +97,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		resulttext := fmt.Sprintf(`{"Error":{"code":%v, "message":"%v"}}`, http.StatusOK, "Запись данных прошла успешно")
+		resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись данных прошла успешно")
 		fmt.Fprintln(w, resulttext)
 
 	case req.Method == http.MethodDelete:
@@ -136,7 +136,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 			}
 
 			w.WriteHeader(http.StatusOK)
-			resulttext := fmt.Sprintf(`{"Error":{"code":%v, "message":"%v"}}`, http.StatusOK, "Удаление данных прошло успешно")
+			resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Удаление данных прошло успешно")
 			fmt.Fprintln(w, resulttext)
 
 		} else {
