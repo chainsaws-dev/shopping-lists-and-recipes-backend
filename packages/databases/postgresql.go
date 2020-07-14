@@ -578,6 +578,7 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 	offset := int(math.RoundToEven(float64((page - 1) * limit)))
 
 	if offset >= 0 && limit > 0 {
+
 		sql = fmt.Sprintf(`SELECT 
 							"Recipes".id, 
 							"Recipes".name, 
@@ -591,6 +592,7 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 							ON "Recipes".image_id="Files".id
 						ORDER BY "Recipes".id
 						OFFSET %v LIMIT %v`, offset, limit)
+
 	} else {
 		offset = 0
 		limit = 0
@@ -608,6 +610,127 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 						ORDER BY "Recipes".id`)
 	}
 	rows, err := dbc.Query(sql)
+
+	if err != nil {
+		return result, err
+	}
+
+	for rows.Next() {
+
+		var cur RecipeDB
+		cur.Ingredients = IngredientsDB{}
+		rows.Scan(&cur.ID, &cur.Name, &cur.Description, &cur.ImageDbID, &cur.ImagePath)
+		if cur.ImagePath != "" {
+			cur.ImagePath = "/uploads/" + cur.ImagePath
+		} else {
+			cur.ImageDbID = 1
+		}
+
+		sql = `SELECT 	
+				Ing.name,
+				RecIng.quantity
+			FROM 
+				(SELECT 
+					recipe_id,
+					ingredient_id,
+					quantity
+				FROM 
+					public."RecipesIngredients"
+				WHERE
+					recipe_id=$1) AS RecIng
+			LEFT JOIN 
+				public."Ingredients" AS Ing
+			ON Ing.id = RecIng.ingredient_id`
+
+		ings, err := dbc.Query(sql, cur.ID)
+
+		if err != nil {
+			return result, err
+		}
+
+		for ings.Next() {
+			var ing IngredientDB
+			ings.Scan(&ing.Name, &ing.Amount)
+			cur.Ingredients = append(cur.Ingredients, ing)
+		}
+
+		result.Recipes = append(result.Recipes, cur)
+	}
+
+	result.Total = countRows
+	result.Limit = limit
+	result.Offset = offset
+
+	return result, nil
+}
+
+// PostgreSQLRecipesSelectSearch - получает информацию о рецептах и связанном файле обложки для поискового запроса
+func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesResponse, error) {
+
+	var result RecipesResponse
+	result.Recipes = RecipesDB{}
+
+	search = "%" + search + "%"
+
+	sql := `SELECT 
+				COUNT(*)
+			FROM 
+				public."Recipes"
+			WHERE 
+				"Recipes".name LIKE $1
+				OR "Recipes".description LIKE $1`
+
+	row := dbc.QueryRow(sql, search)
+
+	var countRows int
+
+	err := row.Scan(&countRows)
+
+	if err != nil {
+		return result, err
+	}
+
+	offset := int(math.RoundToEven(float64((page - 1) * limit)))
+
+	if offset >= 0 && limit > 0 {
+
+		sql = fmt.Sprintf(`SELECT 
+							"Recipes".id, 
+							"Recipes".name, 
+							"Recipes".description,
+							"Recipes".image_id,
+							"Files".file_id	
+						FROM 
+							public."Recipes"
+							LEFT JOIN 
+							public."Files"
+							ON "Recipes".image_id="Files".id
+						WHERE 
+							"Recipes".name LIKE $1
+							OR "Recipes".description LIKE $1
+						ORDER BY "Recipes".id
+						OFFSET %v LIMIT %v`, offset, limit)
+
+	} else {
+		offset = 0
+		limit = 0
+		sql = fmt.Sprintln(`SELECT 
+							"Recipes".id, 
+							"Recipes".name, 
+							"Recipes".description,
+							"Recipes".image_id,
+							"Files".file_id	
+						FROM 
+							public."Recipes"
+							LEFT JOIN 
+							public."Files"
+							ON "Recipes".image_id="Files".id
+						WHERE 
+							"Recipes".name LIKE $1
+							OR "Recipes".description LIKE $1
+						ORDER BY "Recipes".id`)
+	}
+	rows, err := dbc.Query(sql, search)
 
 	if err != nil {
 		return result, err
