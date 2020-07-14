@@ -54,11 +54,16 @@ type FilesResponse struct {
 	Limit  int
 }
 
+// ShoppingListItemDB - тип для хранения информации о элементе списка покупок
+type ShoppingListItemDB struct {
+	ID     int
+	Name   string
+	Amount int
+}
+
 // ShoppingListDB - тип для хранения информации
 // о списке покупок в базе данных
-type ShoppingListDB struct {
-	Items []IngredientDB
-}
+type ShoppingListDB []ShoppingListItemDB
 
 // ShoppingListResponse  - тип для возврата с ответом,
 // описывающий список покупок для постраничной разбивки

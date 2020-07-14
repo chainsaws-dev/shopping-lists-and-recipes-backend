@@ -506,7 +506,9 @@ func PostgreSQLFilesSelect(offset int, limit int) (FilesResponse, error) {
 
 	err := row.Scan(&countRows)
 
-	shared.WriteErrToLog(err)
+	if err != nil {
+		return result, err
+	}
 
 	if offset > 0 && limit > 0 {
 		sql = fmt.Sprintf(`SELECT 
@@ -535,7 +537,9 @@ func PostgreSQLFilesSelect(offset int, limit int) (FilesResponse, error) {
 
 	rows, err := dbc.Query(sql)
 
-	shared.WriteErrToLog(err)
+	if err != nil {
+		return result, err
+	}
 
 	for rows.Next() {
 		var cur FileDB
@@ -825,6 +829,74 @@ func PostgreSQLRecipesDelete(ID int) error {
 	dbc.Exec("COMMIT")
 
 	return nil
+}
+
+// PostgreSQLShoppingListSelect - получает информацию о списке покупок
+func PostgreSQLShoppingListSelect(offset int, limit int) (ShoppingListResponse, error) {
+
+	var result ShoppingListResponse
+
+	sql := `SELECT 
+				COUNT(*)
+			FROM 
+				public."ShoppingList"`
+
+	row := dbc.QueryRow(sql)
+
+	var countRows int
+
+	err := row.Scan(&countRows)
+
+	if err != nil {
+		return result, err
+	}
+
+	if offset > 0 && limit > 0 {
+		sql = fmt.Sprintf(`SELECT 
+								"ShoppingList".id, 	
+								"Ingredients"."name",
+								"ShoppingList".quantity 
+							FROM 
+								public."ShoppingList"
+								LEFT JOIN
+								public."Ingredients"
+								ON "ShoppingList".ingredient_id = "Ingredients".id
+							ORDER BY
+								"ShoppingList".id
+							OFFSET %v LIMIT %v;`, offset, limit)
+	} else {
+		offset = 0
+		limit = 0
+		sql = fmt.Sprintln(`SELECT 
+								"ShoppingList".id, 	
+								"Ingredients"."name",
+								"ShoppingList".quantity 
+							FROM 
+								public."ShoppingList"
+								LEFT JOIN
+								public."Ingredients"
+								ON "ShoppingList".ingredient_id = "Ingredients".id
+							ORDER BY
+								"ShoppingList".id`)
+	}
+
+	rows, err := dbc.Query(sql)
+
+	if err != nil {
+		return result, err
+	}
+
+	for rows.Next() {
+		var cur ShoppingListItemDB
+		rows.Scan(&cur.ID, &cur.Name, &cur.Amount)
+		result.Items = append(result.Items, cur)
+	}
+
+	result.Total = countRows
+	result.Limit = limit
+	result.Offset = offset
+
+	return result, nil
 }
 
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
