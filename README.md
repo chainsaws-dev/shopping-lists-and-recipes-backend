@@ -5,8 +5,13 @@ Made as easy to handle as possible.
 
 Frontend source for this backend is available [here](https://github.com/chainsaws-dev/shopping-lists-and-recipes)
 
+## Getting source
+Run this command to get source code:
+
+`go get github.com/chainsaws-dev/shopping-lists-and-recipes-backend`
+
 ## Docs
-Run this command to start documentation server on localhost:6060
+Run this command to start documentation server on localhost:6060:
 
 `godoc -http=:6060` 
 
@@ -14,6 +19,7 @@ Documentation on this server will be available [here](http://localhost:6060/pkg/
 
 ## Run
 To run project without compilation run the following:
+
 `go run *.go`
 
 ## Build
