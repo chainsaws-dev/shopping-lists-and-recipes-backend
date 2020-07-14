@@ -1,5 +1,7 @@
 package databases
 
+import uuid "github.com/satori/go.uuid"
+
 // RecipeDB - тип для хранения информации о рецепте в базе данных
 type RecipeDB struct {
 	ID          int
@@ -40,10 +42,50 @@ type FileDB struct {
 	FileID   string
 }
 
+// FilesList - тип для хранения списка файлов
+type FilesList []FileDB
+
 // FilesResponse - тип для возврата с ответом,
 // описывающий список файлов для постраничной разбивки
 type FilesResponse struct {
-	Files  []FileDB
+	Files  FilesList
+	Total  int
+	Offset int
+	Limit  int
+}
+
+// ShoppingListDB - тип для хранения информации
+// о списке покупок в базе данных
+type ShoppingListDB struct {
+	Items []IngredientDB
+}
+
+// ShoppingListResponse  - тип для возврата с ответом,
+// описывающий список покупок для постраничной разбивки
+type ShoppingListResponse struct {
+	Items  ShoppingListDB
+	Total  int
+	Offset int
+	Limit  int
+}
+
+// UserInfoDB - Информация о пользователе в базе данных
+type UserInfoDB struct {
+	GUID    uuid.UUID
+	Role    string
+	Email   string
+	Phone   string
+	Name    string
+	IsAdmin bool
+}
+
+// UsersListDB - тип для хранения списка пользователей
+type UsersListDB []UserInfoDB
+
+// UserListResponse  - тип для возврата с ответом,
+// описывающий список пользователей для постраничной разбивки
+type UserListResponse struct {
+	Items  UsersListDB
 	Total  int
 	Offset int
 	Limit  int
