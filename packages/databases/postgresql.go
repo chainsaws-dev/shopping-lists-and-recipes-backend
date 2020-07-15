@@ -786,7 +786,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesR
 }
 
 // PostgreSQLRecipesInsertUpdate - обновляет существующий рецепт или вставляет новый рецепт в базу данных
-func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) error {
+func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 
 	if RecipeUpd.ImageDbID == 0 {
 		RecipeUpd.ImageDbID = 1
@@ -805,7 +805,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) error {
 	err := row.Scan(&recipecount)
 
 	if err != nil {
-		return err
+		return RecipeUpd, err
 	}
 
 	dbc.Exec("BEGIN")
@@ -832,7 +832,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) error {
 	}
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return RecipeUpd, PostgreSQLRollbackIfError(err, false)
 	}
 
 	sql = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
@@ -840,7 +840,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) error {
 	_, err = dbc.Exec(sql, RecipeUpd.ID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return RecipeUpd, PostgreSQLRollbackIfError(err, false)
 	}
 
 	for _, OneRecipe := range RecipeUpd.Ingredients {
@@ -859,7 +859,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) error {
 		err := row.Scan(&count)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return RecipeUpd, PostgreSQLRollbackIfError(err, false)
 		}
 
 		var curid int
@@ -879,7 +879,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) error {
 			err := row.Scan(&curid)
 
 			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
+				return RecipeUpd, PostgreSQLRollbackIfError(err, false)
 			}
 
 		} else {
@@ -890,7 +890,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) error {
 			err := row.Scan(&curid)
 
 			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
+				return RecipeUpd, PostgreSQLRollbackIfError(err, false)
 			}
 		}
 
@@ -899,14 +899,14 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) error {
 		_, err = dbc.Exec(sql, RecipeUpd.ID, curid, OneRecipe.Amount)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return RecipeUpd, PostgreSQLRollbackIfError(err, false)
 		}
 
 	}
 
 	dbc.Exec("COMMIT")
 
-	return nil
+	return RecipeUpd, nil
 
 }
 
@@ -1024,6 +1024,19 @@ func PostgreSQLShoppingListSelect(page int, limit int) (ShoppingListResponse, er
 	result.Offset = offset
 
 	return result, nil
+}
+
+// PostgreSQLShoppingListInsertUpdate - обновляет существующую запись в списке покупок или вставляет новую в базу данных
+func PostgreSQLShoppingListInsertUpdate(ShoppingItem ShoppingListItemDB) error {
+
+	if ShoppingItem.ID == 0 {
+		// Добавляем новую если не заполнен ID
+		// sql := `INSERT INTO public."ShoppingList" (ingredient_id, quantity) VALUES ($1,$2) RETURNING id;`
+	} else {
+		// Обновляем существующую если заполнен ID
+	}
+
+	return nil
 }
 
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим

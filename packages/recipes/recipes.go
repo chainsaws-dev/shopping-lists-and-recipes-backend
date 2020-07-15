@@ -91,15 +91,23 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
 		defer databases.PostgreSQLCloseConn()
 
-		err = databases.PostgreSQLRecipesInsertUpdate(Recipe)
+		recipesresp, err := databases.PostgreSQLRecipesInsertUpdate(Recipe)
 
 		if shared.HandleInternalServerError(w, err) {
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
-		resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись данных прошла успешно")
-		fmt.Fprintln(w, resulttext)
+		js, err := json.Marshal(recipesresp)
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+		_, err = w.Write(js)
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
 
 	case req.Method == http.MethodDelete:
 		// Обработка удаления отдельного рецепта из базы данных и его обложки с фаловой системы
@@ -137,7 +145,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 			}
 
 			w.WriteHeader(http.StatusOK)
-			resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Удаление данных прошло успешно")
+			resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись удалена")
 			fmt.Fprintln(w, resulttext)
 
 		} else {
