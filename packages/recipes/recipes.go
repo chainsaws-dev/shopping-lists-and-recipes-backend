@@ -31,8 +31,11 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		// Должна назначаться аутентификацией
 		ActiveRole := setup.ServerSettings.SQL.Roles[1]
 
-		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
+		err = databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
 			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
+		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			return
+		}
 		defer databases.PostgreSQLCloseConn()
 
 		if PageStr != "" && LimitStr != "" {
@@ -87,8 +90,11 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		// Должна назначаться аутентификацией
 		ActiveRole := setup.ServerSettings.SQL.Roles[1]
 
-		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
+		err = databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
 			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
+		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			return
+		}
 		defer databases.PostgreSQLCloseConn()
 
 		recipesresp, err := databases.PostgreSQLRecipesInsertUpdate(Recipe)
@@ -127,8 +133,11 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 			// Должна назначаться аутентификацией
 			ActiveRole := setup.ServerSettings.SQL.Roles[1]
 
-			databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
+			err = databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
 				setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
+			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				return
+			}
 			defer databases.PostgreSQLCloseConn()
 
 			err = databases.PostgreSQLRecipesDelete(RecipeID)
@@ -174,8 +183,11 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 		// Должна назначаться аутентификацией
 		ActiveRole := setup.ServerSettings.SQL.Roles[1]
 
-		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
+		err = databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
 			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
+		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			return
+		}
 		defer databases.PostgreSQLCloseConn()
 
 		if PageStr != "" && LimitStr != "" && SearchStr != "" {

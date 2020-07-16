@@ -1051,19 +1051,6 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 	dbc.Exec("BEGIN")
 
 	if IngCount > 0 {
-		sql = `SELECT 
-					COUNT(*)
-				FROM
-					public."ShoppingList"
-				WHERE ingredient_id =$1;`
-
-		row := dbc.QueryRow(sql, IngCount)
-
-		err := row.Scan(&countRows)
-
-		if err != nil {
-			return err
-		}
 
 		sql := `SELECT 
 					id
@@ -1080,6 +1067,20 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 			return PostgreSQLRollbackIfError(err, false)
 		}
 
+		sql = `SELECT 
+					COUNT(*)
+				FROM
+					public."ShoppingList"
+				WHERE ingredient_id =$1;`
+
+		row := dbc.QueryRow(sql, ingID)
+
+		err := row.Scan(&countRows)
+
+		if err != nil {
+			return err
+		}
+
 		if countRows == 0 {
 			// Добавляем новую
 			sql := `INSERT INTO public."ShoppingList" (ingredient_id, quantity) VALUES ($1,$2);`
@@ -1091,22 +1092,43 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 			}
 		} else {
 			// Обновляем существующую
+			sql = `UPDATE public."ShoppingList" SET quantity = $1 WHERE ingredient_id=$2;`
+
+			_, err = dbc.Exec(sql, ShoppingItem.Amount, ingID)
+
+			if err != nil {
+				return PostgreSQLRollbackIfError(err, false)
+			}
 		}
 	} else {
 		// Добавляем ингредиент в справочник
 		sql = `INSERT INTO public."Ingredients" (name) VALUES ($1) RETURNING id;`
 
-		row := dbc.QueryRow(sql, ShoppingItem.Name)
+		ingrow := dbc.QueryRow(sql, ShoppingItem.Name)
 
-		err := row.Scan(&ingID)
+		err := ingrow.Scan(&ingID)
 
 		if err != nil {
 			return PostgreSQLRollbackIfError(err, false)
 		}
 
+		sql = `SELECT 
+					COUNT(*)
+				FROM
+					public."ShoppingList"
+				WHERE ingredient_id =$1;`
+
+		row := dbc.QueryRow(sql, ingID)
+
+		err = row.Scan(&countRows)
+
+		if err != nil {
+			return err
+		}
+
 		if countRows == 0 {
 			// Добавляем новую запись в список покупок
-			sql := `INSERT INTO public."ShoppingList" (ingredient_id, quantity) VALUES ($1,$2);`
+			sql = `INSERT INTO public."ShoppingList" (ingredient_id, quantity) VALUES ($1,$2);`
 
 			_, err = dbc.Exec(sql, ingID, ShoppingItem.Amount)
 
@@ -1115,6 +1137,13 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 			}
 		} else {
 			// Обновляем существующую
+			sql = `UPDATE public."ShoppingList" SET quantity = $1 WHERE ingredient_id=$2;`
+
+			_, err = dbc.Exec(sql, ShoppingItem.Amount, ingID)
+
+			if err != nil {
+				return PostgreSQLRollbackIfError(err, false)
+			}
 		}
 	}
 
@@ -1146,6 +1175,12 @@ func PostgreSQLCloseConn() {
 }
 
 // PostgreSQLConnect - Подключаемся к базе данных
-func PostgreSQLConnect(ConnString string) {
-	dbc = shared.SQLConnect("postgres", ConnString)
+func PostgreSQLConnect(ConnString string) error {
+
+	var err error
+
+	dbc, err = shared.SQLConnect("postgres", ConnString)
+
+	return err
+
 }

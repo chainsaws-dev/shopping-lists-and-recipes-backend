@@ -130,12 +130,18 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
 		// Создаём базу данных
-		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, "", true))
+		err := databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, "", true))
+		if err != nil {
+			log.Fatalln(err)
+		}
 		databases.PostgreSQLCreateDatabase(SQLsrv.DbName)
 		databases.PostgreSQLCloseConn()
 
 		// Заполняем базу данных
-		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, SQLsrv.DbName, false))
+		err = databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, SQLsrv.DbName, false))
+		if err != nil {
+			log.Fatalln(err)
+		}
 		databases.PostgreSQLCreateTables()
 		databases.PostgreSQLFileInsert("placeholder.jpg", 0, "jpg", "")
 

@@ -10,22 +10,22 @@ import (
 
 // SQLConnect - соединиться с базой данных и выполнить команду
 // Не забываем в точке вызова defer db.Close()
-func SQLConnect(DbType string, ConStr string) *sql.DB {
+func SQLConnect(DbType string, ConStr string) (*sql.DB, error) {
 
 	db, err := sql.Open(DbType, ConStr)
 
 	if err != nil {
-		log.Fatalln(err)
+		return db, err
 	}
 
 	// Проверяем что база данных доступна
 	err = db.Ping()
 
 	if err != nil {
-		log.Fatalln(err)
+		return db, err
 	}
 
-	return db
+	return db, nil
 }
 
 // WriteErrToLog - пишем критическую ошибку в лог
@@ -42,7 +42,9 @@ func HandleInternalServerError(w http.ResponseWriter, err error) bool {
 
 		errortext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusInternalServerError, "Internal server error")
 		ReturnJSONError(w, errortext, http.StatusInternalServerError)
+
 		log.Println(err)
+
 		return true
 	}
 

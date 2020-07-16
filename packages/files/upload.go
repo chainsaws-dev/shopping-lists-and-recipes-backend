@@ -43,8 +43,13 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 		// TODO
 		// Должна назначаться аутентификацией
 		ActiveRole := setup.ServerSettings.SQL.Roles[1]
-		databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
+		err = databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
 			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
+
+		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			return
+		}
+
 		defer databases.PostgreSQLCloseConn()
 
 		// Проверяем тип файла
