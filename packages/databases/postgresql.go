@@ -1152,6 +1152,84 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 	return nil
 }
 
+// PostgreSQLShoppingListDelete - удаляет запись из списка покупок по имени
+func PostgreSQLShoppingListDelete(ShoppingItem IngredientDB) error {
+
+	sql := `SELECT 
+				COUNT(*)
+			FROM 
+				public."Ingredients"
+			WHERE 
+				"Ingredients".name=$1;`
+
+	row := dbc.QueryRow(sql, ShoppingItem.Name)
+
+	var IngCount int
+
+	err := row.Scan(&IngCount)
+
+	if err != nil {
+		return err
+	}
+
+	var ingID int
+	var CountRows int
+
+	if IngCount > 0 {
+
+		sql := `SELECT 
+					id
+				FROM 
+					public."Ingredients"
+				WHERE 
+					"Ingredients".name=$1;`
+
+		ingrow := dbc.QueryRow(sql, ShoppingItem.Name)
+
+		err = ingrow.Scan(&ingID)
+
+		if err != nil {
+			return err
+		}
+
+		sql = `SELECT 
+					COUNT(*)
+				FROM 
+					public."ShoppingList"
+				WHERE 
+					ingredient_id=$1;`
+
+		slrow := dbc.QueryRow(sql, ingID)
+
+		err = slrow.Scan(&CountRows)
+
+		if err != nil {
+			return err
+		}
+
+		if CountRows <= 0 {
+			return errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
+		}
+
+		dbc.Exec("BEGIN")
+
+		sql = `DELETE FROM public."ShoppingList" WHERE ingredient_id=$1;`
+		_, err = dbc.Exec(sql, ingID)
+
+		if err != nil {
+			return PostgreSQLRollbackIfError(err, false)
+		}
+
+		dbc.Exec("COMMIT")
+
+	} else {
+		return errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
+	}
+
+	return nil
+
+}
+
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
 func PostgreSQLRollbackIfError(err error, critical bool) error {
 	if err != nil {
