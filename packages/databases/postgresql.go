@@ -978,7 +978,7 @@ func PostgreSQLShoppingListSelect(page int, limit int) (ShoppingListResponse, er
 
 	offset := int(math.RoundToEven(float64((page - 1) * limit)))
 
-	if offset > 0 && limit > 0 {
+	if offset >= 0 && limit > 0 {
 		sql = fmt.Sprintf(`SELECT 
 								"Ingredients"."name",
 								"ShoppingList".quantity 
@@ -1153,7 +1153,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 }
 
 // PostgreSQLShoppingListDelete - удаляет запись из списка покупок по имени
-func PostgreSQLShoppingListDelete(ShoppingItem IngredientDB) error {
+func PostgreSQLShoppingListDelete(IngName string) error {
 
 	sql := `SELECT 
 				COUNT(*)
@@ -1162,7 +1162,7 @@ func PostgreSQLShoppingListDelete(ShoppingItem IngredientDB) error {
 			WHERE 
 				"Ingredients".name=$1;`
 
-	row := dbc.QueryRow(sql, ShoppingItem.Name)
+	row := dbc.QueryRow(sql, IngName)
 
 	var IngCount int
 
@@ -1184,7 +1184,7 @@ func PostgreSQLShoppingListDelete(ShoppingItem IngredientDB) error {
 				WHERE 
 					"Ingredients".name=$1;`
 
-		ingrow := dbc.QueryRow(sql, ShoppingItem.Name)
+		ingrow := dbc.QueryRow(sql, IngName)
 
 		err = ingrow.Scan(&ingID)
 
