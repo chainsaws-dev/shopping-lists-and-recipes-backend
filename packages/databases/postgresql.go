@@ -988,7 +988,7 @@ func PostgreSQLShoppingListSelect(page int, limit int) (ShoppingListResponse, er
 								public."Ingredients"
 								ON "ShoppingList".ingredient_id = "Ingredients".id
 							ORDER BY
-								"Ingredients"."name"
+								"Ingredients"."name"							
 							OFFSET %v LIMIT %v;`, offset, limit)
 	} else {
 		offset = 0
