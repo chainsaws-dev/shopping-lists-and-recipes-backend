@@ -83,6 +83,22 @@ func GetTRulesForGuest() SQLTRules {
 			DELETE:     false,
 			REFERENCES: true,
 		},
+		TRule{
+			TName:      "secret.\"users\"",
+			SELECT:     true,
+			INSERT:     false,
+			UPDATE:     false,
+			DELETE:     false,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "secret.\"hashes\"",
+			SELECT:     true,
+			INSERT:     false,
+			UPDATE:     false,
+			DELETE:     false,
+			REFERENCES: true,
+		},
 	}
 }
 
@@ -123,6 +139,22 @@ func GetTRulesForAdmin() SQLTRules {
 		},
 		TRule{
 			TName:      "public.\"ShoppingList\"",
+			SELECT:     true,
+			INSERT:     true,
+			UPDATE:     true,
+			DELETE:     true,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "secret.\"users\"",
+			SELECT:     true,
+			INSERT:     true,
+			UPDATE:     true,
+			DELETE:     true,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "secret.\"hashes\"",
 			SELECT:     true,
 			INSERT:     true,
 			UPDATE:     true,
