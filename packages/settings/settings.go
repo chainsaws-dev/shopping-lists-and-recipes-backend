@@ -193,7 +193,7 @@ func (SQLsrv *SQLServer) CreateAdmin(Login string, Email string, Password string
 		IsAdmin: true,
 	}
 
-	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Password)
+	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Password, true)
 
 	if err != nil {
 		return err

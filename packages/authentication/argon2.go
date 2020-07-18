@@ -1,3 +1,4 @@
+// Package authentication - отвечает за авторизацию и хеширование паролей
 package authentication
 
 import (

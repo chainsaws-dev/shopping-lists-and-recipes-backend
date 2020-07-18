@@ -1,3 +1,4 @@
+// Package shoppinglist - содержит функции обработчики запросов для списка покупок
 package shoppinglist
 
 import (

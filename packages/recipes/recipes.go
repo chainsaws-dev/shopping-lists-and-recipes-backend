@@ -1,4 +1,4 @@
-// Package recipes - содержит функции обработчики для рецептов
+// Package recipes - содержит функции обработчики запросов для рецептов
 package recipes
 
 import (
