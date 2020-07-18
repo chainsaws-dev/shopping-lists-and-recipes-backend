@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"myprojects/Shopping-lists-and-recipes/packages/admin"
 	"myprojects/Shopping-lists-and-recipes/packages/settings"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"os"
@@ -83,7 +84,9 @@ func InitialSettings(forcesetup bool) {
 
 		AskString("Укажите пароль администратора вебсайта: ", &PasswordAdmin)
 
-		go ServerSettings.SQL.CreateAdmin(LoginAdmin, Email, PasswordAdmin)
+		err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin)
+
+		shared.WriteErrToLog(err)
 
 		log.Println("Администратор сайта создан")
 

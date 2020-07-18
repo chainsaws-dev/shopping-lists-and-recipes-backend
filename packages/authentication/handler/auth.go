@@ -1,4 +1,4 @@
-package authentication
+package authenticationhandler
 
 import (
 	"encoding/hex"

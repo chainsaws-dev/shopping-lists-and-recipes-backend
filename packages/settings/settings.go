@@ -12,8 +12,7 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrRoleNotFound         = errors.New("Роль с указанным именем не найдена")
-	ErrBasicFieldsNotFilled = errors.New("Не заполнены обязательные поля, невозможно создать пользователя")
+	ErrRoleNotFound = errors.New("Роль с указанным именем не найдена")
 )
 
 // AutoFillRoles - автозаполняет список ролей для SQL сервера
@@ -200,70 +199,6 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 	default:
 		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)
 	}
-}
-
-// CreateAdmin - создаём пользователя для администратора
-func (SQLsrv *SQLServer) CreateAdmin(Login string, Email string, Password string) error {
-
-	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
-		return ErrBasicFieldsNotFilled
-	}
-
-	err := SQLsrv.Connect("admin_role_CRUD")
-
-	if err != nil {
-		return err
-	}
-
-	defer SQLsrv.Disconnect()
-
-	var UserInfo = databases.UserInfoDB{
-		Role:    "admin_role_CRUD",
-		Email:   Email,
-		Phone:   "",
-		Name:    Login,
-		IsAdmin: true,
-	}
-
-	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Password, true)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// CreateUser - создаём пользователя для гостя
-func (SQLsrv *SQLServer) CreateUser(Login string, Email string, Password string) error {
-
-	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
-		return ErrBasicFieldsNotFilled
-	}
-
-	err := SQLsrv.Connect("admin_role_CRUD")
-
-	if err != nil {
-		return err
-	}
-
-	defer SQLsrv.Disconnect()
-
-	var UserInfo = databases.UserInfoDB{
-		Role:    "guest_role_read_only",
-		Email:   Email,
-		Phone:   "",
-		Name:    Login,
-		IsAdmin: true,
-	}
-
-	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Password, true)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Connect - Соединяемся с базой данных
