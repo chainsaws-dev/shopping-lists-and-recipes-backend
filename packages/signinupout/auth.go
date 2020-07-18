@@ -1,9 +1,10 @@
-package authenticationhandler
+package signinupout
 
 import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"myprojects/Shopping-lists-and-recipes/packages/authentication"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
@@ -20,7 +21,7 @@ var (
 )
 
 // TokenList - список активных токенов
-var TokenList []AuthResponseData
+var TokenList []authentication.AuthResponseData
 
 // SignIn - обработчик для авторизации пользователя
 func SignIn(w http.ResponseWriter, req *http.Request) {
@@ -40,7 +41,7 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 		case req.Method == http.MethodPost:
 			w.Header().Set("Content-Type", "application/json")
 
-			var AuthRequest AuthRequestData
+			var AuthRequest authentication.AuthRequestData
 
 			err := json.NewDecoder(req.Body).Decode(&AuthRequest)
 
@@ -70,7 +71,7 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 			}
 
 			// Проверяем пароль против хеша
-			match, err := Argon2ComparePasswordAndHash(AuthRequest.Password, strhash)
+			match, err := authentication.Argon2ComparePasswordAndHash(AuthRequest.Password, strhash)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
@@ -78,13 +79,13 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 
 			if match {
 
-				tokenb, err := GenerateRandomBytes(32)
+				tokenb, err := authentication.GenerateRandomBytes(32)
 
 				if shared.HandleInternalServerError(w, err) {
 					return
 				}
 
-				var AuthResponse AuthResponseData
+				var AuthResponse authentication.AuthResponseData
 				AuthResponse.Token = hex.EncodeToString(tokenb)
 				AuthResponse.Email = AuthRequest.Email
 				AuthResponse.ExpiresIn = 3600
@@ -115,5 +116,6 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 
 // SignUp - обработчик для регистрации пользователя
 func SignUp(w http.ResponseWriter, req *http.Request) {
-
+	// TODO
+	shared.HandleOtherError(w, "Method is not implemented", ErrNotAllowedMethod, http.StatusNotImplemented)
 }

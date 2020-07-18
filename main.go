@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"myprojects/Shopping-lists-and-recipes/packages/authentication"
 	"myprojects/Shopping-lists-and-recipes/packages/files"
 	"myprojects/Shopping-lists-and-recipes/packages/recipes"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"myprojects/Shopping-lists-and-recipes/packages/shoppinglist"
+	"myprojects/Shopping-lists-and-recipes/packages/signinupout"
 	"net/http"
 	"os"
 
@@ -66,8 +66,8 @@ func main() {
 	http.HandleFunc("/api/Recipes/Search", recipes.HandleRecipesSearch)
 	http.HandleFunc("/api/SaveRecipePhoto", files.UploadFile)
 	http.HandleFunc("/api/ShoppingList", shoppinglist.HandleShoppingList)
-	http.HandleFunc("/api/Accounts/SignUp", authentication.SignUp)
-	http.HandleFunc("/api/Accounts/SignIn", authentication.SignIn)
+	http.HandleFunc("/api/Accounts/SignUp", signinupout.SignUp)
+	http.HandleFunc("/api/Accounts/SignIn", signinupout.SignIn)
 
 	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
 
