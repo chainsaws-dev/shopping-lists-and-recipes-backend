@@ -186,71 +186,87 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 // HandleRecipesSearch - обрабатывает GET запросы для поиска рецептов
 func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
-	switch {
-	case req.Method == http.MethodGet:
-		// Обработка получения списка рецептов с поддержкой постраничных порций
-		w.Header().Set("Content-Type", "application/json")
+	// Проверяем API ключ
+	keys, ok := req.URL.Query()["key"]
 
-		PageStr := req.Header.Get("Page")
-		LimitStr := req.Header.Get("Limit")
-		SearchStr := req.Header.Get("Search")
+	if !ok || len(keys[0]) < 1 {
+		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+		return
+	}
 
-		var recipesresp databases.RecipesResponse
-		var err error
+	key := keys[0]
 
-		// TODO
-		// Роль для поиска должна назначаться аутентификацией
-		err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
-		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-			return
-		}
-		defer setup.ServerSettings.SQL.Disconnect()
+	if found {
+		switch {
+		case req.Method == http.MethodGet:
+			// Обработка получения списка рецептов с поддержкой постраничных порций
+			w.Header().Set("Content-Type", "application/json")
 
-		if PageStr != "" && LimitStr != "" && SearchStr != "" {
+			PageStr := req.Header.Get("Page")
+			LimitStr := req.Header.Get("Limit")
+			SearchStr := req.Header.Get("Search")
 
-			Page, err := strconv.Atoi(PageStr)
+			var recipesresp databases.RecipesResponse
+			var err error
+
+			// TODO
+			// Роль для поиска должна назначаться аутентификацией
+			err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+
+			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				return
+			}
+			defer setup.ServerSettings.SQL.Disconnect()
+
+			if PageStr != "" && LimitStr != "" && SearchStr != "" {
+
+				Page, err := strconv.Atoi(PageStr)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				Limit, err := strconv.Atoi(LimitStr)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				SearchStr, err := url.QueryUnescape(SearchStr)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr)
+
+			} else {
+				shared.HandleOtherError(w, ErrHeadersSearchNotFilled.Error(), ErrHeadersSearchNotFilled, http.StatusBadRequest)
+				return
+			}
 
 			if shared.HandleInternalServerError(w, err) {
 				return
 			}
 
-			Limit, err := strconv.Atoi(LimitStr)
+			js, err := json.Marshal(recipesresp)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
 			}
 
-			SearchStr, err := url.QueryUnescape(SearchStr)
+			_, err = w.Write(js)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
 			}
 
-			recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr)
-
-		} else {
-			shared.HandleOtherError(w, ErrHeadersSearchNotFilled.Error(), ErrHeadersSearchNotFilled, http.StatusBadRequest)
-			return
+		default:
+			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 		}
-
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
-
-		js, err := json.Marshal(recipesresp)
-
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
-
-		_, err = w.Write(js)
-
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
-
-	default:
-		shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+	} else {
+		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
 	}
 }
