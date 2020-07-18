@@ -3,6 +3,7 @@ package settings
 
 import (
 	"crypto/rand"
+	"errors"
 	"log"
 	"math/big"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
@@ -161,6 +162,71 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 	default:
 		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)
 	}
+}
+
+// CreateAdmin - создаём пользователя администратора при создании базы
+func (SQLsrv *SQLServer) CreateAdmin(Login string, Email string, Password string) error {
+
+	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
+		return errors.New("Не заполнены обязательные поля, невозможно создать пользователя")
+	}
+
+	err := SQLsrv.Connect("admin_role_CRUD")
+
+	if err != nil {
+		return err
+	}
+
+	defer SQLsrv.Disconnect()
+
+	var UserInfo = databases.UserInfoDB{
+		Role:    "admin_role_CRUD",
+		Email:   Email,
+		Phone:   "",
+		Name:    Login,
+		IsAdmin: true,
+	}
+
+	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Password)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Connect - Соединяемся с базой данных
+func (SQLsrv *SQLServer) Connect(RoleName string) error {
+
+	ActiveRole, err := FindRoleInRoles(RoleName, SQLsrv.Roles)
+
+	if err != nil {
+		return err
+	}
+
+	return databases.PostgreSQLConnect(
+		databases.PostgreSQLGetConnString(
+			ActiveRole.Login,
+			ActiveRole.Pass,
+			SQLsrv.Addr,
+			SQLsrv.DbName,
+			false))
+}
+
+// FindRoleInRoles - Ищем роль в списке ролей по имени
+func FindRoleInRoles(RoleName string, Roles SQLRoles) (SQLRole, error) {
+	for _, si := range Roles {
+		if si.Name == RoleName {
+			return si, nil
+		}
+	}
+	return SQLRole{}, errors.New("Роль с указанным именем не найдена")
+}
+
+// Disconnect - Разрываем соединение с базой данных
+func (SQLsrv *SQLServer) Disconnect() {
+	databases.PostgreSQLCloseConn()
 }
 
 // formRightsArray - формирует массив прав для таблицы

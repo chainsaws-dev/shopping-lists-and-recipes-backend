@@ -28,15 +28,13 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		var err error
 
 		// TODO
-		// Должна назначаться аутентификацией
-		ActiveRole := setup.ServerSettings.SQL.Roles[1]
+		// Роль для поиска должна назначаться аутентификацией
+		err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
 
-		err = databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
-			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
 		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 			return
 		}
-		defer databases.PostgreSQLCloseConn()
+		defer setup.ServerSettings.SQL.Disconnect()
 
 		if PageStr != "" && LimitStr != "" {
 
@@ -87,15 +85,13 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// TODO
-		// Должна назначаться аутентификацией
-		ActiveRole := setup.ServerSettings.SQL.Roles[1]
+		// Роль для поиска должна назначаться аутентификацией
+		err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
 
-		err = databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
-			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
 		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 			return
 		}
-		defer databases.PostgreSQLCloseConn()
+		defer setup.ServerSettings.SQL.Disconnect()
 
 		recipesresp, err := databases.PostgreSQLRecipesInsertUpdate(Recipe)
 
@@ -130,15 +126,13 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 			}
 
 			// TODO
-			// Должна назначаться аутентификацией
-			ActiveRole := setup.ServerSettings.SQL.Roles[1]
+			// Роль для поиска должна назначаться аутентификацией
+			err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
 
-			err = databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
-				setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
 			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 				return
 			}
-			defer databases.PostgreSQLCloseConn()
+			defer setup.ServerSettings.SQL.Disconnect()
 
 			err = databases.PostgreSQLRecipesDelete(RecipeID)
 
@@ -180,15 +174,13 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 		var err error
 
 		// TODO
-		// Должна назначаться аутентификацией
-		ActiveRole := setup.ServerSettings.SQL.Roles[1]
+		// Роль для поиска должна назначаться аутентификацией
+		err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
 
-		err = databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(ActiveRole.Login, ActiveRole.Pass,
-			setup.ServerSettings.SQL.Addr, setup.ServerSettings.SQL.DbName, false))
 		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 			return
 		}
-		defer databases.PostgreSQLCloseConn()
+		defer setup.ServerSettings.SQL.Disconnect()
 
 		if PageStr != "" && LimitStr != "" && SearchStr != "" {
 

@@ -68,6 +68,20 @@ func InitialSettings(forcesetup bool) {
 			}
 		}
 
+		var Email string
+		var LoginAdmin string
+		var PasswordAdmin string
+
+		AskString("Укажите e-mail администратора вебсайта: ", &Email)
+
+		AskString("Укажите логин администратора вебсайта: ", &LoginAdmin)
+
+		AskString("Укажите пароль администратора вебсайта: ", &PasswordAdmin)
+
+		go ServerSettings.SQL.CreateAdmin(LoginAdmin, Email, PasswordAdmin)
+
+		log.Println("Администратор сайта создан")
+
 		bytes, err := json.Marshal(ServerSettings)
 
 		shared.WriteErrToLog(err)

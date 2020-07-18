@@ -12,6 +12,8 @@ import (
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"os"
 	"strings"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 var dbc *sql.DB
@@ -1226,6 +1228,53 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 
 	return nil
 
+}
+
+// PostgreSQLCreateUpdateUser - Создаёт или обновляет существующего пользователя
+func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Password string) error {
+
+	var UserCount int
+
+	sql := `SELECT COUNT(*) FROM secret.users WHERE id=$1;`
+
+	UserCountRow := dbc.QueryRow(sql, NewUserInfo.GUID)
+
+	err := UserCountRow.Scan(&UserCount)
+
+	if err != nil {
+		return err
+	}
+
+	dbc.Exec("BEGIN")
+
+	if UserCount > 0 {
+		// Обновляем существующего
+
+	} else {
+
+		// Создаём нового
+
+		// Генерируем новый уникальный идентификатор
+		NewUserInfo.GUID, err = uuid.NewV4()
+		if err != nil {
+			return PostgreSQLRollbackIfError(err, false)
+		}
+
+		sql = `INSERT INTO secret.users (id, role, email, phone, name, isadmin) VALUES ($1,$2,$3,$4,$5,$6);`
+
+		_, err = dbc.Exec(sql, NewUserInfo.GUID, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin)
+
+		if err != nil {
+			return PostgreSQLRollbackIfError(err, false)
+		}
+
+		// Генерируем новый хеш
+
+	}
+
+	dbc.Exec("COMMIT")
+
+	return nil
 }
 
 // PostgreSQLShoppingListDeleteAll - удаляет все записи из списка покупок
