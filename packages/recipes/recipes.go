@@ -13,6 +13,13 @@ import (
 	"strconv"
 )
 
+// Список типовых ошибок
+var (
+	ErrNotAllowedMethod       = errors.New("Запрошен недопустимый метод для рецептов")
+	ErrRecipeIDNotFilled      = errors.New("Не заполнен обязательный заголовок RecipeID в запросе на удаление рецепта")
+	ErrHeadersSearchNotFilled = errors.New("Не заполнены обязательные параметры поискового запроса: Page, Limit, Search")
+)
+
 // HandleRecipes - обрабатывает POST, GET и DELETE запросы для изменения рецептов
 func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
@@ -152,10 +159,10 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 			fmt.Fprintln(w, resulttext)
 
 		} else {
-			shared.HandleOtherError(w, "Bad request", errors.New("Не заполнен обязательный заголовок RecipeID в запросе на удаление рецепта"), http.StatusBadRequest)
+			shared.HandleOtherError(w, "Bad request", ErrRecipeIDNotFilled, http.StatusBadRequest)
 		}
 	default:
-		shared.HandleOtherError(w, "Method is not allowed", errors.New("Запрошен недопустимый метод для рецептов"), http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -205,8 +212,7 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 			recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr)
 
 		} else {
-			errtext := "Не заполнены обязательные параметры поискового запроса: Page, Limit, Search"
-			shared.HandleOtherError(w, errtext, errors.New(errtext), http.StatusBadRequest)
+			shared.HandleOtherError(w, ErrHeadersSearchNotFilled.Error(), ErrHeadersSearchNotFilled, http.StatusBadRequest)
 			return
 		}
 
@@ -227,6 +233,6 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(w, "Method is not allowed", errors.New("Запрошен недопустимый метод для поиска рецептов"), http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 }

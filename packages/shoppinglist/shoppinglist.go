@@ -12,6 +12,11 @@ import (
 	"strconv"
 )
 
+// Список типовых ошибок
+var (
+	ErrNotAllowedMethod = errors.New("Запрошен недопустимый метод для списка покупок")
+)
+
 // HandleShoppingList - обрабатывает POST, GET и DELETE запросы для изменения списка покупок
 func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
@@ -163,7 +168,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(w, "Method is not allowed", errors.New("Запрошен недопустимый метод для списка покупок"), http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

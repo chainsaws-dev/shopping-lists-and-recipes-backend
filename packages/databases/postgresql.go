@@ -18,6 +18,13 @@ import (
 
 var dbc *sql.DB
 
+// Список типовых ошибок
+var (
+	ErrFirstNotDelete       = errors.New("Первая запись в списке файлов техническая и не подлежит удалению")
+	ErrRecipeNotFound       = errors.New("В таблице рецептов не найден указанный id")
+	ErrShoppingListNotFound = errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
+)
+
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
 // При начальной настройке строка возвращается без базы данных (она создаётся в процессе)
 // При начальной настройке указывается пароль суперпользователя при штатной работе пароль соответствуещей роли
@@ -448,7 +455,7 @@ func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, file
 func PostgreSQLFileDelete(fileid int) error {
 
 	if fileid == 1 {
-		return errors.New("Первая запись в списке файлов техническая и не подлежит удалению")
+		return ErrFirstNotDelete
 	}
 
 	dbc.Exec("BEGIN")
@@ -928,7 +935,7 @@ func PostgreSQLRecipesDelete(ID int) error {
 	shared.WriteErrToLog(err)
 
 	if recipecount <= 0 {
-		return errors.New("В таблице рецептов не найден указанный id")
+		return ErrRecipeNotFound
 	}
 
 	dbc.Exec("BEGIN")
@@ -1208,7 +1215,7 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 		}
 
 		if CountRows <= 0 {
-			return errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
+			return ErrShoppingListNotFound
 		}
 
 		dbc.Exec("BEGIN")
@@ -1223,7 +1230,7 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 		dbc.Exec("COMMIT")
 
 	} else {
-		return errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
+		return ErrShoppingListNotFound
 	}
 
 	return nil

@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+// Список типовых ошибок
+var (
+	ErrRoleNotFound         = errors.New("Роль с указанным именем не найдена")
+	ErrBasicFieldsNotFilled = errors.New("Не заполнены обязательные поля, невозможно создать пользователя")
+)
+
 // AutoFillRoles - автозаполняет список ролей для SQL сервера
 func (SQLsrv *SQLServer) AutoFillRoles() {
 
@@ -168,7 +174,7 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 func (SQLsrv *SQLServer) CreateAdmin(Login string, Email string, Password string) error {
 
 	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
-		return errors.New("Не заполнены обязательные поля, невозможно создать пользователя")
+		return ErrBasicFieldsNotFilled
 	}
 
 	err := SQLsrv.Connect("admin_role_CRUD")
@@ -221,7 +227,7 @@ func FindRoleInRoles(RoleName string, Roles SQLRoles) (SQLRole, error) {
 			return si, nil
 		}
 	}
-	return SQLRole{}, errors.New("Роль с указанным именем не найдена")
+	return SQLRole{}, ErrRoleNotFound
 }
 
 // Disconnect - Разрываем соединение с базой данных
