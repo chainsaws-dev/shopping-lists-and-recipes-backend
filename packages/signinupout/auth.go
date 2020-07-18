@@ -9,6 +9,9 @@ import (
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"net/http"
+	"time"
+
+	"encoding/base64"
 )
 
 // Список типовых ошибок
@@ -39,8 +42,10 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 	if found {
 		switch {
 		case req.Method == http.MethodPost:
+
 			w.Header().Set("Content-Type", "application/json")
 
+			// Читаем тело запроса в структуру
 			var AuthRequest authentication.AuthRequestData
 
 			err := json.NewDecoder(req.Body).Decode(&AuthRequest)
@@ -49,8 +54,23 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			// TODO
-			// Роль для поиска должна назначаться аутентификацией
+			// Разбираем зашифрованные base64 логин и пароль
+			resbytelog, err := base64.StdEncoding.DecodeString(AuthRequest.Email)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
+			AuthRequest.Email = string(resbytelog)
+
+			resbytepas, err := base64.StdEncoding.DecodeString(AuthRequest.Password)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
+			AuthRequest.Password = string(resbytepas)
+
 			err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
 
 			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
@@ -64,10 +84,12 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 			}
 
 			// Получаем хеш из базы данных
-			strhash, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email)
+			strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email)
 
-			if shared.HandleInternalServerError(w, err) {
-				return
+			if err != nil {
+				if shared.HandleOtherError(w, err.Error(), err, http.StatusTeapot) {
+					return
+				}
 			}
 
 			// Проверяем пароль против хеша
@@ -87,8 +109,22 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 
 				var AuthResponse authentication.AuthResponseData
 				AuthResponse.Token = hex.EncodeToString(tokenb)
-				AuthResponse.Email = AuthRequest.Email
+				AuthResponse.Email = base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email))
 				AuthResponse.ExpiresIn = 3600
+				AuthResponse.Registered = true
+				AuthResponse.Role = base64.StdEncoding.EncodeToString([]byte(strrole))
+
+				tb := time.Now()
+				te := tb.Add(3600 * time.Second)
+
+				TokenList = append(TokenList, authentication.ActiveToken{
+					Token:   AuthResponse.Token,
+					IssDate: tb,
+					ExpDate: te,
+					Role:    strrole,
+				})
+
+				CleanOldTokens()
 
 				js, err := json.Marshal(AuthResponse)
 
@@ -112,6 +148,48 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 	} else {
 		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
 	}
+}
+
+// CleanOldTokens - удаляет старые токены из списка
+func CleanOldTokens() {
+	todel := []int{}
+
+	for i, t := range TokenList {
+		ct := time.Now()
+		if ct.After(t.ExpDate) {
+			todel = append(todel, i)
+		}
+	}
+
+	for _, idx := range todel {
+		SliceDelete(idx)
+	}
+}
+
+// SliceDelete - удаляет элемент из списка токенов
+func SliceDelete(idx int) {
+	l := len(TokenList)
+
+	TokenList[idx] = TokenList[l-1]
+	TokenList[l-1] = authentication.ActiveToken{}
+	TokenList = TokenList[:l-1]
+}
+
+// CheckTokenIssued - проверяет что токен есть в списке и не протух
+func CheckTokenIssued(Token string) (bool, string) {
+	CleanOldTokens()
+
+	if len(Token) > 0 {
+		for _, t := range TokenList {
+			ct := time.Now()
+
+			if ct.Before(t.ExpDate) && t.Token == Token {
+				return true, t.Role
+			}
+		}
+	}
+
+	return false, ""
 }
 
 // SignUp - обработчик для регистрации пользователя
