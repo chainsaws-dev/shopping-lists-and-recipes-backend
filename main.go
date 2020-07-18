@@ -57,6 +57,7 @@ func main() {
 	// Перенаправляем все запросы по разделам на индекс
 	http.HandleFunc("/recipes/", RedirectToIndex)
 	http.HandleFunc("/shopping-list/", RedirectToIndex)
+	http.HandleFunc("/admin/", RedirectToIndex)
 
 	// REST API
 	http.HandleFunc("/api/Recipes", recipes.HandleRecipes)
