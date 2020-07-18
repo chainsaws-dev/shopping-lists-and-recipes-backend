@@ -17,6 +17,11 @@ import (
 	"strings"
 )
 
+// Список типовых ошибок
+var (
+	ErrNotAllowedMethod = errors.New("Запрошен недопустимый метод для файлов")
+)
+
 // FileUploadResponse - тип для ответа на запрос
 type FileUploadResponse struct {
 	FileName string
@@ -130,6 +135,6 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 		w.Write(js)
 
 	} else {
-		shared.HandleOtherError(w, "Method is not allowed", errors.New("Запрошен недопустимый метод для рецептов"), http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 }
