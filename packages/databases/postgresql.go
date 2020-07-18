@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"myprojects/Shopping-lists-and-recipes/packages/authentication"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"os"
 	"strings"
@@ -23,6 +24,7 @@ var (
 	ErrFirstNotDelete       = errors.New("Первая запись в списке файлов техническая и не подлежит удалению")
 	ErrRecipeNotFound       = errors.New("В таблице рецептов не найден указанный id")
 	ErrShoppingListNotFound = errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
+	ErrEmptyPassword        = errors.New("Не допустимо использование паролей с длинной менее шести символов")
 )
 
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
@@ -1238,7 +1240,7 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 }
 
 // PostgreSQLCreateUpdateUser - Создаёт или обновляет существующего пользователя
-func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Password string) error {
+func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Password string, UpdatePassword bool) error {
 
 	var UserCount int
 
@@ -1256,6 +1258,36 @@ func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Password string) error {
 
 	if UserCount > 0 {
 		// Обновляем существующего
+
+		sql = `UPDATE secret.users SET (role, email, phone, name, isadmin) = ($1,$2,$3,$4,$5) WHERE id=$6;`
+
+		_, err = dbc.Exec(sql, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.GUID)
+
+		if err != nil {
+			return PostgreSQLRollbackIfError(err, false)
+		}
+
+		if UpdatePassword {
+			if len(Password) > 5 {
+
+				// Генерируем новый хеш
+				hash, err := authentication.Argon2GenerateHash(Password, &authentication.HashParams)
+
+				if err != nil {
+					return PostgreSQLRollbackIfError(err, false)
+				}
+
+				sql = `UPDATE secret.hashes SET value=$2 WHERE user_id=$1;`
+
+				_, err = dbc.Exec(sql, NewUserInfo.GUID, hash)
+
+				if err != nil {
+					return PostgreSQLRollbackIfError(err, false)
+				}
+			} else {
+				return PostgreSQLRollbackIfError(ErrEmptyPassword, false)
+			}
+		}
 
 	} else {
 
@@ -1275,7 +1307,25 @@ func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Password string) error {
 			return PostgreSQLRollbackIfError(err, false)
 		}
 
-		// Генерируем новый хеш
+		if len(Password) > 5 {
+
+			// Генерируем новый хеш
+			hash, err := authentication.Argon2GenerateHash(Password, &authentication.HashParams)
+
+			if err != nil {
+				return PostgreSQLRollbackIfError(err, false)
+			}
+
+			sql = `INSERT INTO secret.hashes (user_id, value) VALUES ($1,$2);`
+
+			_, err = dbc.Exec(sql, NewUserInfo.GUID, hash)
+
+			if err != nil {
+				return PostgreSQLRollbackIfError(err, false)
+			}
+		} else {
+			return PostgreSQLRollbackIfError(ErrEmptyPassword, false)
+		}
 
 	}
 

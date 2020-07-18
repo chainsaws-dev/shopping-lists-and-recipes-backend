@@ -17,22 +17,31 @@ var (
 	ErrIncompatibleVersion = errors.New("Несовместимая версия Аргон 2")
 )
 
+// HashParams - the parameters to use for Argon2.
+var HashParams = Argon2Params{
+	Memory:      64 * 1024,
+	Iterations:  3,
+	Parallelism: 2,
+	SaltLength:  16,
+	KeyLength:   32,
+}
+
 // Argon2GenerateHash - генерирует хеш для пароля в виде форматированой строки
 // по гибридной функции комбинирующей Argon2i and Argon2d.
 func Argon2GenerateHash(password string, p *Argon2Params) (encodedHash string, err error) {
-	salt, err := GenerateRandomBytes(p.saltLength)
+	salt, err := GenerateRandomBytes(p.SaltLength)
 	if err != nil {
 		return "", err
 	}
 
-	hash := argon2.IDKey([]byte(password), salt, p.iterations, p.memory, p.parallelism, p.keyLength)
+	hash := argon2.IDKey([]byte(password), salt, p.Iterations, p.Memory, p.Parallelism, p.KeyLength)
 
 	// Base64 encode the salt and hashed password.
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
 
 	// Return a string using the standard encoded hash representation.
-	encodedHash = fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s", argon2.Version, p.memory, p.iterations, p.parallelism, b64Salt, b64Hash)
+	encodedHash = fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s", argon2.Version, p.Memory, p.Iterations, p.Parallelism, b64Salt, b64Hash)
 
 	return encodedHash, nil
 }
@@ -47,7 +56,7 @@ func Argon2ComparePasswordAndHash(password, encodedHash string) (match bool, err
 	}
 
 	// Derive the key from the other password using the same parameters.
-	otherHash := argon2.IDKey([]byte(password), salt, p.iterations, p.memory, p.parallelism, p.keyLength)
+	otherHash := argon2.IDKey([]byte(password), salt, p.Iterations, p.Memory, p.Parallelism, p.KeyLength)
 
 	// Check that the contents of the hashed passwords are identical. Note
 	// that we are using the subtle.ConstantTimeCompare() function for this
@@ -75,7 +84,7 @@ func DecodeHash(encodedHash string) (p *Argon2Params, salt, hash []byte, err err
 	}
 
 	p = &Argon2Params{}
-	_, err = fmt.Sscanf(vals[3], "m=%d,t=%d,p=%d", &p.memory, &p.iterations, &p.parallelism)
+	_, err = fmt.Sscanf(vals[3], "m=%d,t=%d,p=%d", &p.Memory, &p.Iterations, &p.Parallelism)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -84,13 +93,13 @@ func DecodeHash(encodedHash string) (p *Argon2Params, salt, hash []byte, err err
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	p.saltLength = uint32(len(salt))
+	p.SaltLength = uint32(len(salt))
 
 	hash, err = base64.RawStdEncoding.DecodeString(vals[5])
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	p.keyLength = uint32(len(hash))
+	p.KeyLength = uint32(len(hash))
 
 	return p, salt, hash, nil
 }

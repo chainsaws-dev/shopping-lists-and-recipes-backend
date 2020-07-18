@@ -2,9 +2,9 @@ package authentication
 
 // Argon2Params - параметры хеширования Argon 2
 type Argon2Params struct {
-	memory      uint32
-	iterations  uint32
-	parallelism uint8
-	saltLength  uint32
-	keyLength   uint32
+	Memory      uint32
+	Iterations  uint32
+	Parallelism uint8
+	SaltLength  uint32
+	KeyLength   uint32
 }
