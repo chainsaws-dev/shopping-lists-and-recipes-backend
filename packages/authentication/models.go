@@ -1,5 +1,7 @@
 package authentication
 
+import "time"
+
 // Argon2Params - параметры хеширования Argon 2
 type Argon2Params struct {
 	Memory      uint32
@@ -21,4 +23,10 @@ type AuthResponseData struct {
 	Token     string
 	Email     string
 	ExpiresIn int
+}
+
+// ActiveToken - тип для хранения в списке активных токенов
+type ActiveToken struct {
+	Token   string
+	ExpDate time.Time
 }

@@ -21,7 +21,7 @@ var (
 )
 
 // TokenList - список активных токенов
-var TokenList []authentication.AuthResponseData
+var TokenList []authentication.ActiveToken
 
 // SignIn - обработчик для авторизации пользователя
 func SignIn(w http.ResponseWriter, req *http.Request) {
