@@ -85,3 +85,13 @@ func ReturnJSONError(w http.ResponseWriter, err string, code int) {
 	w.WriteHeader(code)
 	fmt.Fprintln(w, err)
 }
+
+// FindInStringSlice - ищет в слайсе строк заданную строку
+func FindInStringSlice(slice []string, val string) (int, bool) {
+	for i, item := range slice {
+		if item == val {
+			return i, true
+		}
+	}
+	return -1, false
+}

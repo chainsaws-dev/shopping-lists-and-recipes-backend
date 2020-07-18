@@ -16,6 +16,11 @@ import (
 // ServerSettings - общие настройки сервера
 var ServerSettings settings.WServerSettings
 
+// APIkeys - API ключи которым разрешено работать с API
+var APIkeys = []string{
+	"AIzaSyB3Jr8tp5wotjeS-re9iBSgX2b1zbM0Fx4",
+}
+
 // InitialSettings - интерактивно спрашивает у пользователя параметры настроек
 func InitialSettings(forcesetup bool) {
 

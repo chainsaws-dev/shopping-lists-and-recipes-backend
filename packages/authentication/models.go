@@ -8,3 +8,17 @@ type Argon2Params struct {
 	SaltLength  uint32
 	KeyLength   uint32
 }
+
+// AuthRequestData - запрос при авторизации и регистрации
+type AuthRequestData struct {
+	Email             string
+	Password          string
+	ReturnSecureToken bool
+}
+
+// AuthResponseData - ответ при авторизации и регистрации
+type AuthResponseData struct {
+	Token     string
+	Email     string
+	ExpiresIn string
+}
