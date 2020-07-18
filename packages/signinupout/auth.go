@@ -71,7 +71,8 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 
 			AuthRequest.Password = string(resbytepas)
 
-			err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+			// Авторизация под ограниченной ролью
+			err = setup.ServerSettings.SQL.Connect("guest_role_read_only")
 
 			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 				return
