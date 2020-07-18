@@ -20,5 +20,5 @@ type AuthRequestData struct {
 type AuthResponseData struct {
 	Token     string
 	Email     string
-	ExpiresIn string
+	ExpiresIn int
 }

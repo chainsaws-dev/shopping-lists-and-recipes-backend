@@ -20,6 +20,8 @@ import (
 // Список типовых ошибок
 var (
 	ErrNotAllowedMethod = errors.New("Запрошен недопустимый метод для файлов")
+	ErrNoKeyInParams    = errors.New("API ключ не указан в параметрах")
+	ErrWrongKeyInParams = errors.New("API ключ не зарегистрирован")
 )
 
 // FileUploadResponse - тип для ответа на запрос
@@ -34,107 +36,123 @@ type FileUploadResponse struct {
 
 // UploadFile - обработчик для загрузки файлов
 func UploadFile(w http.ResponseWriter, req *http.Request) {
-	if req.Method == http.MethodPost {
-		log.Println("Начинаем получение файла...")
-		var furesp FileUploadResponse
+	// Проверяем API ключ
+	keys, ok := req.URL.Query()["key"]
 
-		f, fh, err := req.FormFile("image")
+	if !ok || len(keys[0]) < 1 {
+		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+		return
+	}
 
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
-		defer f.Close()
+	key := keys[0]
 
-		// TODO
-		// Роль для поиска должна назначаться аутентификацией
-		err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
-		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-			return
-		}
-		defer setup.ServerSettings.SQL.Disconnect()
+	if found {
+		if req.Method == http.MethodPost {
+			log.Println("Начинаем получение файла...")
+			var furesp FileUploadResponse
 
-		// Проверяем тип файла
-		buff := make([]byte, 512)
-		_, err = f.Read(buff)
+			f, fh, err := req.FormFile("image")
 
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+			defer f.Close()
 
-		filetype := http.DetectContentType(buff)
+			// TODO
+			// Роль для поиска должна назначаться аутентификацией
+			err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
 
-		if filetype == "image/jpeg" || filetype == "image/jpg" || filetype == "image/gif" ||
-			filetype == "image/png" || filetype == "application/pdf" {
+			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				return
+			}
+			defer setup.ServerSettings.SQL.Disconnect()
 
-			ext := strings.Split(fh.Filename, ".")[1]
-
-			fn := sha1.New()
-
-			io.Copy(fn, f)
-
-			filename := fmt.Sprintf("%x", fn.Sum(nil)) + "." + ext
-
-			path := filepath.Join(".", "public", "uploads", filename)
-
-			nf, err := os.Create(path)
+			// Проверяем тип файла
+			buff := make([]byte, 512)
+			_, err = f.Read(buff)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
 			}
 
-			defer nf.Close()
+			filetype := http.DetectContentType(buff)
 
-			_, err = f.Seek(0, 0)
+			if filetype == "image/jpeg" || filetype == "image/jpg" || filetype == "image/gif" ||
+				filetype == "image/png" || filetype == "application/pdf" {
+
+				ext := strings.Split(fh.Filename, ".")[1]
+
+				fn := sha1.New()
+
+				io.Copy(fn, f)
+
+				filename := fmt.Sprintf("%x", fn.Sum(nil)) + "." + ext
+
+				path := filepath.Join(".", "public", "uploads", filename)
+
+				nf, err := os.Create(path)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				defer nf.Close()
+
+				_, err = f.Seek(0, 0)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				_, err = io.Copy(nf, f)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				log.Printf("Файл получен и сохранён под именем %s", filename)
+
+				fileid, err := databases.PostgreSQLFileInsert(fh.Filename, fh.Size, ext, filename)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				furesp = FileUploadResponse{
+					FileName: fh.Filename,
+					FileID:   filename,
+					FileType: ext,
+					DbID:     fileid,
+					FileSize: fh.Size,
+					Error:    "",
+				}
+
+			} else {
+				furesp = FileUploadResponse{
+					FileName: fh.Filename,
+					FileID:   "",
+					FileType: "",
+					DbID:     -1,
+					FileSize: fh.Size,
+					Error:    "Unsupported file type",
+				}
+			}
+
+			js, err := json.Marshal(furesp)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
 			}
 
-			_, err = io.Copy(nf, f)
-
-			if shared.HandleInternalServerError(w, err) {
-				return
-			}
-
-			log.Printf("Файл получен и сохранён под именем %s", filename)
-
-			fileid, err := databases.PostgreSQLFileInsert(fh.Filename, fh.Size, ext, filename)
-
-			if shared.HandleInternalServerError(w, err) {
-				return
-			}
-
-			furesp = FileUploadResponse{
-				FileName: fh.Filename,
-				FileID:   filename,
-				FileType: ext,
-				DbID:     fileid,
-				FileSize: fh.Size,
-				Error:    "",
-			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(js)
 
 		} else {
-			furesp = FileUploadResponse{
-				FileName: fh.Filename,
-				FileID:   "",
-				FileType: "",
-				DbID:     -1,
-				FileSize: fh.Size,
-				Error:    "Unsupported file type",
-			}
+			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 		}
-
-		js, err := json.Marshal(furesp)
-
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(js)
-
 	} else {
-		shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
 	}
 }

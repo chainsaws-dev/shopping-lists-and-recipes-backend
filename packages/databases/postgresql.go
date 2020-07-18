@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"math"
-	"myprojects/Shopping-lists-and-recipes/packages/authentication"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"os"
 	"strings"
@@ -25,6 +24,8 @@ var (
 	ErrRecipeNotFound       = errors.New("В таблице рецептов не найден указанный id")
 	ErrShoppingListNotFound = errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
 	ErrEmptyPassword        = errors.New("Не допустимо использование паролей с длинной менее шести символов")
+	ErrNoUserWithEmail      = errors.New("Не найден пользователь с указанной электронной почтой")
+	ErrNoHashForUser        = errors.New("Не найден хеш пароля для указанного пользователя")
 )
 
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
@@ -1239,8 +1240,89 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 
 }
 
+// PostgreSQLGetTokenForUser - получает токен для проверки при авторизации
+func PostgreSQLGetTokenForUser(email string) (string, error) {
+
+	var UserCount int
+	var UserID uuid.UUID
+	var HashesCount int
+
+	var Hash string
+
+	sql := `SELECT 
+				COUNT(*) 
+			FROM 
+				secret.users 
+			WHERE 
+				email=$1;`
+
+	UserCountRow := dbc.QueryRow(sql, email)
+
+	err := UserCountRow.Scan(&UserCount)
+
+	if err != nil {
+		return "", err
+	}
+
+	if UserCount <= 0 {
+		return "", ErrNoUserWithEmail
+	}
+
+	sql = `SELECT 
+				id
+			FROM 
+				secret.users
+			WHERE
+				email=$1 
+			LIMIT 1`
+
+	UserIDRow := dbc.QueryRow(sql, email)
+
+	err = UserIDRow.Scan(&UserID)
+
+	if err != nil {
+		return "", err
+	}
+
+	sql = `SELECT 
+				COUNT(*)
+			FROM 
+				secret.hashes
+			WHERE 
+				user_id = $1;`
+
+	HashesRow := dbc.QueryRow(sql, UserID)
+
+	err = HashesRow.Scan(&HashesCount)
+
+	if err != nil {
+		return "", err
+	}
+
+	if HashesCount <= 0 {
+		return "", ErrNoHashForUser
+	}
+
+	sql = `SELECT 
+				value
+			FROM 
+				secret.hashes
+			WHERE 
+				user_id = $1;`
+
+	HashValueRow := dbc.QueryRow(sql, UserID)
+
+	err = HashValueRow.Scan(&Hash)
+
+	if err != nil {
+		return "", err
+	}
+
+	return Hash, nil
+}
+
 // PostgreSQLCreateUpdateUser - создаёт или обновляет существующего пользователя
-func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Password string, UpdatePassword bool) error {
+func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Hash string, UpdatePassword bool) error {
 
 	var UserCount int
 
@@ -1268,18 +1350,11 @@ func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Password string, UpdateP
 		}
 
 		if UpdatePassword {
-			if len(Password) > 5 {
-
-				// Генерируем новый хеш
-				hash, err := authentication.Argon2GenerateHash(Password, &authentication.HashParams)
-
-				if err != nil {
-					return PostgreSQLRollbackIfError(err, false)
-				}
+			if len(Hash) > 0 {
 
 				sql = `UPDATE secret.hashes SET value=$2 WHERE user_id=$1;`
 
-				_, err = dbc.Exec(sql, NewUserInfo.GUID, hash)
+				_, err = dbc.Exec(sql, NewUserInfo.GUID, Hash)
 
 				if err != nil {
 					return PostgreSQLRollbackIfError(err, false)
@@ -1307,18 +1382,11 @@ func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Password string, UpdateP
 			return PostgreSQLRollbackIfError(err, false)
 		}
 
-		if len(Password) > 5 {
-
-			// Генерируем новый хеш
-			hash, err := authentication.Argon2GenerateHash(Password, &authentication.HashParams)
-
-			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
-			}
+		if len(Hash) > 0 {
 
 			sql = `INSERT INTO secret.hashes (user_id, value) VALUES ($1,$2);`
 
-			_, err = dbc.Exec(sql, NewUserInfo.GUID, hash)
+			_, err = dbc.Exec(sql, NewUserInfo.GUID, Hash)
 
 			if err != nil {
 				return PostgreSQLRollbackIfError(err, false)
