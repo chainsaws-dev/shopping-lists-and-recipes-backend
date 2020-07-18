@@ -24,8 +24,8 @@ var (
 	ErrRecipeNotFound       = errors.New("В таблице рецептов не найден указанный id")
 	ErrShoppingListNotFound = errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
 	ErrEmptyPassword        = errors.New("Не допустимо использование паролей с длинной менее шести символов")
-	ErrNoUserWithEmail      = errors.New("Не найден пользователь с указанной электронной почтой")
-	ErrNoHashForUser        = errors.New("Не найден хеш пароля для указанного пользователя")
+	ErrNoUserWithEmail      = errors.New("Электронная почта не найдена")
+	ErrNoHashForUser        = errors.New("Хеш пароля не найден")
 )
 
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
@@ -1241,11 +1241,12 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 }
 
 // PostgreSQLGetTokenForUser - получает токен для проверки при авторизации
-func PostgreSQLGetTokenForUser(email string) (string, error) {
+func PostgreSQLGetTokenForUser(email string) (string, string, error) {
 
 	var UserCount int
 	var UserID uuid.UUID
 	var HashesCount int
+	var UserRole string
 
 	var Hash string
 
@@ -1261,15 +1262,16 @@ func PostgreSQLGetTokenForUser(email string) (string, error) {
 	err := UserCountRow.Scan(&UserCount)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if UserCount <= 0 {
-		return "", ErrNoUserWithEmail
+		return "", "", ErrNoUserWithEmail
 	}
 
 	sql = `SELECT 
-				id
+				id,
+				role
 			FROM 
 				secret.users
 			WHERE
@@ -1278,10 +1280,10 @@ func PostgreSQLGetTokenForUser(email string) (string, error) {
 
 	UserIDRow := dbc.QueryRow(sql, email)
 
-	err = UserIDRow.Scan(&UserID)
+	err = UserIDRow.Scan(&UserID, &UserRole)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	sql = `SELECT 
@@ -1296,11 +1298,11 @@ func PostgreSQLGetTokenForUser(email string) (string, error) {
 	err = HashesRow.Scan(&HashesCount)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if HashesCount <= 0 {
-		return "", ErrNoHashForUser
+		return "", "", ErrNoHashForUser
 	}
 
 	sql = `SELECT 
@@ -1315,10 +1317,10 @@ func PostgreSQLGetTokenForUser(email string) (string, error) {
 	err = HashValueRow.Scan(&Hash)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return Hash, nil
+	return Hash, UserRole, nil
 }
 
 // PostgreSQLCreateUpdateUser - создаёт или обновляет существующего пользователя

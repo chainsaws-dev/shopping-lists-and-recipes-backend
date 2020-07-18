@@ -20,13 +20,17 @@ type AuthRequestData struct {
 
 // AuthResponseData - ответ при авторизации и регистрации
 type AuthResponseData struct {
-	Token     string
-	Email     string
-	ExpiresIn int
+	Token      string
+	Email      string
+	ExpiresIn  int
+	Registered bool
+	Role       string
 }
 
 // ActiveToken - тип для хранения в списке активных токенов
 type ActiveToken struct {
 	Token   string
+	IssDate time.Time
 	ExpDate time.Time
+	Role    string
 }
