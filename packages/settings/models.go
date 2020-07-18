@@ -1,13 +1,13 @@
 package settings
 
-// WServerSettings - Настройки веб сервера
+// WServerSettings - настройки веб сервера
 type WServerSettings struct {
 	HTTP  int
 	HTTPS int
 	SQL   SQLServer
 }
 
-// SQLServer - Данные для подключения к SQL серверу
+// SQLServer - данные для подключения к SQL серверу
 type SQLServer struct {
 	Type   string
 	DbName string
@@ -17,10 +17,10 @@ type SQLServer struct {
 	Roles  SQLRoles
 }
 
-// SQLRoles - Список ролей которые должны быть созданы на сервере
+// SQLRoles - список ролей которые должны быть созданы на сервере
 type SQLRoles []SQLRole
 
-// SQLRole - Роль, которая должна быть создана на сервере
+// SQLRole - роль, которая должна быть создана на сервере
 type SQLRole struct {
 	Name    string
 	Desc    string
@@ -31,10 +31,10 @@ type SQLRole struct {
 	Admin   bool
 }
 
-// SQLTRules - Список прав на отдельные таблицы
+// SQLTRules - список прав на отдельные таблицы
 type SQLTRules []TRule
 
-// TRule - Права для конкретной таблицы
+// TRule - права для конкретной таблицы
 type TRule struct {
 	TName      string
 	SELECT     bool

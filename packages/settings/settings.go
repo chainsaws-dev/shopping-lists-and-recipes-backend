@@ -1,4 +1,4 @@
-// Package settings - Реализует модели данных для хранения настроек сервера и их частичного автозаполнения
+// Package settings - реализует модели данных для хранения настроек сервера и их частичного автозаполнения
 package settings
 
 import (
@@ -170,7 +170,7 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 	}
 }
 
-// CreateAdmin - создаём пользователя администратора при создании базы
+// CreateAdmin - создаём пользователя для администратора
 func (SQLsrv *SQLServer) CreateAdmin(Login string, Email string, Password string) error {
 
 	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
@@ -187,6 +187,38 @@ func (SQLsrv *SQLServer) CreateAdmin(Login string, Email string, Password string
 
 	var UserInfo = databases.UserInfoDB{
 		Role:    "admin_role_CRUD",
+		Email:   Email,
+		Phone:   "",
+		Name:    Login,
+		IsAdmin: true,
+	}
+
+	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Password, true)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CreateUser - создаём пользователя для гостя
+func (SQLsrv *SQLServer) CreateUser(Login string, Email string, Password string) error {
+
+	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
+		return ErrBasicFieldsNotFilled
+	}
+
+	err := SQLsrv.Connect("admin_role_CRUD")
+
+	if err != nil {
+		return err
+	}
+
+	defer SQLsrv.Disconnect()
+
+	var UserInfo = databases.UserInfoDB{
+		Role:    "guest_role_read_only",
 		Email:   Email,
 		Phone:   "",
 		Name:    Login,

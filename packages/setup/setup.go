@@ -1,4 +1,4 @@
-// Package setup - Выполняет начальную настройку и создание структуры папок при первом запуске сервера для рецептов и списка покупок
+// Package setup - выполняет начальную настройку и создание структуры папок при первом запуске сервера для рецептов и списка покупок
 package setup
 
 import (
@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// ServerSettings - Общие настройки сервера
+// ServerSettings - общие настройки сервера
 var ServerSettings settings.WServerSettings
 
 // InitialSettings - интерактивно спрашивает у пользователя параметры настроек
@@ -113,7 +113,7 @@ func InitialSettings(forcesetup bool) {
 
 }
 
-// AskString - Спрашивает вопрос и сохраняет ответ как строку в заданное поле
+// AskString - спрашивает вопрос и сохраняет ответ как строку в заданное поле
 func AskString(Question string, fieldToWriteIn *string) {
 
 	var inputstring string
@@ -125,7 +125,7 @@ func AskString(Question string, fieldToWriteIn *string) {
 
 }
 
-// AskInt - Спрашивает вопрос и сохраняет ответ как int в заданное поле
+// AskInt - спрашивает вопрос и сохраняет ответ как int в заданное поле
 func AskInt(Question string, fieldToWriteIn *int) {
 
 	var inputstring string

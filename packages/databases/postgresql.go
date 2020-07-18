@@ -320,7 +320,7 @@ func PostgreSQLCreateTables() {
 
 }
 
-// PostgreSQLCreateRole - Создание отдельной роли для базы данных
+// PostgreSQLCreateRole - создание отдельной роли для базы данных
 func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	rows, err := dbc.Query(`SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE  rolname = $1`, roleName)
@@ -1239,7 +1239,7 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 
 }
 
-// PostgreSQLCreateUpdateUser - Создаёт или обновляет существующего пользователя
+// PostgreSQLCreateUpdateUser - создаёт или обновляет существующего пользователя
 func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Password string, UpdatePassword bool) error {
 
 	var UserCount int
@@ -1369,12 +1369,12 @@ func PostgreSQLRollbackIfError(err error, critical bool) error {
 	return nil
 }
 
-// PostgreSQLCloseConn - Закрываем соединение с базой данных
+// PostgreSQLCloseConn - закрываем соединение с базой данных
 func PostgreSQLCloseConn() {
 	dbc.Close()
 }
 
-// PostgreSQLConnect - Подключаемся к базе данных
+// PostgreSQLConnect - подключаемся к базе данных
 func PostgreSQLConnect(ConnString string) error {
 
 	var err error

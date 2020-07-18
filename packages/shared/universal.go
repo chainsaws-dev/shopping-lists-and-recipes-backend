@@ -35,7 +35,7 @@ func WriteErrToLog(err error) {
 	}
 }
 
-// HandleInternalServerError - Обработчик внутренних ошибок сервера
+// HandleInternalServerError - обработчик внутренних ошибок сервера
 func HandleInternalServerError(w http.ResponseWriter, err error) bool {
 
 	if err != nil {
@@ -51,7 +51,7 @@ func HandleInternalServerError(w http.ResponseWriter, err error) bool {
 	return false
 }
 
-// HandleForbiddenError - Обработчик ошибок нарушения прав доступа
+// HandleForbiddenError - обработчик ошибок нарушения прав доступа
 func HandleForbiddenError(w http.ResponseWriter, err error) bool {
 
 	if err != nil {
@@ -65,7 +65,7 @@ func HandleForbiddenError(w http.ResponseWriter, err error) bool {
 	return false
 }
 
-// HandleOtherError - Обработчик прочих ошибок
+// HandleOtherError - обработчик прочих ошибок
 func HandleOtherError(w http.ResponseWriter, message string, err error, statuscode int) bool {
 
 	if err != nil {

@@ -32,7 +32,7 @@ type FileUploadResponse struct {
 	Error    string
 }
 
-// UploadFile - Обработчик для загрузки файлов
+// UploadFile - обработчик для загрузки файлов
 func UploadFile(w http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPost {
 		log.Println("Начинаем получение файла...")

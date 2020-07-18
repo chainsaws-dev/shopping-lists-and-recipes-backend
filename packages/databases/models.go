@@ -63,7 +63,7 @@ type ShoppingListResponse struct {
 	Limit  int
 }
 
-// UserInfoDB - Информация о пользователе в базе данных
+// UserInfoDB - тип для хранения данных о пользователе в базе данных
 type UserInfoDB struct {
 	GUID    uuid.UUID
 	Role    string
