@@ -1,4 +1,4 @@
-package auth
+package authentication
 
 // Argon2Params - параметры хеширования Argon 2
 type Argon2Params struct {
