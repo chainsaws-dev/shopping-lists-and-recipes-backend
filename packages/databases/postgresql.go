@@ -472,8 +472,6 @@ func PostgreSQLFileDelete(fileid int) error {
 
 	_, err = dbc.Exec(sql, fileid)
 
-	log.Println("Тут ошибка?", err, fileid)
-
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false)
 	}
@@ -1228,6 +1226,24 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 
 	return nil
 
+}
+
+// PostgreSQLShoppingListDeleteAll - удаляет все записи из списка покупок
+func PostgreSQLShoppingListDeleteAll() error {
+
+	dbc.Exec("BEGIN")
+
+	sql := `DELETE FROM public."ShoppingList";`
+
+	_, err := dbc.Exec(sql)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	dbc.Exec("COMMIT")
+
+	return nil
 }
 
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
