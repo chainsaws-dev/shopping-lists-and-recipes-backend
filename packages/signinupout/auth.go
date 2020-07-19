@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"myprojects/Shopping-lists-and-recipes/packages/admin"
 	"myprojects/Shopping-lists-and-recipes/packages/authentication"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
@@ -323,11 +324,15 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password)
+		err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password)
 
-		//******************************************************
-		//******************************************************
-		//******************************************************
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Успешная регистрация")
+		fmt.Fprintln(w, resulttext)
 
 	} else {
 		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
