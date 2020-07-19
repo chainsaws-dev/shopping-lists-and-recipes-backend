@@ -275,6 +275,7 @@ func PostgreSQLCreateTables() {
 				phone character varying(50),
 				name character varying(150),
 				isadmin boolean,
+				confirmed boolean,
 				PRIMARY KEY (id)
 			);
 			
