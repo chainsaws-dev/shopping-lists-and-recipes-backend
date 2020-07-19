@@ -4,11 +4,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log"
 	"myprojects/Shopping-lists-and-recipes/packages/authentication"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"net/http"
+	"net/url"
 	"regexp"
 	"time"
 
@@ -56,22 +58,24 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			// Разбираем зашифрованные base64 логин и пароль
+			// Разбираем зашифрованные base64 логин
 			resbytelog, err := base64.StdEncoding.DecodeString(AuthRequest.Email)
 
 			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
 				return
 			}
 
+			// Проверяем против регулярного выражения, что это почта
 			AuthRequest.Email = string(resbytelog)
 
 			re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 			if !re.MatchString(AuthRequest.Email) {
-				shared.HandleOtherError(w, "Bad request", ErrBadEmail, http.StatusBadRequest)
+				shared.HandleOtherError(w, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
 				return
 			}
 
+			// Разбираем и декодируем зашифрованный base64 пароль
 			resbytepas, err := base64.StdEncoding.DecodeString(AuthRequest.Password)
 
 			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
@@ -79,6 +83,15 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 			}
 
 			AuthRequest.Password = string(resbytepas)
+			AuthRequest.Password, err = url.QueryUnescape(AuthRequest.Password)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
+			log.Println("Новая попытка логина:")
+			UserAgent := req.Header.Get("User-Agent")
+			ClientIP := GetIP(req)
 
 			// Авторизация под ограниченной ролью
 			err = setup.ServerSettings.SQL.Connect("guest_role_read_only")
@@ -128,15 +141,17 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 				tb := time.Now()
 				te := tb.Add(3600 * time.Second)
 
-				TokenList = append(TokenList, authentication.ActiveToken{
-					Email:   AuthRequest.Email,
-					Token:   AuthResponse.Token,
-					IssDate: tb,
-					ExpDate: te,
-					Role:    strrole,
-				})
-
 				CleanOldTokens(AuthRequest.Email)
+
+				TokenList = append(TokenList, authentication.ActiveToken{
+					Email:     AuthRequest.Email,
+					Token:     AuthResponse.Token,
+					IssDate:   tb,
+					ExpDate:   te,
+					Role:      strrole,
+					UserAgent: UserAgent,
+					IP:        ClientIP,
+				})
 
 				js, err := json.Marshal(AuthResponse)
 
@@ -163,13 +178,21 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 }
 
 // CleanOldTokens - удаляет старые токены из списка
+// а также те, которые выданы заданному пользователю
+// если указано "_" вместо почты, удаляются только старые
 func CleanOldTokens(LoggedEmail string) {
 	todel := []int{}
 
 	for i, t := range TokenList {
 		ct := time.Now()
-		if ct.After(t.ExpDate) || t.Email == LoggedEmail {
-			todel = append(todel, i)
+		if LoggedEmail == "_" {
+			if ct.After(t.ExpDate) {
+				todel = append(todel, i)
+			}
+		} else {
+			if ct.After(t.ExpDate) || t.Email == LoggedEmail {
+				todel = append(todel, i)
+			}
 		}
 	}
 
@@ -188,14 +211,20 @@ func SliceDelete(idx int) {
 }
 
 // CheckTokenIssued - проверяет что токен есть в списке и не протух
-func CheckTokenIssued(Token string) (bool, string) {
+func CheckTokenIssued(req http.Request) (bool, string) {
+
 	CleanOldTokens("_")
+
+	Token := req.Header.Get("Auth")
+	UserAgent := req.Header.Get("User-Agent")
+	ClientIP := GetIP(&req)
 
 	if len(Token) > 0 {
 		for _, t := range TokenList {
 			ct := time.Now()
 
-			if ct.Before(t.ExpDate) && t.Token == Token {
+			if ct.Before(t.ExpDate) && t.Token == Token &&
+				t.UserAgent == UserAgent && t.IP == ClientIP {
 				return true, t.Role
 			}
 		}
@@ -208,4 +237,16 @@ func CheckTokenIssued(Token string) (bool, string) {
 func SignUp(w http.ResponseWriter, req *http.Request) {
 	// TODO
 	shared.HandleOtherError(w, "Method is not implemented", ErrNotAllowedMethod, http.StatusNotImplemented)
+}
+
+// GetIP - получает IP адрес клиента
+func GetIP(r *http.Request) string {
+	IPAddress := r.Header.Get("X-Real-Ip")
+	if IPAddress == "" {
+		IPAddress = r.Header.Get("X-Forwarded-For")
+	}
+	if IPAddress == "" {
+		IPAddress = r.RemoteAddr
+	}
+	return IPAddress
 }

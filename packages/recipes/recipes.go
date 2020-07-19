@@ -41,9 +41,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 	if found {
 		// Проверка токена и получение роли
-		Auth := req.Header.Get("Auth")
-
-		issued, role := signinupout.CheckTokenIssued(Auth)
+		issued, role := signinupout.CheckTokenIssued(*req)
 
 		if issued {
 
@@ -212,8 +210,7 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 
 	if found {
 		// Проверка токена и получение роли
-		Auth := req.Header.Get("Auth")
-		issued, role := signinupout.CheckTokenIssued(Auth)
+		issued, role := signinupout.CheckTokenIssued(*req)
 
 		if issued {
 			switch {

@@ -29,9 +29,11 @@ type AuthResponseData struct {
 
 // ActiveToken - тип для хранения в списке активных токенов
 type ActiveToken struct {
-	Email   string
-	Token   string
-	IssDate time.Time
-	ExpDate time.Time
-	Role    string
+	Email     string
+	Token     string
+	IssDate   time.Time
+	ExpDate   time.Time
+	Role      string
+	IP        string
+	UserAgent string
 }
