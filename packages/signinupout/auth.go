@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"encoding/base64"
@@ -122,34 +123,58 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 
 			if match {
 
-				tokenb, err := authentication.GenerateRandomBytes(32)
+				CleanOldTokens()
 
-				if shared.HandleInternalServerError(w, err) {
-					return
+				var AuthResponse authentication.AuthResponseData
+
+				tokenobj, foundobj := SearchIssuedTokens(AuthRequest.Email)
+
+				if foundobj {
+
+					ct := time.Now()
+
+					secleft := int(tokenobj.ExpDate.Sub(ct).Seconds())
+
+					AuthResponse = authentication.AuthResponseData{
+						Token:      tokenobj.Token,
+						Email:      base64.StdEncoding.EncodeToString([]byte(tokenobj.Email)),
+						ExpiresIn:  secleft,
+						Registered: true,
+						Role:       base64.StdEncoding.EncodeToString([]byte(tokenobj.Role)),
+					}
+
+				} else {
+					tokenb, err := authentication.GenerateRandomBytes(32)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					AuthResponse = authentication.AuthResponseData{
+						Token:      hex.EncodeToString(tokenb),
+						Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
+						ExpiresIn:  3600,
+						Registered: true,
+						Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
+					}
+
+					tb := time.Now()
+					te := tb.Add(3600 * time.Second)
+
+					TokenList = append(TokenList, authentication.ActiveToken{
+						Email:     AuthRequest.Email,
+						Token:     AuthResponse.Token,
+						IssDate:   tb,
+						ExpDate:   te,
+						Role:      strrole,
+						UserAgent: UserAgent,
+						IP:        ClientIP,
+					})
 				}
 
-				AuthResponse := authentication.AuthResponseData{
-					Token:      hex.EncodeToString(tokenb),
-					Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
-					ExpiresIn:  3600,
-					Registered: true,
-					Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
+				if !AuthRequest.ReturnSecureToken {
+					AuthResponse.Token = ""
 				}
-
-				tb := time.Now()
-				te := tb.Add(3600 * time.Second)
-
-				CleanOldTokens(AuthRequest.Email)
-
-				TokenList = append(TokenList, authentication.ActiveToken{
-					Email:     AuthRequest.Email,
-					Token:     AuthResponse.Token,
-					IssDate:   tb,
-					ExpDate:   te,
-					Role:      strrole,
-					UserAgent: UserAgent,
-					IP:        ClientIP,
-				})
 
 				js, err := json.Marshal(AuthResponse)
 
@@ -178,25 +203,37 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 // CleanOldTokens - удаляет старые токены из списка
 // а также те, которые выданы заданному пользователю
 // если указано "_" вместо почты, удаляются только старые
-func CleanOldTokens(LoggedEmail string) {
+func CleanOldTokens() {
 	todel := []int{}
 
 	for i, t := range TokenList {
 		ct := time.Now()
-		if LoggedEmail == "_" {
-			if ct.After(t.ExpDate) {
-				todel = append(todel, i)
-			}
-		} else {
-			if ct.After(t.ExpDate) || t.Email == LoggedEmail {
-				todel = append(todel, i)
-			}
+
+		if ct.After(t.ExpDate) {
+			todel = append(todel, i)
 		}
+
 	}
 
 	for _, idx := range todel {
 		SliceDelete(idx)
 	}
+}
+
+// SearchIssuedTokens - ищет уже выданные токены
+func SearchIssuedTokens(Email string) (authentication.ActiveToken, bool) {
+	if len(Email) != 0 {
+		for _, t := range TokenList {
+
+			ct := time.Now()
+
+			if ct.Before(t.ExpDate) && t.Email == Email {
+				return t, true
+			}
+		}
+	}
+
+	return authentication.ActiveToken{}, false
 }
 
 // SliceDelete - удаляет элемент из списка токенов
@@ -211,18 +248,15 @@ func SliceDelete(idx int) {
 // CheckTokenIssued - проверяет что токен есть в списке и не протух
 func CheckTokenIssued(req http.Request) (bool, string) {
 
-	CleanOldTokens("_")
+	CleanOldTokens()
 
 	Token := req.Header.Get("Auth")
-	UserAgent := req.Header.Get("User-Agent")
-	ClientIP := GetIP(&req)
 
 	if len(Token) > 0 {
 		for _, t := range TokenList {
 			ct := time.Now()
 
-			if ct.Before(t.ExpDate) && t.Token == Token &&
-				t.UserAgent == UserAgent && t.IP == ClientIP {
+			if ct.Before(t.ExpDate) && t.Token == Token {
 				return true, t.Role
 			}
 		}
@@ -246,5 +280,10 @@ func GetIP(r *http.Request) string {
 	if IPAddress == "" {
 		IPAddress = r.RemoteAddr
 	}
+	// Порт нас не интересует
+	if idx := strings.IndexByte(IPAddress, ':'); idx >= 0 {
+		IPAddress = IPAddress[:idx]
+	}
+
 	return IPAddress
 }
