@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"log"
 	"myprojects/Shopping-lists-and-recipes/packages/authentication"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
@@ -89,7 +88,6 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			log.Println("Новая попытка логина:")
 			UserAgent := req.Header.Get("User-Agent")
 			ClientIP := GetIP(req)
 

@@ -19,6 +19,7 @@ var (
 	ErrNotAllowedMethod       = errors.New("Запрошен недопустимый метод для рецептов")
 	ErrRecipeIDNotFilled      = errors.New("Не заполнен обязательный заголовок RecipeID в запросе на удаление рецепта")
 	ErrHeadersSearchNotFilled = errors.New("Не заполнены обязательные параметры поискового запроса: Page, Limit, Search")
+	ErrHeadersFetchNotFilled  = errors.New("Не заполнены обязательные параметры запроса списка рецептов: Page, Limit")
 	ErrNoKeyInParams          = errors.New("API ключ не указан в параметрах")
 	ErrWrongKeyInParams       = errors.New("API ключ не зарегистрирован")
 	ErrNotAuthorized          = errors.New("Пройдите авторизацию")
@@ -82,7 +83,8 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 					recipesresp, err = databases.PostgreSQLRecipesSelect(Page, Limit)
 
 				} else {
-					recipesresp, err = databases.PostgreSQLRecipesSelect(0, 0)
+					shared.HandleOtherError(w, ErrHeadersFetchNotFilled.Error(), ErrHeadersFetchNotFilled, http.StatusBadRequest)
+					return
 				}
 
 				if shared.HandleInternalServerError(w, err) {
