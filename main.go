@@ -60,6 +60,7 @@ func main() {
 	http.HandleFunc("/recipes/", RedirectToIndex)
 	http.HandleFunc("/shopping-list/", RedirectToIndex)
 	http.HandleFunc("/admin/", RedirectToIndex)
+	http.HandleFunc("/auth/", RedirectToIndex)
 
 	// REST API
 	http.HandleFunc("/api/Recipes", recipes.HandleRecipes)
