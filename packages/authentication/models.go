@@ -11,7 +11,7 @@ type Argon2Params struct {
 	KeyLength   uint32
 }
 
-// AuthRequestData - запрос при авторизации и регистрации
+// AuthRequestData - запрос при авторизации
 type AuthRequestData struct {
 	Email             string
 	Password          string
@@ -25,6 +25,14 @@ type AuthResponseData struct {
 	ExpiresIn  int
 	Registered bool
 	Role       string
+}
+
+// AuthSignUpRequestData - запрос при регистрации
+type AuthSignUpRequestData struct {
+	Email             string
+	Name              string
+	Password          string
+	ReturnSecureToken bool
 }
 
 // ActiveToken - тип для хранения в списке активных токенов

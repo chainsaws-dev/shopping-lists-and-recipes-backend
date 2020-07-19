@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"myprojects/Shopping-lists-and-recipes/packages/admin"
 	"myprojects/Shopping-lists-and-recipes/packages/authentication"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
@@ -32,6 +33,7 @@ var TokenList []authentication.ActiveToken
 
 // SignIn - обработчик для авторизации пользователя
 func SignIn(w http.ResponseWriter, req *http.Request) {
+
 	keys, ok := req.URL.Query()["key"]
 
 	if !ok || len(keys[0]) < 1 {
@@ -267,8 +269,70 @@ func CheckTokenIssued(req http.Request) (bool, string) {
 
 // SignUp - обработчик для регистрации пользователя
 func SignUp(w http.ResponseWriter, req *http.Request) {
-	// TODO
-	shared.HandleOtherError(w, "Method is not implemented", ErrNotAllowedMethod, http.StatusNotImplemented)
+
+	keys, ok := req.URL.Query()["key"]
+
+	if !ok || len(keys[0]) < 1 {
+		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+		return
+	}
+
+	key := keys[0]
+
+	_, found := shared.FindInStringSlice(setup.APIkeys, key)
+
+	if found {
+
+		// Читаем тело запроса в структуру
+		var SignUpRequest authentication.AuthSignUpRequestData
+
+		err := json.NewDecoder(req.Body).Decode(&SignUpRequest)
+
+		if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+			return
+		}
+
+		// Разбираем зашифрованные base64 логин
+		resbytelog, err := base64.StdEncoding.DecodeString(SignUpRequest.Email)
+
+		if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+			return
+		}
+
+		// Проверяем против регулярного выражения, что это почта
+		SignUpRequest.Email = string(resbytelog)
+
+		re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+		if !re.MatchString(SignUpRequest.Email) {
+			shared.HandleOtherError(w, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+			return
+		}
+
+		// Разбираем и декодируем зашифрованный base64 пароль
+		resbytepas, err := base64.StdEncoding.DecodeString(SignUpRequest.Password)
+
+		if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+			return
+		}
+
+		SignUpRequest.Password = string(resbytepas)
+		SignUpRequest.Password, err = url.QueryUnescape(SignUpRequest.Password)
+
+		if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+			return
+		}
+
+		admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password)
+
+		//******************************************************
+		//******************************************************
+		//******************************************************
+
+	} else {
+		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
+	}
+
 }
 
 // GetIP - получает IP адрес клиента

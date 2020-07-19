@@ -42,7 +42,7 @@ func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password s
 		IsAdmin: true,
 	}
 
-	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Hash, true)
+	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Hash, true, false)
 
 	if err != nil {
 		return err
@@ -77,10 +77,10 @@ func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password st
 		Email:   Email,
 		Phone:   "",
 		Name:    Login,
-		IsAdmin: true,
+		IsAdmin: false,
 	}
 
-	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Hash, true)
+	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Hash, true, false)
 
 	if err != nil {
 		return err

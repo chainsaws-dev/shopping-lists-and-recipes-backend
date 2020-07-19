@@ -26,6 +26,7 @@ var (
 	ErrEmptyPassword        = errors.New("Не допустимо использование паролей с длинной менее шести символов")
 	ErrNoUserWithEmail      = errors.New("Электронная почта не найдена")
 	ErrNoHashForUser        = errors.New("Хеш пароля не найден")
+	ErrEmailIsOccupied      = errors.New("Указанный адрес электронной почты уже занят")
 )
 
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
@@ -1324,15 +1325,33 @@ func PostgreSQLGetTokenForUser(email string) (string, string, error) {
 }
 
 // PostgreSQLCreateUpdateUser - создаёт или обновляет существующего пользователя
-func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Hash string, UpdatePassword bool) error {
+func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Hash string, UpdatePassword bool, OverWrite bool) error {
 
+	// Проверяем что почта уникальна
+	var EmailCount int
+
+	sql := `SELECT COUNT(*) FROM secret.users WHERE email=$1;`
+
+	EmailCountRow := dbc.QueryRow(sql, NewUserInfo.Email)
+
+	err := EmailCountRow.Scan(&EmailCount)
+
+	if err != nil {
+		return err
+	}
+
+	if EmailCount > 0 && !OverWrite {
+		return ErrEmailIsOccupied
+	}
+
+	// Проверяем что пользователь с ID существует
 	var UserCount int
 
-	sql := `SELECT COUNT(*) FROM secret.users WHERE id=$1;`
+	sql = `SELECT COUNT(*) FROM secret.users WHERE id=$1;`
 
 	UserCountRow := dbc.QueryRow(sql, NewUserInfo.GUID)
 
-	err := UserCountRow.Scan(&UserCount)
+	err = UserCountRow.Scan(&UserCount)
 
 	if err != nil {
 		return err
@@ -1340,7 +1359,8 @@ func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Hash string, UpdatePassw
 
 	dbc.Exec("BEGIN")
 
-	if UserCount > 0 {
+	if UserCount > 0 && OverWrite {
+
 		// Обновляем существующего
 
 		sql = `UPDATE secret.users SET (role, email, phone, name, isadmin) = ($1,$2,$3,$4,$5) WHERE id=$6;`
