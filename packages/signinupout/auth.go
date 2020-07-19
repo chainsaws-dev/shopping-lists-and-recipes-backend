@@ -9,6 +9,7 @@ import (
 	"myprojects/Shopping-lists-and-recipes/packages/setup"
 	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"net/http"
+	"regexp"
 	"time"
 
 	"encoding/base64"
@@ -21,6 +22,7 @@ var (
 	ErrWrongKeyInParams = errors.New("API ключ не зарегистрирован")
 	ErrPasswordTooShort = errors.New("Выбран слишком короткий пароль")
 	ErrNotAuthorized    = errors.New("Неверный логин или пароль")
+	ErrBadEmail         = errors.New("Указана некорректная электронная почта")
 )
 
 // TokenList - список активных токенов
@@ -62,6 +64,13 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 			}
 
 			AuthRequest.Email = string(resbytelog)
+
+			re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+			if !re.MatchString(AuthRequest.Email) {
+				shared.HandleOtherError(w, "Bad request", ErrBadEmail, http.StatusBadRequest)
+				return
+			}
 
 			resbytepas, err := base64.StdEncoding.DecodeString(AuthRequest.Password)
 
@@ -108,24 +117,26 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				var AuthResponse authentication.AuthResponseData
-				AuthResponse.Token = hex.EncodeToString(tokenb)
-				AuthResponse.Email = base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email))
-				AuthResponse.ExpiresIn = 3600
-				AuthResponse.Registered = true
-				AuthResponse.Role = base64.StdEncoding.EncodeToString([]byte(strrole))
+				AuthResponse := authentication.AuthResponseData{
+					Token:      hex.EncodeToString(tokenb),
+					Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
+					ExpiresIn:  3600,
+					Registered: true,
+					Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
+				}
 
 				tb := time.Now()
 				te := tb.Add(3600 * time.Second)
 
 				TokenList = append(TokenList, authentication.ActiveToken{
+					Email:   AuthRequest.Email,
 					Token:   AuthResponse.Token,
 					IssDate: tb,
 					ExpDate: te,
 					Role:    strrole,
 				})
 
-				CleanOldTokens()
+				CleanOldTokens(AuthRequest.Email)
 
 				js, err := json.Marshal(AuthResponse)
 
@@ -152,12 +163,12 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 }
 
 // CleanOldTokens - удаляет старые токены из списка
-func CleanOldTokens() {
+func CleanOldTokens(LoggedEmail string) {
 	todel := []int{}
 
 	for i, t := range TokenList {
 		ct := time.Now()
-		if ct.After(t.ExpDate) {
+		if ct.After(t.ExpDate) || t.Email == LoggedEmail {
 			todel = append(todel, i)
 		}
 	}
@@ -178,7 +189,7 @@ func SliceDelete(idx int) {
 
 // CheckTokenIssued - проверяет что токен есть в списке и не протух
 func CheckTokenIssued(Token string) (bool, string) {
-	CleanOldTokens()
+	CleanOldTokens("_")
 
 	if len(Token) > 0 {
 		for _, t := range TokenList {
