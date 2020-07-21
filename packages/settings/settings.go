@@ -48,7 +48,7 @@ func GetTRulesForGuest() SQLTRules {
 			INSERT:     false,
 			UPDATE:     false,
 			DELETE:     false,
-			REFERENCES: true,
+			REFERENCES: false,
 		},
 		TRule{
 			TName:      "public.\"Recipes\"",
@@ -56,7 +56,7 @@ func GetTRulesForGuest() SQLTRules {
 			INSERT:     false,
 			UPDATE:     false,
 			DELETE:     false,
-			REFERENCES: true,
+			REFERENCES: false,
 		},
 		TRule{
 			TName:      "public.\"RecipesIngredients\"",
@@ -64,7 +64,7 @@ func GetTRulesForGuest() SQLTRules {
 			INSERT:     false,
 			UPDATE:     false,
 			DELETE:     false,
-			REFERENCES: true,
+			REFERENCES: false,
 		},
 		TRule{
 			TName:      "public.\"Ingredients\"",
@@ -72,7 +72,7 @@ func GetTRulesForGuest() SQLTRules {
 			INSERT:     false,
 			UPDATE:     false,
 			DELETE:     false,
-			REFERENCES: true,
+			REFERENCES: false,
 		},
 		TRule{
 			TName:      "public.\"ShoppingList\"",
@@ -80,7 +80,7 @@ func GetTRulesForGuest() SQLTRules {
 			INSERT:     false,
 			UPDATE:     false,
 			DELETE:     false,
-			REFERENCES: true,
+			REFERENCES: false,
 		},
 		TRule{
 			TName:      "secret.\"users\"",
@@ -88,7 +88,7 @@ func GetTRulesForGuest() SQLTRules {
 			INSERT:     false,
 			UPDATE:     false,
 			DELETE:     false,
-			REFERENCES: true,
+			REFERENCES: false,
 		},
 		TRule{
 			TName:      "secret.\"hashes\"",
@@ -96,7 +96,7 @@ func GetTRulesForGuest() SQLTRules {
 			INSERT:     false,
 			UPDATE:     false,
 			DELETE:     false,
-			REFERENCES: true,
+			REFERENCES: false,
 		},
 	}
 }
@@ -240,7 +240,6 @@ func formRightsArray(rule TRule) []string {
 
 	if rule.SELECT {
 		result = append(result, "SELECT")
-		result = append(result, "REFERENCES")
 	}
 
 	if rule.INSERT {
@@ -253,6 +252,10 @@ func formRightsArray(rule TRule) []string {
 
 	if rule.DELETE {
 		result = append(result, "DELETE")
+	}
+
+	if rule.REFERENCES {
+		result = append(result, "REFERENCES")
 	}
 
 	return result
