@@ -26,6 +26,7 @@ var (
 	ErrWrongKeyInParams = errors.New("API ключ не зарегистрирован")
 	ErrPasswordTooShort = errors.New("Выбран слишком короткий пароль")
 	ErrNotAuthorized    = errors.New("Неверный логин или пароль")
+	ErrForbidden        = errors.New("Доступ запрещён")
 	ErrBadEmail         = errors.New("Указана некорректная электронная почта")
 )
 
@@ -130,50 +131,32 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 
 				var AuthResponse authentication.AuthResponseData
 
-				tokenobj, foundobj := SearchIssuedTokens(AuthRequest.Email)
+				tokenb, err := authentication.GenerateRandomBytes(32)
 
-				if foundobj {
-
-					ct := time.Now()
-
-					secleft := int(tokenobj.ExpDate.Sub(ct).Seconds())
-
-					AuthResponse = authentication.AuthResponseData{
-						Token:      tokenobj.Token,
-						Email:      base64.StdEncoding.EncodeToString([]byte(tokenobj.Email)),
-						ExpiresIn:  secleft,
-						Registered: true,
-						Role:       base64.StdEncoding.EncodeToString([]byte(tokenobj.Role)),
-					}
-
-				} else {
-					tokenb, err := authentication.GenerateRandomBytes(32)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					AuthResponse = authentication.AuthResponseData{
-						Token:      hex.EncodeToString(tokenb),
-						Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
-						ExpiresIn:  3600,
-						Registered: true,
-						Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
-					}
-
-					tb := time.Now()
-					te := tb.Add(3600 * time.Second)
-
-					TokenList = append(TokenList, authentication.ActiveToken{
-						Email:     AuthRequest.Email,
-						Token:     AuthResponse.Token,
-						IssDate:   tb,
-						ExpDate:   te,
-						Role:      strrole,
-						UserAgent: UserAgent,
-						IP:        ClientIP,
-					})
+				if shared.HandleInternalServerError(w, err) {
+					return
 				}
+
+				AuthResponse = authentication.AuthResponseData{
+					Token:      hex.EncodeToString(tokenb),
+					Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
+					ExpiresIn:  3600,
+					Registered: true,
+					Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
+				}
+
+				tb := time.Now()
+				te := tb.Add(3600 * time.Second)
+
+				TokenList = append(TokenList, authentication.ActiveToken{
+					Email:     AuthRequest.Email,
+					Token:     AuthResponse.Token,
+					IssDate:   tb,
+					ExpDate:   te,
+					Role:      strrole,
+					UserAgent: UserAgent,
+					IP:        ClientIP,
+				})
 
 				if !AuthRequest.ReturnSecureToken {
 					AuthResponse.Token = ""
@@ -201,6 +184,142 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 	} else {
 		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
 	}
+}
+
+// SignUp - обработчик для регистрации пользователя
+func SignUp(w http.ResponseWriter, req *http.Request) {
+
+	keys, ok := req.URL.Query()["key"]
+
+	if !ok || len(keys[0]) < 1 {
+		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+		return
+	}
+
+	key := keys[0]
+
+	_, found := shared.FindInStringSlice(setup.APIkeys, key)
+
+	if found {
+
+		switch {
+		case req.Method == http.MethodPost:
+			w.Header().Set("Content-Type", "application/json")
+
+			// Читаем тело запроса в структуру
+			var SignUpRequest authentication.AuthSignUpRequestData
+
+			err := json.NewDecoder(req.Body).Decode(&SignUpRequest)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
+			// Разбираем зашифрованные base64 логин
+			resbytelog, err := base64.StdEncoding.DecodeString(SignUpRequest.Email)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
+			// Проверяем против регулярного выражения, что это почта
+			SignUpRequest.Email = string(resbytelog)
+
+			re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+			if !re.MatchString(SignUpRequest.Email) {
+				shared.HandleOtherError(w, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+				return
+			}
+
+			// Разбираем и декодируем зашифрованный base64 пароль
+			resbytepas, err := base64.StdEncoding.DecodeString(SignUpRequest.Password)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
+			SignUpRequest.Password = string(resbytepas)
+			SignUpRequest.Password, err = url.QueryUnescape(SignUpRequest.Password)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
+			err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password)
+
+			if err != nil {
+				if err.Error() == "Указанный адрес электронной почты уже занят" {
+					shared.HandleOtherError(w, "Указанный адрес электронной почты уже занят", err, http.StatusInternalServerError)
+					return
+				}
+			}
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Успешная регистрация")
+			fmt.Fprintln(w, resulttext)
+		default:
+			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		}
+
+	} else {
+		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
+	}
+
+}
+
+// Users - обработчик для работы с пользователями
+func Users(w http.ResponseWriter, req *http.Request) {
+	keys, ok := req.URL.Query()["key"]
+
+	if !ok || len(keys[0]) < 1 {
+		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+		return
+	}
+
+	key := keys[0]
+
+	_, found := shared.FindInStringSlice(setup.APIkeys, key)
+
+	if found {
+		// Проверка токена и получение роли
+		issued, role := CheckTokenIssued(*req)
+
+		if issued {
+
+			if role == "admin_role_CRUD" {
+				switch {
+				case req.Method == http.MethodGet:
+
+					w.Header().Set("Content-Type", "application/json")
+
+					// Авторизация под ограниченной ролью
+					err := setup.ServerSettings.SQL.Connect(role)
+
+					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+						return
+					}
+					defer setup.ServerSettings.SQL.Disconnect()
+
+					// TODO добавить запрос пользователей
+
+				case req.Method == http.MethodPost:
+
+				default:
+					shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+				}
+			} else {
+				shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			}
+		} else {
+			shared.HandleOtherError(w, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
+		}
+	}
+
 }
 
 // CleanOldTokens - удаляет старые токены из списка
@@ -266,78 +385,6 @@ func CheckTokenIssued(req http.Request) (bool, string) {
 	}
 
 	return false, ""
-}
-
-// SignUp - обработчик для регистрации пользователя
-func SignUp(w http.ResponseWriter, req *http.Request) {
-
-	keys, ok := req.URL.Query()["key"]
-
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
-	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
-
-	if found {
-
-		// Читаем тело запроса в структуру
-		var SignUpRequest authentication.AuthSignUpRequestData
-
-		err := json.NewDecoder(req.Body).Decode(&SignUpRequest)
-
-		if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-			return
-		}
-
-		// Разбираем зашифрованные base64 логин
-		resbytelog, err := base64.StdEncoding.DecodeString(SignUpRequest.Email)
-
-		if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-			return
-		}
-
-		// Проверяем против регулярного выражения, что это почта
-		SignUpRequest.Email = string(resbytelog)
-
-		re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
-
-		if !re.MatchString(SignUpRequest.Email) {
-			shared.HandleOtherError(w, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
-			return
-		}
-
-		// Разбираем и декодируем зашифрованный base64 пароль
-		resbytepas, err := base64.StdEncoding.DecodeString(SignUpRequest.Password)
-
-		if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-			return
-		}
-
-		SignUpRequest.Password = string(resbytepas)
-		SignUpRequest.Password, err = url.QueryUnescape(SignUpRequest.Password)
-
-		if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-			return
-		}
-
-		err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password)
-
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Успешная регистрация")
-		fmt.Fprintln(w, resulttext)
-
-	} else {
-		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
-	}
-
 }
 
 // GetIP - получает IP адрес клиента
