@@ -373,6 +373,12 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	PostgreSQLRollbackIfError(err, true)
 
+	grantsql = fmt.Sprintf(`REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s;`, "public, secret", roleName)
+
+	_, err = dbc.Exec(grantsql)
+
+	PostgreSQLRollbackIfError(err, true)
+
 	dbc.Exec("COMMIT")
 
 	log.Println("Роль создана")
