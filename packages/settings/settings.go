@@ -185,7 +185,7 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 
 		for _, currole := range SQLsrv.Roles {
 
-			databases.PostgreSQLCreateRole(currole.Login, currole.Pass, SQLsrv.DbName)
+			databases.PostgreSQLCreateRole(currole.Login, currole.Pass, SQLsrv.DbName, currole.Admin)
 
 			for _, tablerule := range currole.TRules {
 
