@@ -66,8 +66,6 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 				}
 				defer f.Close()
 
-				// TODO
-				// Роль для поиска должна назначаться аутентификацией
 				err = setup.ServerSettings.SQL.Connect(role)
 
 				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {

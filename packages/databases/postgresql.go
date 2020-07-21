@@ -324,7 +324,7 @@ func PostgreSQLCreateTables() {
 }
 
 // PostgreSQLCreateRole - создание отдельной роли для базы данных
-func PostgreSQLCreateRole(roleName string, password string, dbName string, grantseq bool) {
+func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	rows, err := dbc.Query(`SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE  rolname = $1`, roleName)
 
@@ -349,7 +349,7 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string, grant
 
 	dbc.Exec("BEGIN")
 
-	rolecreatesql := fmt.Sprintf(`CREATE ROLE %s WITH LOGIN ENCRYPTED PASSWORD 'md5%x';`, roleName, h.Sum(nil))
+	rolecreatesql := fmt.Sprintf(`CREATE USER %s WITH LOGIN ENCRYPTED PASSWORD 'md5%x';`, roleName, h.Sum(nil))
 
 	_, err = dbc.Exec(rolecreatesql)
 
@@ -367,13 +367,17 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string, grant
 
 	PostgreSQLRollbackIfError(err, true)
 
-	if grantseq {
-		grantsql = fmt.Sprintf(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "public, secret", roleName)
+	grantsql = fmt.Sprintf(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "public, secret", roleName)
 
-		_, err = dbc.Exec(grantsql)
+	_, err = dbc.Exec(grantsql)
 
-		PostgreSQLRollbackIfError(err, true)
-	}
+	PostgreSQLRollbackIfError(err, true)
+
+	grantsql = fmt.Sprintf(`REVOKE CREATE ON SCHEMA %s FROM %s;`, "public, secret", roleName)
+
+	_, err = dbc.Exec(grantsql)
+
+	PostgreSQLRollbackIfError(err, true)
 
 	dbc.Exec("COMMIT")
 

@@ -57,8 +57,6 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 				var recipesresp databases.RecipesResponse
 				var err error
 
-				// TODO
-				// Роль для поиска должна назначаться аутентификацией
 				err = setup.ServerSettings.SQL.Connect(role)
 
 				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
@@ -115,9 +113,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				// TODO
-				// Роль для поиска должна назначаться аутентификацией
-				err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+				err = setup.ServerSettings.SQL.Connect(role)
 
 				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 					return
@@ -156,9 +152,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 						return
 					}
 
-					// TODO
-					// Роль для поиска должна назначаться аутентификацией
-					err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+					err = setup.ServerSettings.SQL.Connect(role)
 
 					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 						return
@@ -227,8 +221,6 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 				var recipesresp databases.RecipesResponse
 				var err error
 
-				// TODO
-				// Роль для поиска должна назначаться аутентификацией
 				err = setup.ServerSettings.SQL.Connect(role)
 
 				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
