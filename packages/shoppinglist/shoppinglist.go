@@ -20,6 +20,7 @@ var (
 	ErrNoKeyInParams    = errors.New("API ключ не указан в параметрах")
 	ErrWrongKeyInParams = errors.New("API ключ не зарегистрирован")
 	ErrNotAuthorized    = errors.New("Пройдите авторизацию")
+	ErrForbidden        = errors.New("Доступ запрещён")
 )
 
 // HandleShoppingList - обрабатывает POST, GET и DELETE запросы для изменения списка покупок
@@ -99,41 +100,12 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 				// Обработка записи отдельного пункта списка покупок в базу данных
 				w.Header().Set("Content-Type", "application/json")
 
-				var Ingredient databases.IngredientDB
+				if role == "admin_role_CRUD" {
+					var Ingredient databases.IngredientDB
 
-				err := json.NewDecoder(req.Body).Decode(&Ingredient)
+					err := json.NewDecoder(req.Body).Decode(&Ingredient)
 
-				if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-					return
-				}
-
-				err = setup.ServerSettings.SQL.Connect(role)
-
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-					return
-				}
-				defer setup.ServerSettings.SQL.Disconnect()
-
-				err = databases.PostgreSQLShoppingListInsertUpdate(Ingredient)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				w.WriteHeader(http.StatusOK)
-				resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись сохранена")
-				fmt.Fprintln(w, resulttext)
-
-			case req.Method == http.MethodDelete:
-				// Обработка удаления отдельного пункта списка покупок из базы данных
-				w.Header().Set("Content-Type", "application/json")
-
-				IngName := req.Header.Get("IngName")
-
-				if IngName != "" {
-					IngName, err := url.QueryUnescape(IngName)
-
-					if shared.HandleInternalServerError(w, err) {
+					if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
 						return
 					}
 
@@ -144,41 +116,81 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 					}
 					defer setup.ServerSettings.SQL.Disconnect()
 
-					err = databases.PostgreSQLShoppingListDelete(IngName)
-
-					if err != nil {
-						if err.Error() == "Не найдено ни одной записи в списке покупок с указанным названием" {
-							shared.HandleOtherError(w, "Shopping list item not found and cannot be deleted", err, http.StatusBadRequest)
-							return
-						}
-					}
+					err = databases.PostgreSQLShoppingListInsertUpdate(Ingredient)
 
 					if shared.HandleInternalServerError(w, err) {
 						return
 					}
 
 					w.WriteHeader(http.StatusOK)
-					resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись удалена")
+					resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись сохранена")
 					fmt.Fprintln(w, resulttext)
 
 				} else {
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+				}
 
-					err := setup.ServerSettings.SQL.Connect(role)
+			case req.Method == http.MethodDelete:
+				// Обработка удаления отдельного пункта списка покупок из базы данных
+				w.Header().Set("Content-Type", "application/json")
 
-					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-						return
+				if role == "admin_role_CRUD" {
+
+					IngName := req.Header.Get("IngName")
+
+					if IngName != "" {
+						IngName, err := url.QueryUnescape(IngName)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						err = setup.ServerSettings.SQL.Connect(role)
+
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+							return
+						}
+						defer setup.ServerSettings.SQL.Disconnect()
+
+						err = databases.PostgreSQLShoppingListDelete(IngName)
+
+						if err != nil {
+							if err.Error() == "Не найдено ни одной записи в списке покупок с указанным названием" {
+								shared.HandleOtherError(w, "Shopping list item not found and cannot be deleted", err, http.StatusBadRequest)
+								return
+							}
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						w.WriteHeader(http.StatusOK)
+						resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись удалена")
+						fmt.Fprintln(w, resulttext)
+
+					} else {
+
+						err := setup.ServerSettings.SQL.Connect(role)
+
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+							return
+						}
+						defer setup.ServerSettings.SQL.Disconnect()
+
+						err = databases.PostgreSQLShoppingListDeleteAll()
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						w.WriteHeader(http.StatusOK)
+						resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Все записи удалены")
+						fmt.Fprintln(w, resulttext)
 					}
-					defer setup.ServerSettings.SQL.Disconnect()
 
-					err = databases.PostgreSQLShoppingListDeleteAll()
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					w.WriteHeader(http.StatusOK)
-					resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Все записи удалены")
-					fmt.Fprintln(w, resulttext)
+				} else {
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 				}
 
 			default:

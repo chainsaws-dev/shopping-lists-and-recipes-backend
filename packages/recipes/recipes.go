@@ -23,6 +23,7 @@ var (
 	ErrNoKeyInParams          = errors.New("API ключ не указан в параметрах")
 	ErrWrongKeyInParams       = errors.New("API ключ не зарегистрирован")
 	ErrNotAuthorized          = errors.New("Пройдите авторизацию")
+	ErrForbidden              = errors.New("Доступ запрещён")
 )
 
 // HandleRecipes - обрабатывает POST, GET и DELETE запросы для изменения рецептов
@@ -105,50 +106,13 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 				// Обработка записи отдельного рецепта в базу данных
 				w.Header().Set("Content-Type", "application/json")
 
-				var Recipe databases.RecipeDB
+				if role == "admin_role_CRUD" {
 
-				err := json.NewDecoder(req.Body).Decode(&Recipe)
+					var Recipe databases.RecipeDB
 
-				if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-					return
-				}
+					err := json.NewDecoder(req.Body).Decode(&Recipe)
 
-				err = setup.ServerSettings.SQL.Connect(role)
-
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-					return
-				}
-				defer setup.ServerSettings.SQL.Disconnect()
-
-				recipesresp, err := databases.PostgreSQLRecipesInsertUpdate(Recipe)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				js, err := json.Marshal(recipesresp)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				_, err = w.Write(js)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-			case req.Method == http.MethodDelete:
-				// Обработка удаления отдельного рецепта из базы данных и его обложки с фаловой системы
-				w.Header().Set("Content-Type", "application/json")
-
-				RecipeIDToDelStr := req.Header.Get("RecipeID")
-
-				if RecipeIDToDelStr != "" {
-
-					RecipeID, err := strconv.Atoi(RecipeIDToDelStr)
-
-					if shared.HandleInternalServerError(w, err) {
+					if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
 						return
 					}
 
@@ -159,26 +123,76 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 					}
 					defer setup.ServerSettings.SQL.Disconnect()
 
-					err = databases.PostgreSQLRecipesDelete(RecipeID)
-
-					if err != nil {
-						if err.Error() == "В таблице рецептов не найден указанный id" {
-							shared.HandleOtherError(w, "Recipe not found and cannot be deleted", err, http.StatusBadRequest)
-							return
-						}
-					}
+					recipesresp, err := databases.PostgreSQLRecipesInsertUpdate(Recipe)
 
 					if shared.HandleInternalServerError(w, err) {
 						return
 					}
 
-					w.WriteHeader(http.StatusOK)
-					resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись удалена")
-					fmt.Fprintln(w, resulttext)
+					js, err := json.Marshal(recipesresp)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					_, err = w.Write(js)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
 
 				} else {
-					shared.HandleOtherError(w, "Bad request", ErrRecipeIDNotFilled, http.StatusBadRequest)
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 				}
+
+			case req.Method == http.MethodDelete:
+				// Обработка удаления отдельного рецепта из базы данных и его обложки с фаловой системы
+				w.Header().Set("Content-Type", "application/json")
+
+				if role == "admin_role_CRUD" {
+
+					RecipeIDToDelStr := req.Header.Get("RecipeID")
+
+					if RecipeIDToDelStr != "" {
+
+						RecipeID, err := strconv.Atoi(RecipeIDToDelStr)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						err = setup.ServerSettings.SQL.Connect(role)
+
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+							return
+						}
+						defer setup.ServerSettings.SQL.Disconnect()
+
+						err = databases.PostgreSQLRecipesDelete(RecipeID)
+
+						if err != nil {
+							if err.Error() == "В таблице рецептов не найден указанный id" {
+								shared.HandleOtherError(w, "Recipe not found and cannot be deleted", err, http.StatusBadRequest)
+								return
+							}
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						w.WriteHeader(http.StatusOK)
+						resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись удалена")
+						fmt.Fprintln(w, resulttext)
+
+					} else {
+						shared.HandleOtherError(w, "Bad request", ErrRecipeIDNotFilled, http.StatusBadRequest)
+					}
+
+				} else {
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+				}
+
 			default:
 				shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 			}
