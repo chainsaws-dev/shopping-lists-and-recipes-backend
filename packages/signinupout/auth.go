@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"myprojects/Shopping-lists-and-recipes/packages/admin"
 	"myprojects/Shopping-lists-and-recipes/packages/authentication"
 	"myprojects/Shopping-lists-and-recipes/packages/databases"
@@ -93,90 +92,8 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			UserAgent := req.Header.Get("User-Agent")
-			ClientIP := GetIP(req)
-
-			// Авторизация под ограниченной ролью
-			err = setup.ServerSettings.SQL.Connect("guest_role_read_only")
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-				return
-			}
-			defer setup.ServerSettings.SQL.Disconnect()
-
-			if len(AuthRequest.Password) < 6 {
-				shared.HandleOtherError(w, "Пароль должен быть длиной свыше шести символов", ErrNotAllowedMethod, http.StatusBadRequest)
-				return
-			}
-
-			// Получаем хеш из базы данных
-			strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email)
-
-			if err != nil {
-				if shared.HandleOtherError(w, err.Error(), err, http.StatusTeapot) {
-					return
-				}
-			}
-
-			// Проверяем пароль против хеша
-			match, err := authentication.Argon2ComparePasswordAndHash(AuthRequest.Password, strhash)
-
-			if shared.HandleInternalServerError(w, err) {
-				return
-			}
-
-			if match {
-
-				CleanOldTokens()
-
-				var AuthResponse authentication.AuthResponseData
-
-				tokenb, err := authentication.GenerateRandomBytes(32)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				AuthResponse = authentication.AuthResponseData{
-					Token:      hex.EncodeToString(tokenb),
-					Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
-					ExpiresIn:  3600,
-					Registered: true,
-					Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
-				}
-
-				tb := time.Now()
-				te := tb.Add(3600 * time.Second)
-
-				TokenList = append(TokenList, authentication.ActiveToken{
-					Email:     AuthRequest.Email,
-					Token:     AuthResponse.Token,
-					IssDate:   tb,
-					ExpDate:   te,
-					Role:      strrole,
-					UserAgent: UserAgent,
-					IP:        ClientIP,
-				})
-
-				if !AuthRequest.ReturnSecureToken {
-					AuthResponse.Token = ""
-				}
-
-				js, err := json.Marshal(AuthResponse)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				_, err = w.Write(js)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-			} else {
-				shared.HandleOtherError(w, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
-			}
+			// Вызываем проверку пароля и выдачу токена
+			secretauth(w, req, AuthRequest)
 
 		default:
 			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
@@ -246,6 +163,20 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
+			// Разбираем и декодируем зашифрованный base64 имя пользователя
+			resbytenam, err := base64.StdEncoding.DecodeString(SignUpRequest.Name)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
+			SignUpRequest.Name = string(resbytenam)
+			SignUpRequest.Name, err = url.QueryUnescape(SignUpRequest.Name)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
 			err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password)
 
 			if err != nil {
@@ -259,9 +190,9 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			w.WriteHeader(http.StatusOK)
-			resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Успешная регистрация")
-			fmt.Fprintln(w, resulttext)
+			// Авторизация пользователя
+			secretauth(w, req, ConvertToSignInRequest(SignUpRequest))
+
 		default:
 			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 		}
@@ -320,6 +251,93 @@ func Users(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+}
+
+// secretauth - внутренняя функция для проверки пароля и авторизации
+func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentication.AuthRequestData) {
+	// Авторизация под ограниченной ролью
+	err := setup.ServerSettings.SQL.Connect("guest_role_read_only")
+
+	if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+		return
+	}
+	defer setup.ServerSettings.SQL.Disconnect()
+
+	if len(AuthRequest.Password) < 6 {
+		shared.HandleOtherError(w, "Пароль должен быть длиной свыше шести символов", ErrNotAllowedMethod, http.StatusBadRequest)
+		return
+	}
+
+	UserAgent := req.Header.Get("User-Agent")
+	ClientIP := GetIP(req)
+
+	// Получаем хеш из базы данных
+	strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email)
+
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusTeapot) {
+			return
+		}
+	}
+
+	// Проверяем пароль против хеша
+	match, err := authentication.Argon2ComparePasswordAndHash(AuthRequest.Password, strhash)
+
+	if shared.HandleInternalServerError(w, err) {
+		return
+	}
+
+	if match {
+
+		CleanOldTokens()
+
+		var AuthResponse authentication.AuthResponseData
+
+		tokenb, err := authentication.GenerateRandomBytes(32)
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+		AuthResponse = authentication.AuthResponseData{
+			Token:      hex.EncodeToString(tokenb),
+			Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
+			ExpiresIn:  3600,
+			Registered: true,
+			Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
+		}
+
+		tb := time.Now()
+		te := tb.Add(3600 * time.Second)
+
+		TokenList = append(TokenList, authentication.ActiveToken{
+			Email:     AuthRequest.Email,
+			Token:     AuthResponse.Token,
+			IssDate:   tb,
+			ExpDate:   te,
+			Role:      strrole,
+			UserAgent: UserAgent,
+			IP:        ClientIP,
+		})
+
+		if !AuthRequest.ReturnSecureToken {
+			AuthResponse.Token = ""
+		}
+
+		js, err := json.Marshal(AuthResponse)
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+		_, err = w.Write(js)
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+	} else {
+		shared.HandleOtherError(w, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
+	}
 }
 
 // CleanOldTokens - удаляет старые токены из списка
@@ -402,4 +420,13 @@ func GetIP(r *http.Request) string {
 	}
 
 	return IPAddress
+}
+
+// ConvertToSignInRequest - преобразует тип запроса регистрации в тип запроса авторизации
+func ConvertToSignInRequest(SignUpRequest authentication.AuthSignUpRequestData) authentication.AuthRequestData {
+	return authentication.AuthRequestData{
+		Email:             SignUpRequest.Email,
+		Password:          SignUpRequest.Password,
+		ReturnSecureToken: true,
+	}
 }
