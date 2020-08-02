@@ -80,7 +80,7 @@ type UsersDB []UserDB
 // UsersResponse  - тип для возврата с ответом,
 // описывающий список пользователей для постраничной разбивки
 type UsersResponse struct {
-	Items  UsersDB
+	Users  UsersDB
 	Total  int
 	Offset int
 	Limit  int

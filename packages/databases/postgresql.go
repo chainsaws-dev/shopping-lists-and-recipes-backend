@@ -1435,7 +1435,7 @@ func PostgreSQLUsersCreateUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 
 	var result UsersResponse
-	result.Items = UsersDB{}
+	result.Users = UsersDB{}
 
 	sql := `SELECT 
 				COUNT(*) 
@@ -1495,7 +1495,7 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 	for rows.Next() {
 		var cur UserDB
 		rows.Scan(&cur.GUID, &cur.Role, &cur.Email, &cur.Phone, &cur.Name, &cur.IsAdmin, &cur.Confirmed)
-		result.Items = append(result.Items, cur)
+		result.Users = append(result.Users, cur)
 	}
 
 	result.Total = countRows
