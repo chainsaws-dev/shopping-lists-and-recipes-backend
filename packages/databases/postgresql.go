@@ -1331,8 +1331,8 @@ func PostgreSQLGetTokenForUser(email string) (string, string, error) {
 	return Hash, UserRole, nil
 }
 
-// PostgreSQLCreateUpdateUser - создаёт или обновляет существующего пользователя
-func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Hash string, UpdatePassword bool, OverWrite bool) error {
+// PostgreSQLUsersCreateUpdate - создаёт или обновляет существующего пользователя
+func PostgreSQLUsersCreateUpdate(NewUserInfo UserDB, Hash string, UpdatePassword bool, OverWrite bool) error {
 
 	// Проверяем что почта уникальна
 	var EmailCount int
@@ -1429,6 +1429,80 @@ func PostgreSQLCreateUpdateUser(NewUserInfo UserInfoDB, Hash string, UpdatePassw
 	dbc.Exec("COMMIT")
 
 	return nil
+}
+
+// PostgreSQLUsersSelect - получает список пользователей в админке
+func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
+
+	var result UsersResponse
+	result.Items = UsersDB{}
+
+	sql := `SELECT 
+				COUNT(*) 
+			FROM 
+				secret.users;`
+
+	row := dbc.QueryRow(sql)
+
+	var countRows int
+
+	err := row.Scan(&countRows)
+
+	if err != nil {
+		return result, err
+	}
+
+	offset := int(math.RoundToEven(float64((page - 1) * limit)))
+
+	if offset >= 0 && limit > 0 {
+
+		sql = fmt.Sprintf(`SELECT 
+								users.id,
+								users.role,
+								users.email,
+								users.phone,
+								users.name,
+								users.isadmin,
+								users.confirmed
+							FROM 
+								secret.users
+							ORDER BY 
+								email
+							OFFSET %v LIMIT %v`, offset, limit)
+
+	} else {
+		offset = 0
+		limit = 0
+		sql = fmt.Sprintln(`SELECT 
+								users.id,
+								users.role,
+								users.email,
+								users.phone,
+								users.name,
+								users.isadmin,
+								users.confirmed
+							FROM 
+								secret.users
+							ORDER BY 
+								email`)
+	}
+	rows, err := dbc.Query(sql)
+
+	if err != nil {
+		return result, err
+	}
+
+	for rows.Next() {
+		var cur UserDB
+		rows.Scan(&cur.GUID, &cur.Role, &cur.Email, &cur.Phone, &cur.Name, &cur.IsAdmin, &cur.Confirmed)
+		result.Items = append(result.Items, cur)
+	}
+
+	result.Total = countRows
+	result.Limit = limit
+	result.Offset = offset
+
+	return result, nil
 }
 
 // PostgreSQLShoppingListDeleteAll - удаляет все записи из списка покупок

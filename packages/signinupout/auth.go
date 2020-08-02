@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ var (
 	ErrNotAuthorized    = errors.New("Неверный логин или пароль")
 	ErrForbidden        = errors.New("Доступ запрещён")
 	ErrBadEmail         = errors.New("Указана некорректная электронная почта")
+	ErrHeadersNotFilled = errors.New("Не заполнены обязательные параметры запроса")
 )
 
 // TokenList - список активных токенов
@@ -203,8 +205,8 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 
 }
 
-// Users - обработчик для работы с пользователями
-func Users(w http.ResponseWriter, req *http.Request) {
+// HandleUsers - обработчик для работы с пользователями
+func HandleUsers(w http.ResponseWriter, req *http.Request) {
 	keys, ok := req.URL.Query()["key"]
 
 	if !ok || len(keys[0]) < 1 {
@@ -228,15 +230,56 @@ func Users(w http.ResponseWriter, req *http.Request) {
 
 					w.Header().Set("Content-Type", "application/json")
 
-					// Авторизация под ограниченной ролью
-					err := setup.ServerSettings.SQL.Connect(role)
+					PageStr := req.Header.Get("Page")
+					LimitStr := req.Header.Get("Limit")
+
+					var usersresp databases.UsersResponse
+					var err error
+
+					// Авторизация под ролью пользователя
+					err = setup.ServerSettings.SQL.Connect(role)
 
 					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 						return
 					}
 					defer setup.ServerSettings.SQL.Disconnect()
 
-					// TODO добавить запрос пользователей
+					if PageStr != "" && LimitStr != "" {
+
+						Page, err := strconv.Atoi(PageStr)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						Limit, err := strconv.Atoi(LimitStr)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						usersresp, err = databases.PostgreSQLUsersSelect(Page, Limit)
+
+					} else {
+						shared.HandleOtherError(w, ErrHeadersNotFilled.Error(), ErrHeadersNotFilled, http.StatusBadRequest)
+						return
+					}
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					js, err := json.Marshal(usersresp)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					_, err = w.Write(js)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
 
 				case req.Method == http.MethodPost:
 

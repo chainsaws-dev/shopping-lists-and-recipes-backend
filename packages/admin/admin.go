@@ -34,7 +34,7 @@ func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password s
 		return err
 	}
 
-	var UserInfo = databases.UserInfoDB{
+	var UserInfo = databases.UserDB{
 		Role:    "admin_role_CRUD",
 		Email:   Email,
 		Phone:   "",
@@ -42,7 +42,7 @@ func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password s
 		IsAdmin: true,
 	}
 
-	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Hash, true, false)
+	err = databases.PostgreSQLUsersCreateUpdate(UserInfo, Hash, true, false)
 
 	if err != nil {
 		return err
@@ -72,7 +72,7 @@ func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password st
 		return err
 	}
 
-	var UserInfo = databases.UserInfoDB{
+	var UserInfo = databases.UserDB{
 		Role:    "guest_role_read_only",
 		Email:   Email,
 		Phone:   "",
@@ -80,7 +80,7 @@ func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password st
 		IsAdmin: false,
 	}
 
-	err = databases.PostgreSQLCreateUpdateUser(UserInfo, Hash, true, false)
+	err = databases.PostgreSQLUsersCreateUpdate(UserInfo, Hash, true, false)
 
 	if err != nil {
 		return err

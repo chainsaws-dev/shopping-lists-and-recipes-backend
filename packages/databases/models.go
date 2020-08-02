@@ -63,23 +63,24 @@ type ShoppingListResponse struct {
 	Limit  int
 }
 
-// UserInfoDB - тип для хранения данных о пользователе в базе данных
-type UserInfoDB struct {
-	GUID    uuid.UUID
-	Role    string
-	Email   string
-	Phone   string
-	Name    string
-	IsAdmin bool
+// UserDB - тип для хранения данных о пользователе в базе данных
+type UserDB struct {
+	GUID      uuid.UUID
+	Role      string
+	Email     string
+	Phone     string
+	Name      string
+	IsAdmin   bool
+	Confirmed bool
 }
 
-// UsersListDB - тип для хранения списка пользователей
-type UsersListDB []UserInfoDB
+// UsersDB - тип для хранения списка пользователей
+type UsersDB []UserDB
 
-// UserListResponse  - тип для возврата с ответом,
+// UsersResponse  - тип для возврата с ответом,
 // описывающий список пользователей для постраничной разбивки
-type UserListResponse struct {
-	Items  UsersListDB
+type UsersResponse struct {
+	Items  UsersDB
 	Total  int
 	Offset int
 	Limit  int

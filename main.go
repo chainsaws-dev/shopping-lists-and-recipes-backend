@@ -69,7 +69,7 @@ func main() {
 	http.HandleFunc("/api/ShoppingList", shoppinglist.HandleShoppingList)
 	http.HandleFunc("/api/Accounts/SignUp", signinupout.SignUp)
 	http.HandleFunc("/api/Accounts/SignIn", signinupout.SignIn)
-	http.HandleFunc("/api/Users", signinupout.Users)
+	http.HandleFunc("/api/Users", signinupout.HandleUsers)
 
 	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
 
