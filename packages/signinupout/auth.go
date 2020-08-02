@@ -290,7 +290,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 				shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 			}
 		} else {
-			shared.HandleOtherError(w, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
+			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusUnauthorized)
 		}
 	}
 
