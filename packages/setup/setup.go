@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"myprojects/Shopping-lists-and-recipes/packages/admin"
-	"myprojects/Shopping-lists-and-recipes/packages/settings"
-	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"os"
+	"shopping-lists-and-recipes/packages/admin"
+	"shopping-lists-and-recipes/packages/settings"
+	"shopping-lists-and-recipes/packages/shared"
 	"strconv"
 	"strings"
 )

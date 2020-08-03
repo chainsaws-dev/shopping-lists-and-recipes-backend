@@ -3,9 +3,9 @@ package admin
 
 import (
 	"errors"
-	"myprojects/Shopping-lists-and-recipes/packages/authentication"
-	"myprojects/Shopping-lists-and-recipes/packages/databases"
-	"myprojects/Shopping-lists-and-recipes/packages/settings"
+	"shopping-lists-and-recipes/packages/authentication"
+	"shopping-lists-and-recipes/packages/databases"
+	"shopping-lists-and-recipes/packages/settings"
 )
 
 // Список типовых ошибок

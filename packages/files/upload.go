@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"myprojects/Shopping-lists-and-recipes/packages/databases"
-	"myprojects/Shopping-lists-and-recipes/packages/setup"
-	"myprojects/Shopping-lists-and-recipes/packages/shared"
-	"myprojects/Shopping-lists-and-recipes/packages/signinupout"
 	"net/http"
 	"os"
 	"path/filepath"
+	"shopping-lists-and-recipes/packages/databases"
+	"shopping-lists-and-recipes/packages/setup"
+	"shopping-lists-and-recipes/packages/shared"
+	"shopping-lists-and-recipes/packages/signinupout"
 	"strings"
 )
 

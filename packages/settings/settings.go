@@ -6,7 +6,7 @@ import (
 	"errors"
 	"log"
 	"math/big"
-	"myprojects/Shopping-lists-and-recipes/packages/databases"
+	"shopping-lists-and-recipes/packages/databases"
 	"strings"
 )
 

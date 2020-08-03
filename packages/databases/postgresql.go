@@ -9,8 +9,8 @@ import (
 	"io"
 	"log"
 	"math"
-	"myprojects/Shopping-lists-and-recipes/packages/shared"
 	"os"
+	"shopping-lists-and-recipes/packages/shared"
 	"strings"
 
 	uuid "github.com/satori/go.uuid"
@@ -1398,10 +1398,7 @@ func PostgreSQLUsersCreateUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 		// Создаём нового
 
 		// Генерируем новый уникальный идентификатор
-		NewUserInfo.GUID, err = uuid.NewV4()
-		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
-		}
+		NewUserInfo.GUID = uuid.NewV4()
 
 		sql = `INSERT INTO secret.users (id, role, email, phone, name, isadmin) VALUES ($1,$2,$3,$4,$5,$6);`
 

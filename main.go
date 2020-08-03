@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"myprojects/Shopping-lists-and-recipes/packages/files"
-	"myprojects/Shopping-lists-and-recipes/packages/recipes"
-	"myprojects/Shopping-lists-and-recipes/packages/setup"
-	"myprojects/Shopping-lists-and-recipes/packages/shoppinglist"
-	"myprojects/Shopping-lists-and-recipes/packages/signinupout"
 	"net/http"
 	"os"
+	"shopping-lists-and-recipes/packages/files"
+	"shopping-lists-and-recipes/packages/recipes"
+	"shopping-lists-and-recipes/packages/setup"
+	"shopping-lists-and-recipes/packages/shoppinglist"
+	"shopping-lists-and-recipes/packages/signinupout"
 
 	_ "github.com/lib/pq" // Драйвер PostgreSQL
 )
