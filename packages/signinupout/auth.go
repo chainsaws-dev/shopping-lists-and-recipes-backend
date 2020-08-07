@@ -334,6 +334,17 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					NewPassword := req.Header.Get("NewPassword")
 
 					if len(NewPassword) > 0 {
+
+						// Разбираем и декодируем зашифрованный base64 пароль
+						resbytepas, err := base64.StdEncoding.DecodeString(NewPassword)
+
+						if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+							return
+						}
+
+						NewPassword = string(resbytepas)
+						NewPassword, err = url.QueryUnescape(NewPassword)
+
 						if len(NewPassword) < 6 {
 							shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
 							return
@@ -378,9 +389,19 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 					UserIDtoDelStr := req.Header.Get("UserID")
 
-					if UserIDtoDelStr != "" {
+					if len(UserIDtoDelStr) > 0 {
 
-						err := setup.ServerSettings.SQL.Connect(role)
+						// Разбираем и декодируем зашифрованный base64 идентификатор
+						resbytepas, err := base64.StdEncoding.DecodeString(UserIDtoDelStr)
+
+						if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+							return
+						}
+
+						UserIDtoDelStr = string(resbytepas)
+						UserIDtoDelStr, err = url.QueryUnescape(UserIDtoDelStr)
+
+						err = setup.ServerSettings.SQL.Connect(role)
 
 						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 							return

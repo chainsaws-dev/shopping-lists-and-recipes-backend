@@ -1337,6 +1337,8 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 
 	if NewUserInfo.Role == "admin_role_CRUD" {
 		NewUserInfo.IsAdmin = true
+	} else {
+		NewUserInfo.IsAdmin = false
 	}
 
 	// Проверяем что почта уникальна
