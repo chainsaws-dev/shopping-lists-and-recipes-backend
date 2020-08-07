@@ -172,7 +172,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 						if err != nil {
 							if err.Error() == "В таблице рецептов не найден указанный id" {
-								shared.HandleOtherError(w, "Recipe not found and cannot be deleted", err, http.StatusBadRequest)
+								shared.HandleOtherError(w, "Рецепт не найден, невозможно удалить", err, http.StatusBadRequest)
 								return
 							}
 						}

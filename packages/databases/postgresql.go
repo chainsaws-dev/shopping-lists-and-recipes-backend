@@ -1375,9 +1375,9 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 
 		// Обновляем существующего
 
-		sql = `UPDATE secret.users SET (role, email, phone, name, isadmin) = ($1,$2,$3,$4,$5) WHERE id=$6;`
+		sql = `UPDATE secret.users SET (role, email, phone, name, isadmin, confirmed) = ($1,$2,$3,$4,$5,$6) WHERE id=$7;`
 
-		_, err = dbc.Exec(sql, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.GUID)
+		_, err = dbc.Exec(sql, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.GUID)
 
 		if err != nil {
 			return NewUserInfo, PostgreSQLRollbackIfError(err, false)

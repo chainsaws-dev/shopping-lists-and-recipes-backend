@@ -35,11 +35,12 @@ func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password s
 	}
 
 	var UserInfo = databases.UserDB{
-		Role:    "admin_role_CRUD",
-		Email:   Email,
-		Phone:   "",
-		Name:    Login,
-		IsAdmin: true,
+		Role:      "admin_role_CRUD",
+		Email:     Email,
+		Phone:     "",
+		Name:      Login,
+		IsAdmin:   true,
+		Confirmed: true,
 	}
 
 	_, err = databases.PostgreSQLUsersInsertUpdate(UserInfo, Hash, true, false)

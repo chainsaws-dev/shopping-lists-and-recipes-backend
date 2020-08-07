@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	uuid "github.com/satori/go.uuid"
+
 	"encoding/base64"
 )
 
@@ -385,11 +387,17 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 						}
 						defer setup.ServerSettings.SQL.Disconnect()
 
-						err = databases.PostgreSQLUsersDelete(UserIDtoDelStr)
+						UserID, err := uuid.FromString(UserIDtoDelStr)
+
+						if shared.HandleOtherError(w, "Некорректный идентификатор пользователя", err, http.StatusBadRequest) {
+							return
+						}
+
+						err = databases.PostgreSQLUsersDelete(UserID)
 
 						if err != nil {
 							if err.Error() == "В таблице пользователей не найден указанный id" {
-								shared.HandleOtherError(w, "User not found and cannot be deleted", err, http.StatusBadRequest)
+								shared.HandleOtherError(w, "Пользователь не найден, невозможно удалить", err, http.StatusBadRequest)
 								return
 							}
 						}
@@ -403,7 +411,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 						fmt.Fprintln(w, resulttext)
 
 					} else {
-						shared.HandleOtherError(w, "Bad request", ErrRecipeIDNotFilled, http.StatusBadRequest)
+						shared.HandleOtherError(w, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)
 					}
 
 				default:
