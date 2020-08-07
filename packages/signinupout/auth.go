@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -29,6 +28,8 @@ var (
 	ErrNotAuthorized    = errors.New("Неверный логин или пароль")
 	ErrForbidden        = errors.New("Доступ запрещён")
 	ErrBadEmail         = errors.New("Указана некорректная электронная почта")
+	ErrBadPhone         = errors.New("Указан некорректный телефонный номер")
+	ErrBadRole          = errors.New("Указана некорректная роль")
 	ErrHeadersNotFilled = errors.New("Не заполнены обязательные параметры запроса")
 )
 
@@ -294,14 +295,34 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 						return
 					}
 
+					remai := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+					if !remai.MatchString(User.Email) {
+						shared.HandleOtherError(w, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+						return
+					}
+
+					if len(User.Phone) > 0 {
+
+						repho := regexp.MustCompile(`^((8|\+7)[\- ]?)?(\(?\d{3,4}\)?[\- ]?)?[\d\- ]{5,10}$`)
+
+						if !repho.MatchString(User.Phone) {
+							shared.HandleOtherError(w, "Некорректный телефонный номер", ErrBadPhone, http.StatusBadRequest)
+							return
+						}
+					}
+
+					if User.Role != "guest_role_read_only" && User.Role != "admin_role_CRUD" {
+						shared.HandleOtherError(w, "Указана некорректная роль", ErrBadRole, http.StatusBadRequest)
+						return
+					}
+
 					err = setup.ServerSettings.SQL.Connect(role)
 
 					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 						return
 					}
 					defer setup.ServerSettings.SQL.Disconnect()
-
-					log.Println(User.GUID)
 
 					// Значение по умолчанию для хеша и пароля
 					Hash := ""
@@ -310,6 +331,10 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					NewPassword := req.Header.Get("NewPassword")
 
 					if len(NewPassword) > 0 {
+						if len(NewPassword) < 6 {
+							shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
+							return
+						}
 						Hash, err = authentication.Argon2GenerateHash(NewPassword, &authentication.HashParams)
 
 						if shared.HandleInternalServerError(w, err) {
@@ -320,6 +345,13 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					}
 					// Получаем обновлённого юзера (если новый с GUID)
 					User, err = databases.PostgreSQLUsersInsertUpdate(User, Hash, UpdatePassword, true)
+
+					if err != nil {
+						if err.Error() == "Указанный адрес электронной почты уже занят" {
+							shared.HandleOtherError(w, "Указанный адрес электронной почты уже занят", err, http.StatusInternalServerError)
+							return
+						}
+					}
 
 					if shared.HandleInternalServerError(w, err) {
 						return
@@ -362,7 +394,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 	defer setup.ServerSettings.SQL.Disconnect()
 
 	if len(AuthRequest.Password) < 6 {
-		shared.HandleOtherError(w, "Пароль должен быть длиной свыше шести символов", ErrNotAllowedMethod, http.StatusBadRequest)
+		shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
 		return
 	}
 

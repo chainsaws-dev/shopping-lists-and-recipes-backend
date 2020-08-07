@@ -1351,7 +1351,7 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 		return NewUserInfo, err
 	}
 
-	if EmailCount > 0 && !OverWrite {
+	if EmailCount > 0 && !OverWrite || EmailCount > 0 && NewUserInfo.GUID == uuid.Nil {
 		return NewUserInfo, ErrEmailIsOccupied
 	}
 
