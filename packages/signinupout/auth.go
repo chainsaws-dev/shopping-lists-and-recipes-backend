@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -282,6 +283,60 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					}
 
 				case req.Method == http.MethodPost:
+					// Отправляем пользователя для изменения
+					w.Header().Set("Content-Type", "application/json")
+
+					var User databases.UserDB
+
+					err := json.NewDecoder(req.Body).Decode(&User)
+
+					if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+						return
+					}
+
+					err = setup.ServerSettings.SQL.Connect(role)
+
+					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+						return
+					}
+					defer setup.ServerSettings.SQL.Disconnect()
+
+					log.Println(User.GUID)
+
+					// Значение по умолчанию для хеша и пароля
+					Hash := ""
+					UpdatePassword := false
+
+					NewPassword := req.Header.Get("NewPassword")
+
+					if len(NewPassword) > 0 {
+						Hash, err = authentication.Argon2GenerateHash(NewPassword, &authentication.HashParams)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						UpdatePassword = true
+					}
+					// Получаем обновлённого юзера (если новый с GUID)
+					User, err = databases.PostgreSQLUsersInsertUpdate(User, Hash, UpdatePassword, true)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					// Пишем в тело ответа
+					js, err := json.Marshal(User)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					_, err = w.Write(js)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
 
 				default:
 					shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)

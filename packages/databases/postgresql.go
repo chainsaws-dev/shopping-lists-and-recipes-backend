@@ -1331,8 +1331,12 @@ func PostgreSQLGetTokenForUser(email string) (string, string, error) {
 	return Hash, UserRole, nil
 }
 
-// PostgreSQLUsersCreateUpdate - создаёт или обновляет существующего пользователя
-func PostgreSQLUsersCreateUpdate(NewUserInfo UserDB, Hash string, UpdatePassword bool, OverWrite bool) error {
+// PostgreSQLUsersInsertUpdate - создаёт или обновляет существующего пользователя
+func PostgreSQLUsersInsertUpdate(NewUserInfo UserDB, Hash string, UpdatePassword bool, OverWrite bool) (UserDB, error) {
+
+	if NewUserInfo.Role == "admin_role_CRUD" {
+		NewUserInfo.IsAdmin = true
+	}
 
 	// Проверяем что почта уникальна
 	var EmailCount int
@@ -1344,11 +1348,11 @@ func PostgreSQLUsersCreateUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 	err := EmailCountRow.Scan(&EmailCount)
 
 	if err != nil {
-		return err
+		return NewUserInfo, err
 	}
 
 	if EmailCount > 0 && !OverWrite {
-		return ErrEmailIsOccupied
+		return NewUserInfo, ErrEmailIsOccupied
 	}
 
 	// Проверяем что пользователь с ID существует
@@ -1361,7 +1365,7 @@ func PostgreSQLUsersCreateUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 	err = UserCountRow.Scan(&UserCount)
 
 	if err != nil {
-		return err
+		return NewUserInfo, err
 	}
 
 	dbc.Exec("BEGIN")
@@ -1375,7 +1379,7 @@ func PostgreSQLUsersCreateUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 		_, err = dbc.Exec(sql, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.GUID)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return NewUserInfo, PostgreSQLRollbackIfError(err, false)
 		}
 
 		if UpdatePassword {
@@ -1386,10 +1390,10 @@ func PostgreSQLUsersCreateUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 				_, err = dbc.Exec(sql, NewUserInfo.GUID, Hash)
 
 				if err != nil {
-					return PostgreSQLRollbackIfError(err, false)
+					return NewUserInfo, PostgreSQLRollbackIfError(err, false)
 				}
 			} else {
-				return PostgreSQLRollbackIfError(ErrEmptyPassword, false)
+				return NewUserInfo, PostgreSQLRollbackIfError(ErrEmptyPassword, false)
 			}
 		}
 
@@ -1405,7 +1409,7 @@ func PostgreSQLUsersCreateUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 		_, err = dbc.Exec(sql, NewUserInfo.GUID, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return NewUserInfo, PostgreSQLRollbackIfError(err, false)
 		}
 
 		if len(Hash) > 0 {
@@ -1415,17 +1419,17 @@ func PostgreSQLUsersCreateUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 			_, err = dbc.Exec(sql, NewUserInfo.GUID, Hash)
 
 			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
+				return NewUserInfo, PostgreSQLRollbackIfError(err, false)
 			}
 		} else {
-			return PostgreSQLRollbackIfError(ErrEmptyPassword, false)
+			return NewUserInfo, PostgreSQLRollbackIfError(ErrEmptyPassword, false)
 		}
 
 	}
 
 	dbc.Exec("COMMIT")
 
-	return nil
+	return NewUserInfo, nil
 }
 
 // PostgreSQLUsersSelect - получает список пользователей в админке
