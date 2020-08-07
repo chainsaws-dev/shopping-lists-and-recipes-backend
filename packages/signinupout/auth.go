@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -284,7 +285,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					}
 
 				case req.Method == http.MethodPost:
-					// Отправляем пользователя для изменения
+					// Создание и изменение пользователя
 					w.Header().Set("Content-Type", "application/json")
 
 					var User databases.UserDB
@@ -368,6 +369,41 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 					if shared.HandleInternalServerError(w, err) {
 						return
+					}
+				case req.Method == http.MethodDelete:
+					// Удаление пользователя
+					w.Header().Set("Content-Type", "application/json")
+
+					UserIDtoDelStr := req.Header.Get("UserID")
+
+					if UserIDtoDelStr != "" {
+
+						err := setup.ServerSettings.SQL.Connect(role)
+
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+							return
+						}
+						defer setup.ServerSettings.SQL.Disconnect()
+
+						err = databases.PostgreSQLUsersDelete(UserIDtoDelStr)
+
+						if err != nil {
+							if err.Error() == "В таблице пользователей не найден указанный id" {
+								shared.HandleOtherError(w, "User not found and cannot be deleted", err, http.StatusBadRequest)
+								return
+							}
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						w.WriteHeader(http.StatusOK)
+						resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись удалена")
+						fmt.Fprintln(w, resulttext)
+
+					} else {
+						shared.HandleOtherError(w, "Bad request", ErrRecipeIDNotFilled, http.StatusBadRequest)
 					}
 
 				default:

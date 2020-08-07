@@ -27,6 +27,7 @@ var (
 	ErrNoUserWithEmail      = errors.New("Электронная почта не найдена")
 	ErrNoHashForUser        = errors.New("Хеш пароля не найден")
 	ErrEmailIsOccupied      = errors.New("Указанный адрес электронной почты уже занят")
+	ErrUserNotFound         = errors.New("В таблице пользователей не найден указанный id")
 )
 
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
@@ -1430,6 +1431,42 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 	dbc.Exec("COMMIT")
 
 	return NewUserInfo, nil
+}
+
+// PostgreSQLUsersDelete - удаляет пользователя с указанным GUID
+func PostgreSQLUsersDelete(UserID uuid.UUID) error {
+
+	sql := `SELECT 
+				COUNT(*)
+			FROM 
+				secret.users
+			WHERE 
+				id=$1;`
+
+	row := dbc.QueryRow(sql, UserID)
+
+	var usercount int
+	err := row.Scan(&usercount)
+
+	shared.WriteErrToLog(err)
+
+	if usercount <= 0 {
+		return ErrUserNotFound
+	}
+
+	dbc.Exec("BEGIN")
+
+	sql = `DELETE FROM secret.users WHERE id=$1;`
+
+	_, err = dbc.Exec(sql, UserID)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	dbc.Exec("COMMIT")
+
+	return nil
 }
 
 // PostgreSQLUsersSelect - получает список пользователей в админке
