@@ -11,6 +11,7 @@ import (
 	"shopping-lists-and-recipes/packages/admin"
 	"shopping-lists-and-recipes/packages/authentication"
 	"shopping-lists-and-recipes/packages/databases"
+	"shopping-lists-and-recipes/packages/messages"
 	"shopping-lists-and-recipes/packages/setup"
 	"shopping-lists-and-recipes/packages/shared"
 	"strconv"
@@ -184,6 +185,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
+			// Создаём пользователя
 			err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password)
 
 			if err != nil {
@@ -196,6 +198,9 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 			if shared.HandleInternalServerError(w, err) {
 				return
 			}
+
+			// Отправляем письмо-подтверждение
+			messages.SendEmailConfirmationLetter(SignUpRequest.Email, req.Host)
 
 			// Авторизация пользователя
 			secretauth(w, req, ConvertToSignInRequest(SignUpRequest))

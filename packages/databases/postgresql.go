@@ -28,6 +28,7 @@ var (
 	ErrNoHashForUser        = errors.New("Хеш пароля не найден")
 	ErrEmailIsOccupied      = errors.New("Указанный адрес электронной почты уже занят")
 	ErrUserNotFound         = errors.New("В таблице пользователей не найден указанный id")
+	ErrEmailNotConfirmed    = errors.New("Подтвердите адрес электронной почты")
 )
 
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
@@ -1256,6 +1257,7 @@ func PostgreSQLGetTokenForUser(email string) (string, string, error) {
 	var UserID uuid.UUID
 	var HashesCount int
 	var UserRole string
+	var Confirmed bool
 
 	var Hash string
 
@@ -1280,7 +1282,8 @@ func PostgreSQLGetTokenForUser(email string) (string, string, error) {
 
 	sql = `SELECT 
 				id,
-				role
+				role, 
+				confirmed
 			FROM 
 				secret.users
 			WHERE
@@ -1289,7 +1292,11 @@ func PostgreSQLGetTokenForUser(email string) (string, string, error) {
 
 	UserIDRow := dbc.QueryRow(sql, email)
 
-	err = UserIDRow.Scan(&UserID, &UserRole)
+	err = UserIDRow.Scan(&UserID, &UserRole, &Confirmed)
+
+	if !Confirmed {
+		return "", "", ErrEmailNotConfirmed
+	}
 
 	if err != nil {
 		return "", "", err

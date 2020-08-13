@@ -4,7 +4,16 @@ package settings
 type WServerSettings struct {
 	HTTP  int
 	HTTPS int
+	SMTP  CredSMTP
 	SQL   SQLServer
+}
+
+// CredSMTP - данные для входа SMTP
+type CredSMTP struct {
+	SMTP     string
+	SMTPPort int
+	Login    string
+	Pass     string
 }
 
 // SQLServer - данные для подключения к SQL серверу

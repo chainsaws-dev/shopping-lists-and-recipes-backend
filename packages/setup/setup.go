@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"shopping-lists-and-recipes/packages/admin"
+	"shopping-lists-and-recipes/packages/messages"
 	"shopping-lists-and-recipes/packages/settings"
 	"shopping-lists-and-recipes/packages/shared"
 	"strconv"
@@ -48,6 +49,18 @@ func InitialSettings(forcesetup bool) {
 
 		AskInt("Укажите порт для https соединений (например 443): ", &ServerSettings.HTTPS)
 
+		// SMTP
+
+		AskString("Укажите адрес SMTP сервера для отправки почты: ", &ServerSettings.SMTP.SMTP)
+
+		AskInt("Укажите порт для соединения с SMTP: ", &ServerSettings.SMTP.SMTPPort)
+
+		AskString("Укажите логин пользователя SMTP сервера: ", &ServerSettings.SMTP.Login)
+
+		AskString("Укажите пароль пользователя SMTP сервера: ", &ServerSettings.SMTP.Pass)
+
+		messages.SetCredentials(ServerSettings.SMTP)
+
 		// SQL
 		ServerSettings.SQL.AutoFillRoles()
 
@@ -86,6 +99,12 @@ func InitialSettings(forcesetup bool) {
 
 		err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin)
 
+		var URI string
+
+		AskString("Укажите адрес вебсайта с портом: ", &URI)
+
+		messages.SendEmailConfirmationLetter(Email, URI)
+
 		shared.WriteErrToLog(err)
 
 		log.Println("Администратор сайта создан")
@@ -115,6 +134,8 @@ func InitialSettings(forcesetup bool) {
 		err = json.Unmarshal(bytes, &ServerSettings)
 
 		shared.WriteErrToLog(err)
+
+		messages.SetCredentials(ServerSettings.SMTP)
 
 		log.Println("Файл настроек settings.json успешно прочитан")
 	}
@@ -156,6 +177,10 @@ func FolderCreate() {
 
 	if !СheckExists("public/frontend") {
 		shared.WriteErrToLog(os.Mkdir("public/frontend", 0700))
+	}
+
+	if !СheckExists("public/templates") {
+		shared.WriteErrToLog(os.Mkdir("public/templates", 0700))
 	}
 
 	if !СheckExists("public/uploads") {
