@@ -10,6 +10,7 @@ type WServerSettings struct {
 
 // CredSMTP - данные для входа SMTP
 type CredSMTP struct {
+	Use      bool
 	SMTP     string
 	SMTPPort int
 	Login    string

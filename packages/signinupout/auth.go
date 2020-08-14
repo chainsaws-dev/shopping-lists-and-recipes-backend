@@ -215,6 +215,10 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 
 }
 
+func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
+	// TODO
+}
+
 // HandleUsers - обработчик для работы с пользователями
 func HandleUsers(w http.ResponseWriter, req *http.Request) {
 	keys, ok := req.URL.Query()["key"]

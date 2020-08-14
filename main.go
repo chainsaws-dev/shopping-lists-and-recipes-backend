@@ -70,6 +70,7 @@ func main() {
 	http.HandleFunc("/api/Accounts/SignUp", signinupout.SignUp)
 	http.HandleFunc("/api/Accounts/SignIn", signinupout.SignIn)
 	http.HandleFunc("/api/Users", signinupout.HandleUsers)
+	http.HandleFunc("/api/ConfirmEmail", signinupout.ConfirmEmail)
 
 	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
 

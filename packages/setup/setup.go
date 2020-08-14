@@ -49,17 +49,27 @@ func InitialSettings(forcesetup bool) {
 
 		AskInt("Укажите порт для https соединений (например 443): ", &ServerSettings.HTTPS)
 
-		// SMTP
+		var ConfirmEmails string
+		AskString("Подтверждать электронную почту письмом со ссылкой (Да или Нет): ", &ConfirmEmails)
+		ConfirmEmails = strings.ToLower(ConfirmEmails)
 
-		AskString("Укажите адрес SMTP сервера для отправки почты: ", &ServerSettings.SMTP.SMTP)
+		if ConfirmEmails == "да" || ConfirmEmails == "д" {
+			// SMTP
 
-		AskInt("Укажите порт для соединения с SMTP: ", &ServerSettings.SMTP.SMTPPort)
+			AskString("Укажите адрес SMTP сервера для отправки почты: ", &ServerSettings.SMTP.SMTP)
 
-		AskString("Укажите логин пользователя SMTP сервера: ", &ServerSettings.SMTP.Login)
+			AskInt("Укажите порт для соединения с SMTP: ", &ServerSettings.SMTP.SMTPPort)
 
-		AskString("Укажите пароль пользователя SMTP сервера: ", &ServerSettings.SMTP.Pass)
+			AskString("Укажите логин пользователя SMTP сервера: ", &ServerSettings.SMTP.Login)
 
-		messages.SetCredentials(ServerSettings.SMTP)
+			AskString("Укажите пароль пользователя SMTP сервера: ", &ServerSettings.SMTP.Pass)
+
+			ServerSettings.SMTP.Use = true
+
+			messages.SetCredentials(ServerSettings.SMTP)
+		} else {
+			ServerSettings.SMTP = settings.CredSMTP{}
+		}
 
 		// SQL
 		ServerSettings.SQL.AutoFillRoles()
@@ -101,7 +111,7 @@ func InitialSettings(forcesetup bool) {
 
 		var URI string
 
-		AskString("Укажите адрес вебсайта с портом: ", &URI)
+		AskString("Укажите адрес вебсайта с портом (например: http://127.0.0.1:8080/): ", &URI)
 
 		messages.SendEmailConfirmationLetter(Email, URI)
 
