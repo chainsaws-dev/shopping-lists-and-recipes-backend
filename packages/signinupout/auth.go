@@ -1,3 +1,4 @@
+// Package signinupout - отвечает за авторизацию, регистрацию, админку и функции для восстановления пароля и подтверждение почты
 package signinupout
 
 import (
@@ -41,7 +42,12 @@ var (
 // TokenList - список активных токенов
 var TokenList []authentication.ActiveToken
 
-// SignIn - обработчик для авторизации пользователя
+// SignIn - обработчик для авторизации пользователя POST запросом
+//
+// POST
+//
+// 	ожидается параметр key с API ключом
+// 	в теле запроса JSON объект AuthRequestData
 func SignIn(w http.ResponseWriter, req *http.Request) {
 
 	keys, ok := req.URL.Query()["key"]
@@ -112,7 +118,12 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// SignUp - обработчик для регистрации пользователя
+// SignUp - обработчик для регистрации пользователя POST запросом
+//
+// POST
+//
+// 	ожидается параметр key с API ключом
+// 	в теле запроса JSON объект AuthSignUpRequestData
 func SignUp(w http.ResponseWriter, req *http.Request) {
 
 	keys, ok := req.URL.Query()["key"]
@@ -216,7 +227,12 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 
 }
 
-// ResendEmail - отправляет письмо подтверждение повторно
+// ResendEmail - отправляет письмо подтверждение повторно в ответ на POST запрос
+//
+// POST
+//
+// 	ожидается параметр key с API ключом
+// 	ожидается заголовок Email с электронной почтой
 func ResendEmail(w http.ResponseWriter, req *http.Request) {
 	keys, ok := req.URL.Query()["key"]
 
@@ -280,7 +296,12 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// ConfirmEmail - подтверждение почты по ссылке
+// ConfirmEmail - обработчик вызывающий отправку подтверждения почты, принимает POST запрос
+//
+// POST
+//
+// 	ожидается параметр key с API ключом
+//	ожидается заголовок Token с токеном для доступа
 func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 	keys, ok := req.URL.Query()["key"]
 
@@ -334,7 +355,24 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// HandleUsers - обработчик для работы с пользователями
+// HandleUsers - обработчик для работы с пользователями, принимает http запросы GET, POST и DELETE
+//
+// GET
+//
+// 	ожидается параметр key с API ключом
+// 	ожидается заголовок Page с номером страницы
+// 	ожидается заголовок Limit с максимумом элементов на странице
+//
+// POST
+//
+// 	ожидается параметр key с API ключом
+// 	тело запроса должно быть заполнено JSON объектом
+// 	идентичным по структуре UserDB
+//
+// DELETE
+//
+// 	ожидается параметр key с API ключом
+// 	ожидается заголовок UserID с UUID пользователя
 func HandleUsers(w http.ResponseWriter, req *http.Request) {
 	keys, ok := req.URL.Query()["key"]
 
@@ -660,8 +698,6 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 }
 
 // CleanOldTokens - удаляет старые токены из списка
-// а также те, которые выданы заданному пользователю
-// если указано "_" вместо почты, удаляются только старые
 func CleanOldTokens() {
 	todel := []int{}
 

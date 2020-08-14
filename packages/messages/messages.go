@@ -1,3 +1,4 @@
+// Package messages - отвечает за отправку писем
 package messages
 
 import (
