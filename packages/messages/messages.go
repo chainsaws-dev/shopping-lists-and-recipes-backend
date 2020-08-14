@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/url"
 	"shopping-lists-and-recipes/packages/authentication"
+	"shopping-lists-and-recipes/packages/databases"
 	"shopping-lists-and-recipes/packages/settings"
 	"text/template"
 
@@ -63,7 +64,7 @@ func GetStringTemplate(TemplateName string, ObjectToInsert string) string {
 }
 
 // SendEmailConfirmationLetter - отправляет письмо с ссылкой для подтверждения электронной почты
-func SendEmailConfirmationLetter(Recepient string, ReqHost string) {
+func SendEmailConfirmationLetter(SQL *settings.SQLServer, Recepient string, ReqHost string) {
 
 	if SendCred.Use {
 
@@ -84,6 +85,24 @@ func SendEmailConfirmationLetter(Recepient string, ReqHost string) {
 		SendEmail([]string{Recepient}, GetStringTemplate("EmailConfirm.gohtml", prurl), "Подтвердите электронную почту")
 
 		log.Printf("Отправили пользователю %v письмо", Recepient)
+
+		log.Printf("Сохраняем токен для пользователя %v...", Recepient)
+
+		err = SQL.Connect("admin_role_CRUD")
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		defer SQL.Disconnect()
+
+		err = databases.PostgreSQLSaveAccessToken(strtoken, Recepient)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("Сохранили токен для пользователя %v", Recepient)
 
 	}
 }

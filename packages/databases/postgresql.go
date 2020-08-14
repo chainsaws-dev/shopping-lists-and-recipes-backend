@@ -12,6 +12,7 @@ import (
 	"os"
 	"shopping-lists-and-recipes/packages/shared"
 	"strings"
+	"time"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -318,6 +319,30 @@ func PostgreSQLCreateTables() {
 	_, err = dbc.Exec(sql)
 
 	PostgreSQLRollbackIfError(err, true)
+
+	sql = `CREATE TABLE secret.confirmations
+			(
+				user_id uuid,
+				token character varying(100) COLLATE pg_catalog."default" NOT NULL,
+				"Created" timestamp with time zone NOT NULL,
+				"Expires" timestamp with time zone NOT NULL,
+				CONSTRAINT confirmations_user_id_fkey FOREIGN KEY (user_id)
+					REFERENCES secret.users (id) MATCH FULL
+					ON UPDATE NO ACTION
+					ON DELETE RESTRICT
+			);
+			ALTER TABLE secret.confirmations
+				OWNER to postgres;
+			CREATE INDEX fki_confirmations_user_id_fkey
+				ON secret.confirmations USING btree
+				(user_id ASC NULLS LAST)
+				TABLESPACE pg_default;`
+
+	_, err = dbc.Exec(sql)
+
+	PostgreSQLRollbackIfError(err, true)
+
+	log.Println("Создали таблицу confirmations")
 
 	dbc.Exec("COMMIT")
 
@@ -1550,6 +1575,56 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 	result.Offset = offset
 
 	return result, nil
+}
+
+// PostgreSQLSaveAccessToken - сохраняем токен для подтверждения почты
+func PostgreSQLSaveAccessToken(Token string, Email string) error {
+
+	if len(Token) > 0 && len(Email) > 0 {
+
+		sql := `SELECT COUNT(*) FROM secret.users WHERE email=$1 LIMIT 1;`
+
+		row := dbc.QueryRow(sql, Email)
+
+		var UsCount int
+
+		err := row.Scan(&UsCount)
+
+		if err != nil {
+			return err
+		}
+
+		if UsCount > 0 {
+
+			sql = `SELECT id FROM secret.users WHERE email=$1 LIMIT 1;`
+
+			row = dbc.QueryRow(sql, Email)
+
+			var CurUID uuid.UUID
+
+			err = row.Scan(&CurUID)
+
+			if err != nil {
+				return err
+			}
+
+			dbc.Exec("BEGIN")
+
+			sql = `INSERT INTO secret.confirmations (user_id, token, "Created", "Expires") VALUES ($1,$2,$3,$4);`
+
+			cd := time.Now()
+
+			_, err = dbc.Exec(sql, CurUID, Token, cd, cd.Add(time.Minute*10))
+
+			if err != nil {
+				return PostgreSQLRollbackIfError(err, false)
+			}
+
+			dbc.Exec("COMMIT")
+		}
+
+	}
+	return nil
 }
 
 // PostgreSQLShoppingListDeleteAll - удаляет все записи из списка покупок

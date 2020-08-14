@@ -200,7 +200,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 			}
 
 			// Отправляем письмо-подтверждение
-			messages.SendEmailConfirmationLetter(SignUpRequest.Email, req.Host)
+			messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, SignUpRequest.Email, req.Host)
 
 			// Авторизация пользователя
 			secretauth(w, req, ConvertToSignInRequest(SignUpRequest))

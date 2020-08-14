@@ -114,7 +114,7 @@ func InitialSettings(forcesetup bool) {
 
 			AskString("Укажите адрес вебсайта с портом (например: http://127.0.0.1:8080/): ", &URI)
 
-			messages.SendEmailConfirmationLetter(Email, URI)
+			messages.SendEmailConfirmationLetter(&ServerSettings.SQL, Email, URI)
 		}
 
 		shared.WriteErrToLog(err)
