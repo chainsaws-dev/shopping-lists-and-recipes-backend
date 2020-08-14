@@ -1350,8 +1350,6 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 		NewUserInfo.IsAdmin = false
 	}
 
-	NewUserInfo.Confirmed = false
-
 	// Проверяем что почта уникальна
 	var EmailCount int
 

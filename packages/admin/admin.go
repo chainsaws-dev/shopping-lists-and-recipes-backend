@@ -14,7 +14,7 @@ var (
 )
 
 // CreateAdmin - создаём пользователя для администратора
-func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password string) error {
+func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password string, ConfirmEnabled bool) error {
 
 	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
 		return ErrBasicFieldsNotFilled
@@ -35,11 +35,12 @@ func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password s
 	}
 
 	var UserInfo = databases.UserDB{
-		Role:    "admin_role_CRUD",
-		Email:   Email,
-		Phone:   "",
-		Name:    Login,
-		IsAdmin: true,
+		Role:      "admin_role_CRUD",
+		Email:     Email,
+		Phone:     "",
+		Name:      Login,
+		IsAdmin:   true,
+		Confirmed: !ConfirmEnabled,
 	}
 
 	_, err = databases.PostgreSQLUsersInsertUpdate(UserInfo, Hash, true, false)
@@ -52,7 +53,7 @@ func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password s
 }
 
 // CreateUser - создаём пользователя для гостя
-func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password string) error {
+func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password string, ConfirmEnabled bool) error {
 
 	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
 		return ErrBasicFieldsNotFilled
@@ -73,11 +74,12 @@ func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password st
 	}
 
 	var UserInfo = databases.UserDB{
-		Role:    "guest_role_read_only",
-		Email:   Email,
-		Phone:   "",
-		Name:    Login,
-		IsAdmin: false,
+		Role:      "guest_role_read_only",
+		Email:     Email,
+		Phone:     "",
+		Name:      Login,
+		IsAdmin:   false,
+		Confirmed: !ConfirmEnabled,
 	}
 
 	_, err = databases.PostgreSQLUsersInsertUpdate(UserInfo, Hash, true, false)

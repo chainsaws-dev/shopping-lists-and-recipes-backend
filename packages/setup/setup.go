@@ -107,7 +107,7 @@ func InitialSettings(forcesetup bool) {
 
 		AskString("Укажите пароль администратора вебсайта: ", &PasswordAdmin)
 
-		err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin)
+		err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use)
 
 		if ServerSettings.SMTP.Use {
 			var URI string

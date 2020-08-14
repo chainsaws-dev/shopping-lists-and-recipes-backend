@@ -186,7 +186,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 			}
 
 			// Создаём пользователя
-			err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password)
+			err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password, setup.ServerSettings.SMTP.Use)
 
 			if err != nil {
 				if err.Error() == "Указанный адрес электронной почты уже занят" {
