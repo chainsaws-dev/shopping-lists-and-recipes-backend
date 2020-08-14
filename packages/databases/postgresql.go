@@ -1620,6 +1620,14 @@ func PostgreSQLSaveAccessToken(Token string, Email string) error {
 
 			dbc.Exec("BEGIN")
 
+			sql = `DELETE FROM secret.confirmations WHERE user_id=$1;`
+
+			_, err = dbc.Exec(sql, CurUID)
+
+			if err != nil {
+				return PostgreSQLRollbackIfError(err, false)
+			}
+
 			sql = `INSERT INTO secret.confirmations (user_id, token, "Created", "Expires") VALUES ($1,$2,$3,$4);`
 
 			cd := time.Now()
@@ -1634,6 +1642,22 @@ func PostgreSQLSaveAccessToken(Token string, Email string) error {
 		}
 
 	}
+	return nil
+}
+
+// PostgreSQLCleanAccessTokens - Удаляет все истекшие токены доступа
+func PostgreSQLCleanAccessTokens() error {
+
+	dbc.Exec("BEGIN")
+
+	_, err := dbc.Exec(`DELETE FROM secret.confirmations WHERE "Expires" < now();`)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	dbc.Exec("COMMIT")
+
 	return nil
 }
 

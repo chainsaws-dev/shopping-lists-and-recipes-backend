@@ -74,8 +74,9 @@ func main() {
 	http.HandleFunc("/api/Users", signinupout.HandleUsers)
 	http.HandleFunc("/api/ConfirmEmail", signinupout.ConfirmEmail)
 
-	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
+	go signinupout.RegularConfirmTokensCleanup()
 
+	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
 	if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
 		//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
 		shared.CurrentPrefix = "https://"

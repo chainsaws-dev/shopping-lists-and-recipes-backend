@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -739,5 +740,27 @@ func ConvertToSignInRequest(SignUpRequest authentication.AuthSignUpRequestData) 
 		Email:             SignUpRequest.Email,
 		Password:          SignUpRequest.Password,
 		ReturnSecureToken: true,
+	}
+}
+
+// RegularConfirmTokensCleanup - в фоновом режиме удаляет устаревшие токены
+func RegularConfirmTokensCleanup() {
+	for {
+		log.Println("Очистка истекших токенов...")
+
+		err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		defer setup.ServerSettings.SQL.Disconnect()
+
+		databases.PostgreSQLCleanAccessTokens()
+
+		log.Println("Таблица токенов очищена!")
+
+		// Ждем пять минут
+		time.Sleep(time.Minute * 5)
 	}
 }
