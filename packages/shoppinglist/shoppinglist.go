@@ -23,7 +23,24 @@ var (
 	ErrForbidden        = errors.New("Доступ запрещён")
 )
 
-// HandleShoppingList - обрабатывает POST, GET и DELETE запросы для изменения списка покупок
+// HandleShoppingList - обрабатывает GET, POST и DELETE запросы для списка покупок
+//
+// GET
+//
+// 	ожидается параметр key с API ключом
+// 	ожидается заголовок Page с номером страницы
+// 	ожидается заголовок Limit с максимумом элементов на странице
+//
+// POST
+//
+// 	ожидается параметр key с API ключом
+// 	тело запроса должно быть заполнено JSON объектом
+// 	идентичным по структуре IngredientDB
+//
+// DELETE
+//
+// 	ожидается параметр key с API ключом
+// 	ожидается заголовок IngName с названием продукта из списка покупок
 func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 	// Проверяем API ключ
 	keys, ok := req.URL.Query()["key"]

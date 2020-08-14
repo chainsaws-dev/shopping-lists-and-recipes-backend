@@ -48,6 +48,7 @@ var TokenList []authentication.ActiveToken
 //
 // 	ожидается параметр key с API ключом
 // 	в теле запроса JSON объект AuthRequestData
+//	Email и пароль должны быть пропущены через через encodeURIComponent и btoa
 func SignIn(w http.ResponseWriter, req *http.Request) {
 
 	keys, ok := req.URL.Query()["key"]
@@ -124,6 +125,8 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 //
 // 	ожидается параметр key с API ключом
 // 	в теле запроса JSON объект AuthSignUpRequestData
+//	Email, имя пользователя и пароль должны быть
+//	пропущены через через encodeURIComponent и btoa
 func SignUp(w http.ResponseWriter, req *http.Request) {
 
 	keys, ok := req.URL.Query()["key"]
@@ -367,12 +370,13 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 //
 // 	ожидается параметр key с API ключом
 // 	тело запроса должно быть заполнено JSON объектом
-// 	идентичным по структуре UserDB
+// 	идентичным по структуре UserDB при этом пароль
+//	пропущен через через encodeURIComponent и btoa
 //
 // DELETE
 //
 // 	ожидается параметр key с API ключом
-// 	ожидается заголовок UserID с UUID пользователя
+// 	ожидается заголовок UserID с UUID пользователя пропущенным через encodeURIComponent и btoa (закодированным base64)
 func HandleUsers(w http.ResponseWriter, req *http.Request) {
 	keys, ok := req.URL.Query()["key"]
 

@@ -27,6 +27,23 @@ var (
 )
 
 // HandleRecipes - обрабатывает POST, GET и DELETE запросы для изменения рецептов
+//
+// GET
+//
+// 	ожидается параметр key с API ключом
+// 	ожидается заголовок Page с номером страницы
+// 	ожидается заголовок Limit с максимумом элементов на странице
+//
+// POST
+//
+// 	ожидается параметр key с API ключом
+// 	тело запроса должно быть заполнено JSON объектом
+// 	идентичным по структуре RecipeDB
+//
+// DELETE
+//
+// 	ожидается параметр key с API ключом
+// 	ожидается заголовок RecipeID с номером рецепта на удаление
 func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 	// Проверяем API ключ
@@ -205,6 +222,13 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 }
 
 // HandleRecipesSearch - обрабатывает GET запросы для поиска рецептов
+//
+// GET
+//
+// 	ожидается параметр key с API ключом
+// 	ожидается заголовок Page с номером страницы
+// 	ожидается заголовок Limit с максимумом элементов на странице
+// 	ожидается заголовок Search с поисковым запросом пропущенным через encodeURIComponent
 func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 	// Проверяем API ключ
 	keys, ok := req.URL.Query()["key"]
