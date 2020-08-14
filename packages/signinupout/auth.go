@@ -232,6 +232,7 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 	if found {
 		switch {
 		case req.Method == http.MethodPost:
+
 			Email := req.Header.Get("Email")
 
 			if len(Email) > 0 {
@@ -259,10 +260,16 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 
 				if mailexist {
 					messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host)
+
+					w.WriteHeader(http.StatusOK)
+					resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Письмо отправлено")
+					fmt.Fprintln(w, resulttext)
+				} else {
+					shared.HandleOtherError(w, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 				}
 
 			} else {
-				shared.HandleOtherError(w, "Bad request", ErrBadEmail, http.StatusBadRequest)
+				shared.HandleOtherError(w, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 			}
 
 		default:

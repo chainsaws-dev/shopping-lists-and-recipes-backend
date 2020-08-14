@@ -73,6 +73,7 @@ func main() {
 	http.HandleFunc("/api/Accounts/SignIn", signinupout.SignIn)
 	http.HandleFunc("/api/Users", signinupout.HandleUsers)
 	http.HandleFunc("/api/ConfirmEmail", signinupout.ConfirmEmail)
+	http.HandleFunc("/api/ConfirmEmail/Send", signinupout.ResendEmail)
 
 	go signinupout.RegularConfirmTokensCleanup()
 
