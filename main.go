@@ -40,10 +40,17 @@ func main() {
 	// вне зависимости от наличия файла settings.json
 	runargs := os.Args
 	var forcesetup bool
+	var cleantokens bool
+
 	if len(runargs) > 1 {
-		first := runargs[1]
-		if first == "-set" {
-			forcesetup = true
+		for _, runarg := range runargs {
+			if runarg == "-set" {
+				forcesetup = true
+			}
+
+			if runarg == "-clean" {
+				cleantokens = true
+			}
 		}
 	}
 
@@ -75,7 +82,9 @@ func main() {
 	http.HandleFunc("/api/ConfirmEmail", signinupout.ConfirmEmail)
 	http.HandleFunc("/api/ConfirmEmail/Send", signinupout.ResendEmail)
 
-	go signinupout.RegularConfirmTokensCleanup()
+	if cleantokens {
+		go signinupout.RegularConfirmTokensCleanup()
+	}
 
 	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
 	if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
