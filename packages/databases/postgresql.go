@@ -1490,7 +1490,16 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 	}
 
 	dbc.Exec("BEGIN")
+	// Удаляем подтверждения если есть
+	sql = `DELETE FROM secret.confirmations WHERE user_id=$1;`
 
+	_, err = dbc.Exec(sql, UserID)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	// Удаляем пользователя
 	sql = `DELETE FROM secret.users WHERE id=$1;`
 
 	_, err = dbc.Exec(sql, UserID)
