@@ -1700,6 +1700,28 @@ func PostgreSQLGetTokenConfirmEmail(Token string) error {
 
 }
 
+// PostgreSQLCheckUserMailExists - проверяет что почтовый ящик живого пользователя
+func PostgreSQLCheckUserMailExists(Email string) (bool, error) {
+
+	sql := `SELECT COUNT(*) FROM secret.users WHERE email=$1;`
+
+	row := dbc.QueryRow(sql, Email)
+
+	var UsersCount int
+
+	err := row.Scan(&UsersCount)
+
+	if err != nil {
+		return false, err
+	}
+
+	if UsersCount > 0 {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // PostgreSQLShoppingListDeleteAll - удаляет все записи из списка покупок
 func PostgreSQLShoppingListDeleteAll() error {
 

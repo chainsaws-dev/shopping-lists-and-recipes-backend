@@ -8,6 +8,9 @@ import (
 	"net/http"
 )
 
+// CurrentPrefix - префикс URL
+var CurrentPrefix = ""
+
 // SQLConnect - соединиться с базой данных и выполнить команду
 // Не забываем в точке вызова defer db.Close()
 func SQLConnect(DbType string, ConStr string) (*sql.DB, error) {

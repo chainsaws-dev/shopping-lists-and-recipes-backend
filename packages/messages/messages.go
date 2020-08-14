@@ -80,7 +80,7 @@ func SendEmailConfirmationLetter(SQL *settings.SQLServer, Recepient string, ReqH
 
 		strtoken := fmt.Sprintf("%x", fn.Sum(tokenb))
 
-		prurl := fmt.Sprintf("%v/api/ConfirmEmail?Token=%v&key=%v", ReqHost, url.PathEscape(strtoken), url.PathEscape("AIzaSyB3Jr8tp5wotjeS-re9iBSgX2b1zbM0Fx4"))
+		prurl := fmt.Sprintf("%v/confirm-email?Token=%v", ReqHost, url.PathEscape(strtoken))
 
 		SendEmail([]string{Recepient}, GetStringTemplate("EmailConfirm.gohtml", prurl), "Подтвердите электронную почту")
 

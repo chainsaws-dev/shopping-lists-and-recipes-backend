@@ -10,6 +10,7 @@ import (
 	"shopping-lists-and-recipes/packages/files"
 	"shopping-lists-and-recipes/packages/recipes"
 	"shopping-lists-and-recipes/packages/setup"
+	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/shoppinglist"
 	"shopping-lists-and-recipes/packages/signinupout"
 
@@ -61,6 +62,7 @@ func main() {
 	http.HandleFunc("/shopping-list/", RedirectToIndex)
 	http.HandleFunc("/admin/", RedirectToIndex)
 	http.HandleFunc("/auth/", RedirectToIndex)
+	http.HandleFunc("/confirm-email/", RedirectToIndex)
 
 	// REST API
 	http.HandleFunc("/api/Recipes", recipes.HandleRecipes)
@@ -76,9 +78,11 @@ func main() {
 
 	if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
 		//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
+		shared.CurrentPrefix = "https://"
 		log.Println("Запущен SSL веб сервер")
 		log.Fatalln(http.ListenAndServeTLS(fmt.Sprintf(":%v", setup.ServerSettings.HTTPS), "cert.pem", "key.pem", nil))
 	} else {
+		shared.CurrentPrefix = "http://"
 		log.Println("Запущен веб сервер без шифрования")
 		log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%v", setup.ServerSettings.HTTP), nil))
 	}

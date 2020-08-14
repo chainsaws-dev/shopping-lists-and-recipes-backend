@@ -200,7 +200,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 			}
 
 			// Отправляем письмо-подтверждение
-			messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, SignUpRequest.Email, "http://"+req.Host)
+			messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, SignUpRequest.Email, shared.CurrentPrefix+req.Host)
 
 			// Авторизация пользователя
 			secretauth(w, req, ConvertToSignInRequest(SignUpRequest))
@@ -213,6 +213,63 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
 	}
 
+}
+
+// ResendEmail - отправляет письмо подтверждение повторно
+func ResendEmail(w http.ResponseWriter, req *http.Request) {
+	keys, ok := req.URL.Query()["key"]
+
+	if !ok || len(keys[0]) < 1 {
+		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+		return
+	}
+
+	key := keys[0]
+
+	_, found := shared.FindInStringSlice(setup.APIkeys, key)
+
+	if found {
+		switch {
+		case req.Method == http.MethodPost:
+			Email := req.Header.Get("Email")
+
+			if len(Email) > 0 {
+
+				re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+				if !re.MatchString(Email) {
+					shared.HandleOtherError(w, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+					return
+				}
+
+				// Авторизация под ролью пользователя
+				err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+
+				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+					return
+				}
+				defer setup.ServerSettings.SQL.Disconnect()
+
+				mailexist, err := databases.PostgreSQLCheckUserMailExists(Email)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				if mailexist {
+					messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host)
+				}
+
+			} else {
+				shared.HandleOtherError(w, "Bad request", ErrBadEmail, http.StatusBadRequest)
+			}
+
+		default:
+			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		}
+	} else {
+		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
+	}
 }
 
 // ConfirmEmail - подтверждение почты по ссылке
@@ -230,19 +287,18 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 
 	if found {
 		switch {
-		case req.Method == http.MethodGet:
+		case req.Method == http.MethodPost:
 
-			Tokens, ok := req.URL.Query()["Token"]
+			Token := req.Header.Get("Token")
 
-			if !ok || len(Tokens[0]) < 1 {
-				shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+			Token, err := url.QueryUnescape(Token)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
 				return
 			}
 
-			Token := Tokens[0]
-
 			// Авторизация под ролью пользователя
-			err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+			err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
 
 			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 				return
@@ -258,7 +314,9 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 				}
 			}
 
-			http.Redirect(w, req, "/", http.StatusTemporaryRedirect)
+			w.WriteHeader(http.StatusOK)
+			resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Электронная почта подтверждена")
+			fmt.Fprintln(w, resulttext)
 
 		default:
 			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
