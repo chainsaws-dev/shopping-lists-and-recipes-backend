@@ -323,7 +323,7 @@ func PostgreSQLCreateTables() {
 	sql = `CREATE TABLE secret.confirmations
 			(
 				user_id uuid,
-				token character varying(100) COLLATE pg_catalog."default" NOT NULL,
+				token character varying(200) COLLATE pg_catalog."default" NOT NULL,
 				"Created" timestamp with time zone NOT NULL,
 				"Expires" timestamp with time zone NOT NULL,
 				CONSTRAINT confirmations_user_id_fkey FOREIGN KEY (user_id)
