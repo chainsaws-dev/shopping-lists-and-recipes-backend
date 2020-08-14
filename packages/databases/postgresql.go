@@ -1251,7 +1251,7 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 }
 
 // PostgreSQLGetTokenForUser - получает токен для проверки при авторизации
-func PostgreSQLGetTokenForUser(email string, UseEmailConfirm bool) (string, string, error) {
+func PostgreSQLGetTokenForUser(email string) (string, string, error) {
 
 	var UserCount int
 	var UserID uuid.UUID
@@ -1298,10 +1298,8 @@ func PostgreSQLGetTokenForUser(email string, UseEmailConfirm bool) (string, stri
 		return "", "", err
 	}
 
-	if UseEmailConfirm {
-		if !Confirmed {
-			return "", "", ErrEmailNotConfirmed
-		}
+	if !Confirmed {
+		return "", "", ErrEmailNotConfirmed
 	}
 
 	sql = `SELECT 
@@ -1416,7 +1414,7 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 		// Генерируем новый уникальный идентификатор
 		NewUserInfo.GUID = uuid.NewV4()
 
-		sql = `INSERT INTO secret.users (id, role, email, phone, name, isadmin, confirmed) VALUES ($1,$2,$3,$4,$5,$6);`
+		sql = `INSERT INTO secret.users (id, role, email, phone, name, isadmin, confirmed) VALUES ($1,$2,$3,$4,$5,$6,$7);`
 
 		_, err = dbc.Exec(sql, NewUserInfo.GUID, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed)
 
