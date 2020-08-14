@@ -112,7 +112,7 @@ func InitialSettings(forcesetup bool) {
 		if ServerSettings.SMTP.Use {
 			var URI string
 
-			AskString("Укажите адрес вебсайта с портом (например: http://127.0.0.1:8080/): ", &URI)
+			AskString("Укажите адрес вебсайта с портом (например: http://127.0.0.1:8080): ", &URI)
 
 			messages.SendEmailConfirmationLetter(&ServerSettings.SQL, Email, URI)
 		}
