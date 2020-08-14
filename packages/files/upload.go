@@ -37,7 +37,13 @@ type FileUploadResponse struct {
 	Error    string
 }
 
-// UploadFile - обработчик для загрузки файлов
+// UploadFile - обработчик для загрузки файлов POST запросом
+//
+// POST
+//
+// 	ожидается параметр key с API ключом
+// 	тело запроса должно быть заполнено двоичными данными файла,
+//	переданными через поле формы image
 func UploadFile(w http.ResponseWriter, req *http.Request) {
 	// Проверяем API ключ
 	keys, ok := req.URL.Query()["key"]
