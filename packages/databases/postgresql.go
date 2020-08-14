@@ -30,6 +30,7 @@ var (
 	ErrEmailIsOccupied      = errors.New("Указанный адрес электронной почты уже занят")
 	ErrUserNotFound         = errors.New("В таблице пользователей не найден указанный id")
 	ErrEmailNotConfirmed    = errors.New("Подтвердите адрес электронной почты")
+	ErrTokenExpired         = errors.New("Токен истёк или не существует")
 )
 
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
@@ -1625,6 +1626,69 @@ func PostgreSQLSaveAccessToken(Token string, Email string) error {
 
 	}
 	return nil
+}
+
+// PostgreSQLGetTokenConfirmEmail - Ищем токен из запроса и устанавливаем у пользователя подтверждение если он существует
+func PostgreSQLGetTokenConfirmEmail(Token string) error {
+
+	sql := `SELECT 
+				COUNT(*) 
+			FROM 
+				secret.confirmations 
+			WHERE 
+				token=$1 
+				AND "Expires" >= now()
+			LIMIT 1;`
+
+	row := dbc.QueryRow(sql, Token)
+
+	var TokenCount int
+
+	err := row.Scan(&TokenCount)
+
+	if err != nil {
+		return err
+	}
+
+	if TokenCount > 0 {
+
+		sql = `SELECT 
+					confirmations.user_id
+				FROM
+					secret.confirmations
+				WHERE
+					token=$1 
+					AND "Expires" >= now()
+				LIMIT 1;`
+
+		row := dbc.QueryRow(sql, Token)
+
+		var UID uuid.UUID
+
+		err := row.Scan(&UID)
+
+		if err != nil {
+			return err
+		}
+
+		dbc.Exec("BEGIN")
+
+		sql = "UPDATE secret.users SET confirmed=true WHERE id=$1;"
+
+		_, err = dbc.Exec(sql, UID)
+
+		if err != nil {
+			return PostgreSQLRollbackIfError(err, false)
+		}
+
+		dbc.Exec("COMMIT")
+
+	} else {
+		return ErrTokenExpired
+	}
+
+	return nil
+
 }
 
 // PostgreSQLShoppingListDeleteAll - удаляет все записи из списка покупок

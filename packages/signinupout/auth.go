@@ -217,7 +217,55 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 
 // ConfirmEmail - подтверждение почты по ссылке
 func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
-	// TODO
+	keys, ok := req.URL.Query()["key"]
+
+	if !ok || len(keys[0]) < 1 {
+		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+		return
+	}
+
+	key := keys[0]
+
+	_, found := shared.FindInStringSlice(setup.APIkeys, key)
+
+	if found {
+		switch {
+		case req.Method == http.MethodGet:
+
+			Tokens, ok := req.URL.Query()["Token"]
+
+			if !ok || len(Tokens[0]) < 1 {
+				shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+				return
+			}
+
+			Token := Tokens[0]
+
+			// Авторизация под ролью пользователя
+			err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+
+			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				return
+			}
+			defer setup.ServerSettings.SQL.Disconnect()
+
+			// Если токен не протух и существует в базе записали подтверждение пользователя
+			err = databases.PostgreSQLGetTokenConfirmEmail(Token)
+
+			if err != nil {
+				if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+					return
+				}
+			}
+
+			http.Redirect(w, req, "/", http.StatusTemporaryRedirect)
+
+		default:
+			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		}
+	} else {
+		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
+	}
 }
 
 // HandleUsers - обработчик для работы с пользователями
