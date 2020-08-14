@@ -1251,7 +1251,7 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 }
 
 // PostgreSQLGetTokenForUser - получает токен для проверки при авторизации
-func PostgreSQLGetTokenForUser(email string) (string, string, error) {
+func PostgreSQLGetTokenForUser(email string, UseEmailConfirm bool) (string, string, error) {
 
 	var UserCount int
 	var UserID uuid.UUID
@@ -1294,12 +1294,14 @@ func PostgreSQLGetTokenForUser(email string) (string, string, error) {
 
 	err = UserIDRow.Scan(&UserID, &UserRole, &Confirmed)
 
-	if !Confirmed {
-		return "", "", ErrEmailNotConfirmed
-	}
-
 	if err != nil {
 		return "", "", err
+	}
+
+	if UseEmailConfirm {
+		if !Confirmed {
+			return "", "", ErrEmailNotConfirmed
+		}
 	}
 
 	sql = `SELECT 
@@ -1347,6 +1349,8 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 	} else {
 		NewUserInfo.IsAdmin = false
 	}
+
+	NewUserInfo.Confirmed = false
 
 	// Проверяем что почта уникальна
 	var EmailCount int
@@ -1414,9 +1418,9 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo UserDB, Hash string, UpdatePassword
 		// Генерируем новый уникальный идентификатор
 		NewUserInfo.GUID = uuid.NewV4()
 
-		sql = `INSERT INTO secret.users (id, role, email, phone, name, isadmin) VALUES ($1,$2,$3,$4,$5,$6);`
+		sql = `INSERT INTO secret.users (id, role, email, phone, name, isadmin, confirmed) VALUES ($1,$2,$3,$4,$5,$6);`
 
-		_, err = dbc.Exec(sql, NewUserInfo.GUID, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin)
+		_, err = dbc.Exec(sql, NewUserInfo.GUID, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed)
 
 		if err != nil {
 			return NewUserInfo, PostgreSQLRollbackIfError(err, false)

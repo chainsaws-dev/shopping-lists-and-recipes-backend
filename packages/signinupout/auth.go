@@ -215,6 +215,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 
 }
 
+// ConfirmEmail - подтверждение почты по ссылке
 func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 	// TODO
 }
@@ -476,7 +477,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 	ClientIP := GetIP(req)
 
 	// Получаем хеш из базы данных
-	strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email)
+	strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email, setup.ServerSettings.SMTP.Use)
 
 	if err != nil {
 		if shared.HandleOtherError(w, err.Error(), err, http.StatusTeapot) {

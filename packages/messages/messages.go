@@ -47,6 +47,7 @@ func SendEmail(Recepient []string, LetterBodyHTML string, LetterSubject string) 
 	if err := d.DialAndSend(m); err != nil {
 		log.Println(err)
 	}
+
 }
 
 // GetStringTemplate - получаем шаблон в виде строки
@@ -64,22 +65,25 @@ func GetStringTemplate(TemplateName string, ObjectToInsert string) string {
 // SendEmailConfirmationLetter - отправляет письмо с ссылкой для подтверждения электронной почты
 func SendEmailConfirmationLetter(Recepient string, ReqHost string) {
 
-	log.Printf("Отправляем пользователю %v письмо...", Recepient)
+	if SendCred.Use {
 
-	fn := sha1.New()
+		log.Printf("Отправляем пользователю %v письмо...", Recepient)
 
-	tokenb, err := authentication.GenerateRandomBytes(32)
+		fn := sha1.New()
 
-	if err != nil {
-		log.Fatal(err)
+		tokenb, err := authentication.GenerateRandomBytes(32)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		strtoken := fmt.Sprintf("%x", fn.Sum(tokenb))
+
+		prurl := fmt.Sprintf("%v/api/ConfirmEmail?Token=%v", ReqHost, url.PathEscape(strtoken))
+
+		SendEmail([]string{Recepient}, GetStringTemplate("EmailConfirm.gohtml", prurl), "Подтвердите электронную почту")
+
+		log.Printf("Отправили пользователю %v письмо", Recepient)
+
 	}
-
-	strtoken := fmt.Sprintf("%x", fn.Sum(tokenb))
-
-	prurl := fmt.Sprintf("%v/api/ConfirmEmail?Token=%v", ReqHost, url.PathEscape(strtoken))
-
-	SendEmail([]string{Recepient}, GetStringTemplate("EmailConfirm.gohtml", prurl), "Подтвердите электронную почту")
-
-	log.Printf("Отправили пользователю %v письмо", Recepient)
-
 }
