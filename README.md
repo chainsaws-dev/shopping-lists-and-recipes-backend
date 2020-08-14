@@ -15,7 +15,7 @@ Run this command to start documentation server on localhost:6060:
 
 `godoc -http=:6060` 
 
-Documentation on this server will be available [here](http://localhost:6060/pkg/github.com/chainsaws-dev/shopping-lists-and-recipes-backend/)
+Documentation on this server will be available [here](http://localhost:6060/pkg/shopping-lists-and-recipes/)
 
 ## Run
 To run project without compilation run the following:
