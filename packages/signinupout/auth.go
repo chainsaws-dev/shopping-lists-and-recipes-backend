@@ -346,6 +346,7 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 				}
 			}
 
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Электронная почта подтверждена")
 			fmt.Fprintln(w, resulttext)
