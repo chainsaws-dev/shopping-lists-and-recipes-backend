@@ -279,7 +279,7 @@ func formRightsArray(rule TRule) []string {
 
 // GeneratePassword - генерирует случайный пароль
 func GeneratePassword(passwordLength, minNum, minUpperCase int) string {
-
+	// TODO заменить говнокод на нормальную реализацию из пакета
 	var (
 		lowerCharSet = "abcdedfghijklmnopqrst"
 		upperCharSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
