@@ -2,12 +2,10 @@
 package settings
 
 import (
-	"crypto/rand"
 	"errors"
 	"log"
-	"math/big"
 	"shopping-lists-and-recipes/packages/databases"
-	"strings"
+	"shopping-lists-and-recipes/packages/randompassword"
 )
 
 // Список типовых ошибок
@@ -22,7 +20,7 @@ func (SQLsrv *SQLServer) AutoFillRoles() {
 		Name:    "guest_role_read_only",
 		Desc:    "Гостевая роль",
 		Login:   "recipes_guest",
-		Pass:    GeneratePassword(20, 5, 5),
+		Pass:    randompassword.NewRandomPassword(20),
 		TRules:  GetTRulesForGuest(),
 		Default: true,
 		Admin:   false,
@@ -32,7 +30,7 @@ func (SQLsrv *SQLServer) AutoFillRoles() {
 		Name:    "admin_role_CRUD",
 		Desc:    "Администратор",
 		Login:   "recipes_admin",
-		Pass:    GeneratePassword(20, 5, 5),
+		Pass:    randompassword.NewRandomPassword(20),
 		TRules:  GetTRulesForAdmin(),
 		Default: false,
 		Admin:   true,
@@ -275,38 +273,4 @@ func formRightsArray(rule TRule) []string {
 	}
 
 	return result
-}
-
-// GeneratePassword - генерирует случайный пароль
-func GeneratePassword(passwordLength, minNum, minUpperCase int) string {
-	// TODO заменить говнокод на нормальную реализацию из пакета
-	var (
-		lowerCharSet = "abcdedfghijklmnopqrst"
-		upperCharSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		numberSet    = "0123456789"
-		allCharSet   = lowerCharSet + upperCharSet + numberSet
-	)
-
-	var password strings.Builder
-
-	//Set numeric
-	for i := 0; i < minNum; i++ {
-		random, _ := rand.Int(rand.Reader, big.NewInt(int64(len(numberSet))))
-		password.WriteString(string(numberSet[random.Int64()]))
-	}
-
-	//Set uppercase
-	for i := 0; i < minUpperCase; i++ {
-		random, _ := rand.Int(rand.Reader, big.NewInt(int64(len(upperCharSet))))
-		password.WriteString(string(upperCharSet[random.Int64()]))
-	}
-
-	//Set lowercase
-	remainingLength := passwordLength - minNum - minUpperCase
-	for i := 0; i < remainingLength; i++ {
-		random, _ := rand.Int(rand.Reader, big.NewInt(int64(len(lowerCharSet))))
-		password.WriteString(string(allCharSet[random.Int64()]))
-	}
-
-	return password.String()
 }
