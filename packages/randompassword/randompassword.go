@@ -36,7 +36,7 @@ func (CharacterRange *Int64NumberRange) GenerateRandomChar(password *strings.Bui
 
 }
 
-// NewRandomPassword - создаёт новый случайный пароль длинны 30 символов
+// NewRandomPassword - создаёт новый случайный пароль заданной длины
 func NewRandomPassword(PasswordLen int) string {
 
 	var password strings.Builder
@@ -47,6 +47,8 @@ func NewRandomPassword(PasswordLen int) string {
 }
 
 // GenerateRandomPassword - генерируем рандомное число и выбираем из ASCII таблицы символ
+// при этом сначала генерируется случайное число от 0 до 2 и потом для чисел или букв в построитель
+// строки добавляется символ ASCII
 func GenerateRandomPassword(password *strings.Builder, PasswordLen int) {
 
 	for i := 0; i < PasswordLen; i++ {
