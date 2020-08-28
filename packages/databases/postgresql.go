@@ -345,6 +345,34 @@ func PostgreSQLCreateTables() {
 
 	log.Println("Создали таблицу confirmations")
 
+	sql = `CREATE TABLE secret.password_resets
+			(
+				user_id uuid,
+				token character varying(200) COLLATE pg_catalog."default" NOT NULL,
+				"Created" timestamp with time zone NOT NULL,
+				"Expires" timestamp with time zone NOT NULL,
+				CONSTRAINT password_resets_user_id_fkey FOREIGN KEY (user_id)
+					REFERENCES secret.users (id) MATCH FULL
+					ON UPDATE NO ACTION
+					ON DELETE RESTRICT
+			)
+			
+			TABLESPACE pg_default;
+
+			ALTER TABLE secret.password_resets
+				OWNER to postgres;
+
+			CREATE INDEX fki_password_resets_user_id_fkey
+				ON secret.password_resets USING btree
+				(user_id ASC NULLS LAST)
+				TABLESPACE pg_default;`
+
+	_, err = dbc.Exec(sql)
+
+	PostgreSQLRollbackIfError(err, true)
+
+	log.Println("Создали таблицу password_resets")
+
 	dbc.Exec("COMMIT")
 
 	log.Println("Таблицы созданы")
