@@ -70,6 +70,7 @@ func main() {
 	http.HandleFunc("/admin/", RedirectToIndex)
 	http.HandleFunc("/auth/", RedirectToIndex)
 	http.HandleFunc("/confirm-email/", RedirectToIndex)
+	http.HandleFunc("/reset-password/", RedirectToIndex)
 
 	// REST API
 	http.HandleFunc("/api/Recipes", recipes.HandleRecipes)
@@ -81,6 +82,8 @@ func main() {
 	http.HandleFunc("/api/Users", signinupout.HandleUsers)
 	http.HandleFunc("/api/ConfirmEmail", signinupout.ConfirmEmail)
 	http.HandleFunc("/api/ConfirmEmail/Send", signinupout.ResendEmail)
+	http.HandleFunc("/api/PasswordReset", signinupout.ResetPassword)
+	http.HandleFunc("/api/PasswordReset/Send", signinupout.RequestResetEmail)
 
 	if cleantokens {
 		go signinupout.RegularConfirmTokensCleanup()

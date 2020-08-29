@@ -360,6 +360,152 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// RequestResetEmail - отправляет письмо со ссылкой для сброса пароля
+//
+// POST
+//
+// 	ожидается параметр key с API ключом
+// 	ожидается заголовок Email с электронной почтой
+func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
+	keys, ok := req.URL.Query()["key"]
+
+	if !ok || len(keys[0]) < 1 {
+		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+		return
+	}
+
+	key := keys[0]
+
+	_, found := shared.FindInStringSlice(setup.APIkeys, key)
+
+	if found {
+		switch {
+		case req.Method == http.MethodPost:
+
+			Email := req.Header.Get("Email")
+
+			if len(Email) > 0 {
+
+				re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+				if !re.MatchString(Email) {
+					shared.HandleOtherError(w, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+					return
+				}
+
+				// Авторизация под ролью пользователя
+				err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+
+				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+					return
+				}
+				defer setup.ServerSettings.SQL.Disconnect()
+
+				mailexist, err := databases.PostgreSQLCheckUserMailExists(Email)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				if mailexist {
+					messages.SendEmailPasswordReset(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host)
+
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Письмо отправлено")
+					fmt.Fprintln(w, resulttext)
+				} else {
+					shared.HandleOtherError(w, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
+				}
+
+			} else {
+				shared.HandleOtherError(w, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
+			}
+
+		default:
+			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		}
+	} else {
+		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
+	}
+}
+
+// ResetPassword - сбрасывает пароль для заданного пользователя
+//
+// POST
+//
+// 	ожидается параметр key с API ключом
+//	ожидается заголовок Token с токеном для доступа
+//  ожидается заголовок NewPassword c новым паролем
+func ResetPassword(w http.ResponseWriter, req *http.Request) {
+	keys, ok := req.URL.Query()["key"]
+
+	if !ok || len(keys[0]) < 1 {
+		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
+		return
+	}
+
+	key := keys[0]
+
+	_, found := shared.FindInStringSlice(setup.APIkeys, key)
+
+	if found {
+		switch {
+		case req.Method == http.MethodPost:
+
+			Token := req.Header.Get("Token")
+
+			Token, err := url.QueryUnescape(Token)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
+			// Разбираем и декодируем зашифрованный base64 пароль
+			NewPassword := req.Header.Get("NewPassword")
+			resbytepas, err := base64.StdEncoding.DecodeString(NewPassword)
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+			NewPassword = string(resbytepas)
+			NewPassword, err = url.QueryUnescape(NewPassword)
+
+			// Авторизация под ролью пользователя
+			err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+
+			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				return
+			}
+			defer setup.ServerSettings.SQL.Disconnect()
+
+			Hash, err := authentication.Argon2GenerateHash(NewPassword, &authentication.HashParams)
+
+			if shared.HandleOtherError(w, "Ошибка при расчете хеша", err, http.StatusInternalServerError) {
+				return
+			}
+
+			// Если токен не протух и существует в базе обновляем пароль пользователя
+			err = databases.PostgreSQLGetTokenResetPassword(Token, Hash)
+
+			if err != nil {
+				if shared.HandleOtherError(w, err.Error(), err, http.StatusUnauthorized) {
+					return
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Пароль обновлён.")
+			fmt.Fprintln(w, resulttext)
+
+		default:
+			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		}
+	} else {
+		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
+	}
+}
+
 // HandleUsers - обработчик для работы с пользователями, принимает http запросы GET, POST и DELETE
 //
 // GET

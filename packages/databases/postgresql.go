@@ -1616,7 +1616,7 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 }
 
 // PostgreSQLSaveAccessToken - сохраняем токен для подтверждения почты
-func PostgreSQLSaveAccessToken(Token string, Email string) error {
+func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string) error {
 
 	if len(Token) > 0 && len(Email) > 0 {
 
@@ -1648,7 +1648,7 @@ func PostgreSQLSaveAccessToken(Token string, Email string) error {
 
 			dbc.Exec("BEGIN")
 
-			sql = `DELETE FROM secret.confirmations WHERE user_id=$1;`
+			sql = fmt.Sprintf(`DELETE FROM %v WHERE user_id=$1;`, TokenTableName)
 
 			_, err = dbc.Exec(sql, CurUID)
 
@@ -1656,7 +1656,7 @@ func PostgreSQLSaveAccessToken(Token string, Email string) error {
 				return PostgreSQLRollbackIfError(err, false)
 			}
 
-			sql = `INSERT INTO secret.confirmations (user_id, token, "Created", "Expires") VALUES ($1,$2,$3,$4);`
+			sql = fmt.Sprintf(`INSERT INTO %v (user_id, token, "Created", "Expires") VALUES ($1,$2,$3,$4);`, TokenTableName)
 
 			cd := time.Now()
 
@@ -1684,7 +1684,25 @@ func PostgreSQLCleanAccessTokens() error {
 		return PostgreSQLRollbackIfError(err, false)
 	}
 
+	_, err = dbc.Exec(`DELETE FROM secret.password_resets WHERE "Expires" < now();`)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
 	dbc.Exec("COMMIT")
+
+	return nil
+}
+
+// PostgreSQLCleanAccessToken - Удаляет заданный токен доступа
+func PostgreSQLCleanAccessToken(Token string, TokenStorageTableName string) error {
+
+	_, err := dbc.Exec(fmt.Sprintf(`DELETE FROM %v WHERE token=$1;`, TokenStorageTableName), Token)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
 
 	return nil
 }
@@ -1737,6 +1755,86 @@ func PostgreSQLGetTokenConfirmEmail(Token string) error {
 		sql = "UPDATE secret.users SET confirmed=true WHERE id=$1;"
 
 		_, err = dbc.Exec(sql, UID)
+
+		if err != nil {
+			return PostgreSQLRollbackIfError(err, false)
+		}
+
+		err = PostgreSQLCleanAccessToken(Token, "secret.confirmations")
+
+		if err != nil {
+			return PostgreSQLRollbackIfError(err, false)
+		}
+
+		dbc.Exec("COMMIT")
+
+	} else {
+		return ErrTokenExpired
+	}
+
+	return nil
+
+}
+
+// PostgreSQLGetTokenResetPassword - ищем токен среди выданных и не протухших и обновляем хеш пароля для пользователя
+func PostgreSQLGetTokenResetPassword(Token string, Hash string) error {
+
+	sql := `SELECT 
+				COUNT(*) 
+			FROM 
+				secret.password_resets 
+			WHERE 
+				token=$1 
+				AND "Expires" >= now()
+			LIMIT 1;`
+
+	row := dbc.QueryRow(sql, Token)
+
+	var TokenCount int
+
+	err := row.Scan(&TokenCount)
+
+	if err != nil {
+		return err
+	}
+
+	if TokenCount > 0 {
+
+		sql = `SELECT 
+					password_resets.user_id
+				FROM
+					secret.password_resets
+				WHERE
+					token=$1 
+					AND "Expires" >= now()
+				LIMIT 1;`
+
+		row := dbc.QueryRow(sql, Token)
+
+		var UID uuid.UUID
+
+		err := row.Scan(&UID)
+
+		if err != nil {
+			return err
+		}
+
+		dbc.Exec("BEGIN")
+
+		if len(Hash) > 0 {
+
+			sql = `UPDATE secret.hashes SET value=$2 WHERE user_id=$1;`
+
+			_, err = dbc.Exec(sql, UID, Hash)
+
+			if err != nil {
+				return PostgreSQLRollbackIfError(err, false)
+			}
+		} else {
+			return PostgreSQLRollbackIfError(ErrEmptyPassword, false)
+		}
+
+		err = PostgreSQLCleanAccessToken(Token, "secret.password_resets")
 
 		if err != nil {
 			return PostgreSQLRollbackIfError(err, false)
