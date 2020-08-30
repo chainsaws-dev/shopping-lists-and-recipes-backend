@@ -81,17 +81,10 @@ func main() {
 	http.HandleFunc("/api/Accounts/SignIn", signinupout.SignIn)
 	http.HandleFunc("/api/Users", signinupout.HandleUsers)
 
-	if setup.ServerSettings.SMTP.Use {
-		http.HandleFunc("/api/ConfirmEmail", signinupout.ConfirmEmail)
-		http.HandleFunc("/api/ConfirmEmail/Send", signinupout.ResendEmail)
-		http.HandleFunc("/api/PasswordReset", signinupout.ResetPassword)
-		http.HandleFunc("/api/PasswordReset/Send", signinupout.RequestResetEmail)
-	} else {
-		http.HandleFunc("/api/ConfirmEmail", RedirectToIndex)
-		http.HandleFunc("/api/ConfirmEmail/Send", RedirectToIndex)
-		http.HandleFunc("/api/PasswordReset", RedirectToIndex)
-		http.HandleFunc("/api/PasswordReset/Send", RedirectToIndex)
-	}
+	http.HandleFunc("/api/ConfirmEmail", signinupout.ConfirmEmail)
+	http.HandleFunc("/api/ConfirmEmail/Send", signinupout.ResendEmail)
+	http.HandleFunc("/api/PasswordReset", signinupout.ResetPassword)
+	http.HandleFunc("/api/PasswordReset/Send", signinupout.RequestResetEmail)
 
 	if cleantokens {
 		go signinupout.RegularConfirmTokensCleanup()
