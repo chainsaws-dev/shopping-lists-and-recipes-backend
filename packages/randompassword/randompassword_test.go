@@ -135,7 +135,7 @@ func TestInt64NumberRange_GenerateRandomChar(t *testing.T) {
 			got := len(reschar)
 
 			if got != tt.want {
-				t.Errorf("Int64NumberRange.GetNumberDiff() = %v, want %v", got, tt.want)
+				t.Errorf("Int64NumberRange.GenerateRandomChar() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -201,7 +201,7 @@ func TestGenerateRandomPassword(t *testing.T) {
 			got := len(reschar)
 
 			if got != tt.want {
-				t.Errorf("Int64NumberRange.GetNumberDiff() = %v, want %v", got, tt.want)
+				t.Errorf("GenerateRandomPassword() = %v, want %v", got, tt.want)
 			}
 		})
 	}
