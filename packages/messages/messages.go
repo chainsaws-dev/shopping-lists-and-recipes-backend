@@ -46,14 +46,16 @@ func SendEmail(Recepients []string, LetterBodyHTML string, LetterSubject string)
 
 	d.StartTLSPolicy = send.MandatoryStartTLS
 
-	if err := d.DialAndSend(m); err != nil {
+	err := d.DialAndSend(m)
+
+	if err != nil {
+		log.Println("Письмо не отправлено")
 		log.Println(err)
+	} else {
+		for _, OneRec := range Recepients {
+			log.Printf("Отправили пользователю %v письмо", OneRec)
+		}
 	}
-
-	for _, OneRec := range Recepients {
-		log.Printf("Отправили пользователю %v письмо", OneRec)
-	}
-
 }
 
 // GetStringTemplate - получаем шаблон в виде строки

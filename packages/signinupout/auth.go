@@ -214,11 +214,11 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			// Отправляем письмо-подтверждение
-			messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, SignUpRequest.Email, shared.CurrentPrefix+req.Host)
-
 			// Авторизация пользователя
 			secretauth(w, req, ConvertToSignInRequest(SignUpRequest))
+
+			// Отправляем письмо-подтверждение
+			messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, SignUpRequest.Email, shared.CurrentPrefix+req.Host)
 
 		default:
 			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
