@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/lib/pq" // Драйвер PostgreSQL
+
 	uuid "github.com/satori/go.uuid"
 )
 

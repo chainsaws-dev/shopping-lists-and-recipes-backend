@@ -13,8 +13,6 @@ import (
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/shoppinglist"
 	"shopping-lists-and-recipes/packages/signinupout"
-
-	_ "github.com/lib/pq" // Драйвер PostgreSQL
 )
 
 // main - главная точка входа в программу
