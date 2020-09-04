@@ -10,7 +10,8 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrRoleNotFound = errors.New("Роль с указанным именем не найдена")
+	ErrRoleNotFound         = errors.New("Роль с указанным именем не найдена")
+	ErrDatabaseNotSupported = errors.New("Не реализована поддержка базы данных")
 )
 
 // AutoFillRoles - автозаполняет список ролей для SQL сервера
@@ -240,13 +241,19 @@ func (SQLsrv *SQLServer) Connect(RoleName string) error {
 		return err
 	}
 
-	return databases.PostgreSQLConnect(
-		databases.PostgreSQLGetConnString(
-			ActiveRole.Login,
-			ActiveRole.Pass,
-			SQLsrv.Addr,
-			SQLsrv.DbName,
-			false))
+	switch {
+	case SQLsrv.Type == "PostgreSQL":
+
+		return databases.PostgreSQLConnect(
+			databases.PostgreSQLGetConnString(
+				ActiveRole.Login,
+				ActiveRole.Pass,
+				SQLsrv.Addr,
+				SQLsrv.DbName,
+				false))
+	default:
+		return ErrDatabaseNotSupported
+	}
 }
 
 // FindRoleInRoles - Ищем роль в списке ролей по имени
@@ -257,11 +264,6 @@ func FindRoleInRoles(RoleName string, Roles SQLRoles) (SQLRole, error) {
 		}
 	}
 	return SQLRole{}, ErrRoleNotFound
-}
-
-// Disconnect - Разрываем соединение с базой данных
-func (SQLsrv *SQLServer) Disconnect() {
-	databases.PostgreSQLCloseConn()
 }
 
 // formRightsArray - формирует массив прав для таблицы
@@ -289,4 +291,14 @@ func formRightsArray(rule TRule) []string {
 	}
 
 	return result
+}
+
+// Disconnect - Разрываем соединение с базой данных
+func (SQLsrv *SQLServer) Disconnect() {
+	switch {
+	case SQLsrv.Type == "PostgreSQL":
+		databases.PostgreSQLCloseConn()
+	default:
+		log.Fatalln(ErrDatabaseNotSupported)
+	}
 }
