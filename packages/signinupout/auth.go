@@ -204,7 +204,8 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 			err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password, setup.ServerSettings.SMTP.Use)
 
 			if err != nil {
-				if err.Error() == "Указанный адрес электронной почты уже занят" {
+
+				if errors.Is(err, databases.ErrEmailIsOccupied) {
 					shared.HandleOtherError(w, "Указанный адрес электронной почты уже занят", err, http.StatusInternalServerError)
 					return
 				}
@@ -675,7 +676,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					User, err = databases.PostgreSQLUsersInsertUpdate(User, Hash, UpdatePassword, true)
 
 					if err != nil {
-						if err.Error() == "Указанный адрес электронной почты уже занят" {
+						if errors.Is(err, databases.ErrEmailIsOccupied) {
 							shared.HandleOtherError(w, "Указанный адрес электронной почты уже занят", err, http.StatusInternalServerError)
 							return
 						}
@@ -731,7 +732,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 						err = databases.PostgreSQLUsersDelete(UserID)
 
 						if err != nil {
-							if err.Error() == "В таблице пользователей не найден указанный id" {
+							if errors.Is(err, databases.ErrUserNotFound) {
 								shared.HandleOtherError(w, "Пользователь не найден, невозможно удалить", err, http.StatusBadRequest)
 								return
 							}

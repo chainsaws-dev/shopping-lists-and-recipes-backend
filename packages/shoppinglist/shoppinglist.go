@@ -172,8 +172,8 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 						err = databases.PostgreSQLShoppingListDelete(IngName)
 
 						if err != nil {
-							if err.Error() == "Не найдено ни одной записи в списке покупок с указанным названием" {
-								shared.HandleOtherError(w, "Shopping list item not found and cannot be deleted", err, http.StatusBadRequest)
+							if errors.Is(err, databases.ErrShoppingListNotFound) {
+								shared.HandleOtherError(w, "Не найдено ни одной записи в списке покупок с указанным названием", err, http.StatusBadRequest)
 								return
 							}
 						}
