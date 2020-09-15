@@ -188,7 +188,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 						err = databases.PostgreSQLRecipesDelete(RecipeID)
 
 						if err != nil {
-							if err.Error() == "В таблице рецептов не найден указанный id" {
+							if errors.Is(err, databases.ErrRecipeNotFound) {
 								shared.HandleOtherError(w, "Рецепт не найден, невозможно удалить", err, http.StatusBadRequest)
 								return
 							}
