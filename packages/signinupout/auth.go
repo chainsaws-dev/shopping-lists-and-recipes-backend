@@ -641,6 +641,12 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 						UpdatePassword = true
 					}
+
+					if len(NewPassword) == 0 && uuid.Equal(uuid.Nil, User.GUID) {
+						shared.HandleOtherError(w, "Пароль нового пользователя должен быть задан", ErrPasswordTooShort, http.StatusBadRequest)
+						return
+					}
+
 					// Получаем обновлённого юзера (если новый с GUID)
 					User, err = databases.PostgreSQLUsersInsertUpdate(User, Hash, UpdatePassword, true)
 
