@@ -1,9 +1,42 @@
 package databases
 
 import (
+	"database/sql"
+	"errors"
+	"fmt"
 	"log"
 	"shopping-lists-and-recipes/packages/shared"
 )
+
+// Список типовых ошибок
+var (
+	ErrFirstNotDelete       = errors.New("Первая запись в списке файлов техническая и не подлежит удалению")
+	ErrRecipeNotFound       = errors.New("В таблице рецептов не найден указанный id")
+	ErrShoppingListNotFound = errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
+	ErrEmptyPassword        = errors.New("Не допустимо использование паролей с длинной менее шести символов")
+	ErrNoUserWithEmail      = errors.New("Электронная почта не найдена")
+	ErrNoHashForUser        = errors.New("Хеш пароля не найден")
+	ErrEmailIsOccupied      = errors.New("Указанный адрес электронной почты уже занят")
+	ErrUserNotFound         = errors.New("В таблице пользователей не найден указанный id")
+	ErrEmailNotConfirmed    = errors.New("Подтвердите адрес электронной почты")
+	ErrTokenExpired         = errors.New("Токен истёк или не существует")
+	ErrLimitOffsetInvalid   = errors.New("Limit и Offset приняли недопустимое значение")
+)
+
+var dbc *sql.DB
+
+// PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
+// При начальной настройке строка возвращается без базы данных (она создаётся в процессе)
+// При начальной настройке указывается пароль суперпользователя при штатной работе пароль соответствуещей роли
+func PostgreSQLGetConnString(Login string, Password string, Addr string, DbName string, initialsetup bool) string {
+
+	if initialsetup {
+		return fmt.Sprintf("postgres://%v:%v@%v/", Login, Password, Addr)
+	}
+
+	return fmt.Sprintf("postgres://%v:%v@%v/%v", Login, Password, Addr, DbName)
+
+}
 
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
 func PostgreSQLRollbackIfError(err error, critical bool) error {
