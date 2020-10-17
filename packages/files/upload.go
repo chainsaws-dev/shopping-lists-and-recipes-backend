@@ -3,7 +3,6 @@ package files
 
 import (
 	"crypto/sha1"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -115,6 +114,8 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 
 						filename := fmt.Sprintf("%x", fn.Sum(nil)) + "." + ext
 
+						filename = strings.Join([]string{"uploads", filename}, "/")
+
 						path := filepath.Join(".", "public", "uploads", filename)
 
 						nf, err := os.Create(path)
@@ -165,14 +166,8 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 						}
 					}
 
-					js, err := json.Marshal(furesp)
+					shared.WriteObjectToJSON(w, furesp)
 
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					w.Header().Set("Content-Type", "application/json")
-					w.Write(js)
 				} else {
 					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 				}
