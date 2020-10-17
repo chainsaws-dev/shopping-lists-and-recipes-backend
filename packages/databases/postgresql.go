@@ -33,6 +33,7 @@ var (
 	ErrUserNotFound         = errors.New("В таблице пользователей не найден указанный id")
 	ErrEmailNotConfirmed    = errors.New("Подтвердите адрес электронной почты")
 	ErrTokenExpired         = errors.New("Токен истёк или не существует")
+	ErrLimitOffsetInvalid   = errors.New("Limit и Offset приняли недопустимое значение")
 )
 
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
@@ -567,14 +568,21 @@ func PostgreSQLFileDelete(fileid int) error {
 }
 
 // PostgreSQLFilesSelect - получает информацию о файлах
-func PostgreSQLFilesSelect(offset int, limit int) (FilesResponse, error) {
+//
+// Параметры:
+//
+// page - номер страницы результата для вывода
+// limit - количество строк на странице
+//
+func PostgreSQLFilesSelect(page int, limit int) (FilesResponse, error) {
 
 	var result FilesResponse
+	result.Files = FilesList{}
 
 	sql := `SELECT 
 				COUNT(*)
 			FROM 
-				public."Files"`
+				"references".files;`
 
 	row := dbc.QueryRow(sql)
 
@@ -586,29 +594,25 @@ func PostgreSQLFilesSelect(offset int, limit int) (FilesResponse, error) {
 		return result, err
 	}
 
-	if offset > 0 && limit > 0 {
+	if countRows <= 0 {
+		return result, nil
+	}
+
+	offset := int(math.RoundToEven(float64((page - 1) * limit)))
+
+	if PostgreSQLCheckLimitOffset(limit, offset) {
 		sql = fmt.Sprintf(`SELECT 
-							"Files".id,
-							"Files".filename,
-							"Files".filesize,
-							"Files".filetype,
-							"Files".file_id
+							files.id,
+							files.filename,
+							files.filesize,
+							files.filetype,
+							files.file_id
 						FROM 
-							public."Files"
-						ORDER BY "Files".id
-						OFFSET %v LIMIT %v`, offset, limit)
+							"references".files
+						ORDER BY files.id
+						OFFSET %v LIMIT %v;`, offset, limit)
 	} else {
-		offset = 0
-		limit = 0
-		sql = fmt.Sprintln(`SELECT 
-							"Files".id,
-							"Files".filename,
-							"Files".filesize,
-							"Files".filetype,
-							"Files".file_id
-						FROM 
-							public."Files"
-						ORDER BY "Files".id`)
+		return result, ErrLimitOffsetInvalid
 	}
 
 	rows, err := dbc.Query(sql)
@@ -618,8 +622,13 @@ func PostgreSQLFilesSelect(offset int, limit int) (FilesResponse, error) {
 	}
 
 	for rows.Next() {
-		var cur FileDB
-		rows.Scan(&cur.ID, &cur.Filename, &cur.Filesize, &cur.Filetype, &cur.FileID)
+		var cur File
+		err = rows.Scan(&cur.ID, &cur.Filename, &cur.Filesize, &cur.Filetype, &cur.FileID)
+		if err != nil {
+			return result, err
+		}
+
+		cur.FileID = strings.Join([]string{"", "uploads", cur.FileID}, "/")
 		result.Files = append(result.Files, cur)
 	}
 
@@ -653,7 +662,7 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 
 	offset := int(math.RoundToEven(float64((page - 1) * limit)))
 
-	if offset >= 0 && limit > 0 {
+	if PostgreSQLCheckLimitOffset(limit, offset) {
 
 		sql = fmt.Sprintf(`SELECT 
 							"Recipes".id, 
@@ -670,21 +679,9 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 						OFFSET %v LIMIT %v`, offset, limit)
 
 	} else {
-		offset = 0
-		limit = 0
-		sql = fmt.Sprintln(`SELECT 
-							"Recipes".id, 
-							"Recipes".name, 
-							"Recipes".description,
-							"Recipes".image_id,
-							"Files".file_id	
-						FROM 
-							public."Recipes"
-							LEFT JOIN 
-							public."Files"
-							ON "Recipes".image_id="Files".id
-						ORDER BY "Recipes".id`)
+		return result, ErrLimitOffsetInvalid
 	}
+
 	rows, err := dbc.Query(sql)
 
 	if err != nil {
@@ -768,7 +765,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesR
 
 	offset := int(math.RoundToEven(float64((page - 1) * limit)))
 
-	if offset >= 0 && limit > 0 {
+	if PostgreSQLCheckLimitOffset(limit, offset) {
 
 		sql = fmt.Sprintf(`SELECT 
 							"Recipes".id, 
@@ -788,24 +785,9 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesR
 						OFFSET %v LIMIT %v`, offset, limit)
 
 	} else {
-		offset = 0
-		limit = 0
-		sql = fmt.Sprintln(`SELECT 
-							"Recipes".id, 
-							"Recipes".name, 
-							"Recipes".description,
-							"Recipes".image_id,
-							"Files".file_id	
-						FROM 
-							public."Recipes"
-							LEFT JOIN 
-							public."Files"
-							ON "Recipes".image_id="Files".id
-						WHERE 
-							"Recipes".name LIKE $1
-							OR "Recipes".description LIKE $1
-						ORDER BY "Recipes".id`)
+		return result, ErrLimitOffsetInvalid
 	}
+
 	rows, err := dbc.Query(sql, search)
 
 	if err != nil {
@@ -1054,7 +1036,8 @@ func PostgreSQLShoppingListSelect(page int, limit int) (ShoppingListResponse, er
 
 	offset := int(math.RoundToEven(float64((page - 1) * limit)))
 
-	if offset >= 0 && limit > 0 {
+	if PostgreSQLCheckLimitOffset(limit, offset) {
+
 		sql = fmt.Sprintf(`SELECT 
 								"Ingredients"."name",
 								"ShoppingList".quantity 
@@ -1066,19 +1049,9 @@ func PostgreSQLShoppingListSelect(page int, limit int) (ShoppingListResponse, er
 							ORDER BY
 								"Ingredients"."name"							
 							OFFSET %v LIMIT %v;`, offset, limit)
+
 	} else {
-		offset = 0
-		limit = 0
-		sql = fmt.Sprintln(`SELECT 
-								"Ingredients"."name",
-								"ShoppingList".quantity 
-							FROM 
-								public."ShoppingList"
-								LEFT JOIN
-								public."Ingredients"
-								ON "ShoppingList".ingredient_id = "Ingredients".id
-							ORDER BY
-								"Ingredients"."name"`)
+		return result, ErrLimitOffsetInvalid
 	}
 
 	rows, err := dbc.Query(sql)
@@ -1396,7 +1369,7 @@ func PostgreSQLGetTokenForUser(email string) (string, string, error) {
 }
 
 // PostgreSQLUsersInsertUpdate - создаёт или обновляет существующего пользователя
-func PostgreSQLUsersInsertUpdate(NewUserInfo UserDB, Hash string, UpdatePassword bool, OverWrite bool) (UserDB, error) {
+func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword bool, OverWrite bool) (User, error) {
 
 	if NewUserInfo.Role == "admin_role_CRUD" {
 		NewUserInfo.IsAdmin = true
@@ -1547,7 +1520,7 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 
 	var result UsersResponse
-	result.Users = UsersDB{}
+	result.Users = Users{}
 
 	sql := `SELECT 
 				COUNT(*) 
@@ -1566,7 +1539,7 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 
 	offset := int(math.RoundToEven(float64((page - 1) * limit)))
 
-	if offset >= 0 && limit > 0 {
+	if PostgreSQLCheckLimitOffset(limit, offset) {
 
 		sql = fmt.Sprintf(`SELECT 
 								users.id,
@@ -1583,21 +1556,9 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 							OFFSET %v LIMIT %v`, offset, limit)
 
 	} else {
-		offset = 0
-		limit = 0
-		sql = fmt.Sprintln(`SELECT 
-								users.id,
-								users.role,
-								users.email,
-								users.phone,
-								users.name,
-								users.isadmin,
-								users.confirmed
-							FROM 
-								secret.users
-							ORDER BY 
-								email`)
+		return result, ErrLimitOffsetInvalid
 	}
+
 	rows, err := dbc.Query(sql)
 
 	if err != nil {
@@ -1605,7 +1566,7 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 	}
 
 	for rows.Next() {
-		var cur UserDB
+		var cur User
 		rows.Scan(&cur.GUID, &cur.Role, &cur.Email, &cur.Phone, &cur.Name, &cur.IsAdmin, &cur.Confirmed)
 		result.Users = append(result.Users, cur)
 	}
@@ -1890,37 +1851,4 @@ func PostgreSQLShoppingListDeleteAll() error {
 	dbc.Exec("COMMIT")
 
 	return nil
-}
-
-// PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
-func PostgreSQLRollbackIfError(err error, critical bool) error {
-	if err != nil {
-		dbc.Exec("ROLLBACK")
-
-		if critical {
-			log.Fatalln(err)
-		} else {
-			log.Println(err)
-		}
-
-		return err
-	}
-
-	return nil
-}
-
-// PostgreSQLCloseConn - закрываем соединение с базой данных
-func PostgreSQLCloseConn() {
-	dbc.Close()
-}
-
-// PostgreSQLConnect - подключаемся к базе данных
-func PostgreSQLConnect(ConnString string) error {
-
-	var err error
-
-	dbc, err = shared.SQLConnect("postgres", ConnString)
-
-	return err
-
 }

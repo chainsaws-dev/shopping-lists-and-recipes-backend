@@ -39,32 +39,43 @@ type FileUploadResponse struct {
 
 // UploadFile - обработчик для загрузки файлов POST запросом
 //
+// Аутентификация
+//
+//  Куки
+//  Session - шифрованная сессия
+//	Email - шифрованный электронный адрес пользователя
+//
+//  или
+//
+//	Заголовки:
+//  Auth - Токен доступа
+//
+//	и
+//
+//	ApiKey - Постоянный ключ доступа к API *
+//
 // POST
 //
-// 	ожидается параметр key с API ключом
 // 	тело запроса должно быть заполнено двоичными данными файла,
 //	переданными через поле формы image
 func UploadFile(w http.ResponseWriter, req *http.Request) {
 	// Проверяем API ключ
-	keys, ok := req.URL.Query()["key"]
+	found, err := signinupout.CheckAPIKey(w, req)
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
 	if found {
 		// Проверка токена и получение роли
-		issued, role := signinupout.CheckTokenIssued(*req)
+		issued, role := signinupout.TwoWayAuthentication(w, req)
 
 		if issued {
 			if req.Method == http.MethodPost {
 
-				if role == "admin_role_CRUD" {
+				if setup.ServerSettings.CheckRoleForChange(role, "UploadFile") {
 
 					log.Println("Начинаем получение файла...")
 					var furesp FileUploadResponse

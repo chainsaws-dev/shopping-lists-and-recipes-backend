@@ -3,13 +3,24 @@ package shared
 
 import (
 	"database/sql"
-	"fmt"
+	"encoding/json"
 	"log"
 	"net/http"
 )
 
 // CurrentPrefix - префикс URL
 var CurrentPrefix = ""
+
+// RequestResult - тип для хранения результата запроса
+type RequestResult struct {
+	Error ErrorResponse
+}
+
+// ErrorResponse - тип для хранения всяких ошибок и сообщений
+type ErrorResponse struct {
+	Code    int
+	Message string
+}
 
 // SQLConnect - соединиться с базой данных и выполнить команду
 // Не забываем в точке вызова defer db.Close()
@@ -43,10 +54,21 @@ func HandleInternalServerError(w http.ResponseWriter, err error) bool {
 
 	if err != nil {
 
-		errortext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusInternalServerError, "Internal server error")
-		ReturnJSONError(w, errortext, http.StatusInternalServerError)
-
 		log.Println(err)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		Response := RequestResult{
+			Error: ErrorResponse{
+				Code:    http.StatusInternalServerError,
+				Message: "Internal server error",
+			},
+		}
+
+		w.WriteHeader(Response.Error.Code)
+
+		WriteObjectToJSON(w, Response)
 
 		return true
 	}
@@ -54,14 +76,27 @@ func HandleInternalServerError(w http.ResponseWriter, err error) bool {
 	return false
 }
 
-// HandleForbiddenError - обработчик ошибок нарушения прав доступа
-func HandleForbiddenError(w http.ResponseWriter, err error) bool {
+// HandleBadRequestError - обработчик ошибки кривого запроса
+func HandleBadRequestError(w http.ResponseWriter, err error) bool {
 
 	if err != nil {
 
-		errortext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusForbidden, "Access forbidden")
-		ReturnJSONError(w, errortext, http.StatusInternalServerError)
 		log.Println(err)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		Response := RequestResult{
+			Error: ErrorResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Bad request",
+			},
+		}
+
+		w.WriteHeader(Response.Error.Code)
+
+		WriteObjectToJSON(w, Response)
+
 		return true
 	}
 
@@ -72,21 +107,43 @@ func HandleForbiddenError(w http.ResponseWriter, err error) bool {
 func HandleOtherError(w http.ResponseWriter, message string, err error, statuscode int) bool {
 
 	if err != nil {
-		errortext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, statuscode, message)
-		ReturnJSONError(w, errortext, statuscode)
+
 		log.Println(err)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		Response := RequestResult{
+			Error: ErrorResponse{
+				Code:    statuscode,
+				Message: message,
+			},
+		}
+
+		w.WriteHeader(Response.Error.Code)
+
+		WriteObjectToJSON(w, Response)
+
 		return true
 	}
 
 	return false
 }
 
-// ReturnJSONError - возвращает ошибку в виде JSON
-func ReturnJSONError(w http.ResponseWriter, err string, code int) {
+// HandleSuccessMessage - возвращает сообщение об успехе
+func HandleSuccessMessage(w http.ResponseWriter, message string) {
+
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(code)
-	fmt.Fprintln(w, err)
+
+	Response := RequestResult{
+		Error: ErrorResponse{
+			Code:    200,
+			Message: message,
+		},
+	}
+
+	WriteObjectToJSON(w, Response)
+
 }
 
 // FindInStringSlice - ищет в слайсе строк заданную строку
@@ -97,4 +154,22 @@ func FindInStringSlice(slice []string, val string) (int, bool) {
 		}
 	}
 	return -1, false
+}
+
+// WriteObjectToJSON - записывает в ответ произвольный объект
+func WriteObjectToJSON(w http.ResponseWriter, v interface{}) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	js, err := json.Marshal(v)
+
+	if HandleInternalServerError(w, err) {
+		return
+	}
+
+	_, err = w.Write(js)
+
+	if HandleInternalServerError(w, err) {
+		return
+	}
 }

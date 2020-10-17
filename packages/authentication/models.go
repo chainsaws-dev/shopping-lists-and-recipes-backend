@@ -39,6 +39,7 @@ type AuthSignUpRequestData struct {
 type ActiveToken struct {
 	Email     string
 	Token     string
+	Session   []byte
 	IssDate   time.Time
 	ExpDate   time.Time
 	Role      string

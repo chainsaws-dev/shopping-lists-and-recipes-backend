@@ -39,6 +39,7 @@ func main() {
 	runargs := os.Args
 	var forcesetup bool
 	var cleantokens bool
+	var createdb bool
 
 	if len(runargs) > 1 {
 		for _, runarg := range runargs {
@@ -49,12 +50,16 @@ func main() {
 			if runarg == "-clean" {
 				cleantokens = true
 			}
+
+			if runarg == "-makedb" {
+				createdb = true
+			}
 		}
 	}
 
 	// Проверяем и запускаем мастер настройки если нужно
 	// Иначе просто читаем данные из файла settings.json
-	setup.InitialSettings(forcesetup)
+	setup.InitialSettings(forcesetup, createdb)
 
 	// Устанавливаем пути, по которым будут происходить http запросы
 

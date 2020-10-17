@@ -33,8 +33,8 @@ type RecipesResponse struct {
 	Limit   int
 }
 
-// FileDB - тип для хранения информации о файле в базе данных
-type FileDB struct {
+// File - тип для хранения информации о файле в базе данных
+type File struct {
 	ID       int
 	Filename string
 	Filesize int
@@ -43,7 +43,7 @@ type FileDB struct {
 }
 
 // FilesList - тип для хранения списка файлов
-type FilesList []FileDB
+type FilesList []File
 
 // FilesResponse - тип для возврата с ответом,
 // описывающий список файлов для постраничной разбивки
@@ -63,8 +63,8 @@ type ShoppingListResponse struct {
 	Limit  int
 }
 
-// UserDB - тип для хранения данных о пользователе в базе данных
-type UserDB struct {
+// User - тип для хранения данных о пользователе в базе данных
+type User struct {
 	GUID      uuid.UUID
 	Role      string
 	Email     string
@@ -74,13 +74,13 @@ type UserDB struct {
 	Confirmed bool
 }
 
-// UsersDB - тип для хранения списка пользователей
-type UsersDB []UserDB
+// Users - тип для хранения списка пользователей
+type Users []User
 
 // UsersResponse  - тип для возврата с ответом,
 // описывающий список пользователей для постраничной разбивки
 type UsersResponse struct {
-	Users  UsersDB
+	Users  Users
 	Total  int
 	Offset int
 	Limit  int

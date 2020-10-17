@@ -302,3 +302,75 @@ func (SQLsrv *SQLServer) Disconnect() {
 		log.Fatalln(ErrDatabaseNotSupported)
 	}
 }
+
+// CheckRoleForRead - проверяет роль для разрешения доступа к разделу системы
+func (ss WServerSettings) CheckRoleForRead(RoleName string, AppPart string) bool {
+
+	switch {
+	case AppPart == "HandleRecipes":
+		return ss.CheckExistingRole(RoleName)
+	case AppPart == "HandleRecipesSearch":
+		return ss.CheckExistingRole(RoleName)
+	case AppPart == "HandleShoppingList":
+		return ss.CheckExistingRole(RoleName)
+	case AppPart == "UploadFile":
+		return ss.CheckExistingRole(RoleName)
+	case AppPart == "HandleUsers":
+		return checkAdmin(RoleName)
+	default:
+		return false
+	}
+}
+
+// CheckRoleForChange - проверяет роль для разрешения изменений в разделе системы
+func (ss WServerSettings) CheckRoleForChange(RoleName string, AppPart string) bool {
+	switch {
+	case AppPart == "HandleRecipes":
+		return checkAdmin(RoleName)
+	case AppPart == "HandleRecipesSearch":
+		return checkAdmin(RoleName)
+	case AppPart == "HandleShoppingList":
+		return checkAdmin(RoleName)
+	case AppPart == "UploadFile":
+		return checkAdmin(RoleName)
+	case AppPart == "HandleUsers":
+		return checkAdmin(RoleName)
+	default:
+		return false
+	}
+}
+
+// CheckRoleForDelete - проверяет роль для разрешения доступа к удалению элементов раздела системы
+func (ss WServerSettings) CheckRoleForDelete(RoleName string, AppPart string) bool {
+	switch {
+	case AppPart == "HandleRecipes":
+		return checkAdmin(RoleName)
+	case AppPart == "HandleRecipesSearch":
+		return checkAdmin(RoleName)
+	case AppPart == "HandleShoppingList":
+		return checkAdmin(RoleName)
+	case AppPart == "UploadFile":
+		return checkAdmin(RoleName)
+	case AppPart == "HandleUsers":
+		return RoleName == "admin_role_CRUD"
+	default:
+		return false
+	}
+}
+
+func checkAdmin(RoleName string) bool {
+	return RoleName == "admin_role_CRUD"
+}
+
+// CheckExistingRole - проверяет что роль это существующая роль
+func (ss WServerSettings) CheckExistingRole(RoleName string) bool {
+
+	for _, role := range ss.SQL.Roles {
+		if role.Name == RoleName {
+			return true
+		}
+	}
+
+	return false
+
+}

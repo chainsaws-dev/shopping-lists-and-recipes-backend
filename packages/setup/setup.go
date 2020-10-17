@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"regexp"
 	"shopping-lists-and-recipes/packages/admin"
 	"shopping-lists-and-recipes/packages/messages"
 	"shopping-lists-and-recipes/packages/settings"
@@ -24,7 +25,7 @@ var APIkeys = []string{
 }
 
 // InitialSettings - интерактивно спрашивает у пользователя параметры настроек
-func InitialSettings(forcesetup bool) {
+func InitialSettings(forcesetup bool, createdb bool) {
 
 	if !СheckExists("settings.json") || forcesetup {
 
@@ -72,8 +73,6 @@ func InitialSettings(forcesetup bool) {
 		}
 
 		// SQL
-		ServerSettings.SQL.AutoFillRoles()
-
 		AskString("Укажите тип сервера баз данных (поддерживается PostgreSQL): ", &ServerSettings.SQL.Type)
 
 		AskString("Укажите адрес сервера баз данных: ", &ServerSettings.SQL.Addr)
@@ -89,54 +88,15 @@ func InitialSettings(forcesetup bool) {
 		CreateDB = strings.ToLower(CreateDB)
 
 		if CreateDB == "да" || CreateDB == "д" {
-			donech := make(chan bool)
-			go ServerSettings.SQL.CreateDatabase(donech)
-
-			if <-donech {
-				log.Println("Процедура создания базы данных завершена")
-			}
+			ServerSettings.SQL.AutoFillRoles()
+			StartCreateDatabase()
+			SetDefaultAdmin()
 		}
 
-		var Email string
-		var LoginAdmin string
-		var PasswordAdmin string
-
-		AskString("Укажите e-mail администратора вебсайта: ", &Email)
-
-		AskString("Укажите логин администратора вебсайта: ", &LoginAdmin)
-
-		AskString("Укажите пароль администратора вебсайта: ", &PasswordAdmin)
-
-		err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use)
-
-		if ServerSettings.SMTP.Use {
-			var URI string
-
-			AskString("Укажите адрес вебсайта с портом (например: http://127.0.0.1:8080): ", &URI)
-
-			messages.SendEmailConfirmationLetter(&ServerSettings.SQL, Email, URI)
-		}
-
-		shared.WriteErrToLog(err)
-
-		log.Println("Администратор сайта создан")
-
-		bytes, err := json.Marshal(ServerSettings)
-
-		shared.WriteErrToLog(err)
-
-		setfile, err := os.Create("settings.json")
-		defer setfile.Close()
-
-		shared.WriteErrToLog(err)
-
-		_, err = setfile.Write(bytes)
-
-		shared.WriteErrToLog(err)
-
-		log.Println("Файл настроек settings.json успешно создан")
+		WriteToJSON()
 
 	} else {
+
 		log.Println("Читаем файл настроек settings.json...")
 
 		bytes, err := ioutil.ReadFile("settings.json")
@@ -150,6 +110,15 @@ func InitialSettings(forcesetup bool) {
 		messages.SetCredentials(ServerSettings.SMTP)
 
 		log.Println("Файл настроек settings.json успешно прочитан")
+
+		// Пересоздаём базу данных без перенастройки
+		if createdb {
+			ServerSettings.SQL.AutoFillRoles()
+			StartCreateDatabase()
+			SetDefaultAdmin()
+			WriteToJSON()
+		}
+
 	}
 
 }
@@ -212,4 +181,79 @@ func СheckExists(filename string) bool {
 	}
 
 	return false
+}
+
+// WriteToJSON - записывает объект настроек в JSON файл
+func WriteToJSON() {
+	bytes, err := json.Marshal(ServerSettings)
+
+	shared.WriteErrToLog(err)
+
+	setfile, err := os.Create("settings.json")
+	defer setfile.Close()
+
+	shared.WriteErrToLog(err)
+
+	_, err = setfile.Write(bytes)
+
+	shared.WriteErrToLog(err)
+
+	log.Println("Файл настроек settings.json успешно создан")
+}
+
+// SetDefaultAdmin - позволяет настроить администратора по умолчанию
+func SetDefaultAdmin() string {
+
+	var Email string
+	var LoginAdmin string
+	var PasswordAdmin string
+
+	re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+	for len(Email) < 1 || !re.MatchString(Email) {
+
+		AskString("Укажите e-mail администратора вебсайта: ", &Email)
+
+		if len(Email) < 1 || !re.MatchString(Email) {
+			fmt.Println("Некорректный e-mail!")
+		}
+	}
+
+	AskString("Укажите логин администратора вебсайта: ", &LoginAdmin)
+
+	for len(PasswordAdmin) < 6 {
+		AskString("Укажите пароль администратора вебсайта: ", &PasswordAdmin)
+		if len(PasswordAdmin) < 6 {
+			fmt.Println("Пароль должен быть больше шести символов!")
+		}
+	}
+
+	err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use)
+
+	shared.WriteErrToLog(err)
+
+	if ServerSettings.SMTP.Use {
+		var URI string
+
+		AskString("Укажите адрес вебсайта с портом (например: http://localhost:8080): ", &URI)
+
+		messages.SendEmailConfirmationLetter(&ServerSettings.SQL, Email, URI)
+	}
+
+	log.Println("Администратор сайта создан")
+
+	return Email
+
+}
+
+// StartCreateDatabase - запускает в фоне процесс создания базы данных
+func StartCreateDatabase() {
+
+	donech := make(chan bool)
+	go ServerSettings.SQL.CreateDatabase(donech)
+
+	if <-donech {
+		log.Println("Процедура создания базы данных завершена")
+	}
+
 }

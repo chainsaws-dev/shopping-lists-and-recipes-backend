@@ -4,7 +4,6 @@ package shoppinglist
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"shopping-lists-and-recipes/packages/databases"
@@ -43,81 +42,73 @@ var (
 // 	ожидается заголовок IngName с названием продукта из списка покупок
 func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 	// Проверяем API ключ
-	keys, ok := req.URL.Query()["key"]
+	found, err := signinupout.CheckAPIKey(w, req)
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
 	if found {
 		// Проверка токена и получение роли
-		issued, role := signinupout.CheckTokenIssued(*req)
+		issued, role := signinupout.TwoWayAuthentication(w, req)
 
 		if issued {
 			switch {
 			case req.Method == http.MethodGet:
-				// Обработка получения списка покупок с поддержкой постраничных порций
-				w.Header().Set("Content-Type", "application/json")
 
-				PageStr := req.Header.Get("Page")
-				LimitStr := req.Header.Get("Limit")
+				if setup.ServerSettings.CheckRoleForRead(role, "HandleShoppingList") {
 
-				var resp databases.ShoppingListResponse
-				var err error
+					// Обработка получения списка покупок с поддержкой постраничных порций
 
-				err = setup.ServerSettings.SQL.Connect(role)
+					PageStr := req.Header.Get("Page")
+					LimitStr := req.Header.Get("Limit")
 
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-					return
-				}
-				defer setup.ServerSettings.SQL.Disconnect()
+					var resp databases.ShoppingListResponse
+					var err error
 
-				if PageStr != "" && LimitStr != "" {
+					err = setup.ServerSettings.SQL.Connect(role)
 
-					Page, err := strconv.Atoi(PageStr)
+					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+						return
+					}
+					defer setup.ServerSettings.SQL.Disconnect()
+
+					if PageStr != "" && LimitStr != "" {
+
+						Page, err := strconv.Atoi(PageStr)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						Limit, err := strconv.Atoi(LimitStr)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						resp, err = databases.PostgreSQLShoppingListSelect(Page, Limit)
+
+					} else {
+						resp, err = databases.PostgreSQLShoppingListSelect(0, 0)
+					}
 
 					if shared.HandleInternalServerError(w, err) {
 						return
 					}
 
-					Limit, err := strconv.Atoi(LimitStr)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					resp, err = databases.PostgreSQLShoppingListSelect(Page, Limit)
+					shared.WriteObjectToJSON(w, resp)
 
 				} else {
-					resp, err = databases.PostgreSQLShoppingListSelect(0, 0)
-				}
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				js, err := json.Marshal(resp)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				_, err = w.Write(js)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 				}
 
 			case req.Method == http.MethodPost:
 				// Обработка записи отдельного пункта списка покупок в базу данных
-				w.Header().Set("Content-Type", "application/json")
 
-				if role == "admin_role_CRUD" {
+				if setup.ServerSettings.CheckRoleForChange(role, "HandleShoppingList") {
 					var Ingredient databases.IngredientDB
 
 					err := json.NewDecoder(req.Body).Decode(&Ingredient)
@@ -139,9 +130,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 						return
 					}
 
-					w.WriteHeader(http.StatusOK)
-					resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись сохранена")
-					fmt.Fprintln(w, resulttext)
+					shared.HandleSuccessMessage(w, "Запись сохранена")
 
 				} else {
 					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
@@ -149,9 +138,8 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 			case req.Method == http.MethodDelete:
 				// Обработка удаления отдельного пункта списка покупок из базы данных
-				w.Header().Set("Content-Type", "application/json")
 
-				if role == "admin_role_CRUD" {
+				if setup.ServerSettings.CheckRoleForDelete(role, "HandleShoppingList") {
 
 					IngName := req.Header.Get("IngName")
 
@@ -182,9 +170,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 							return
 						}
 
-						w.WriteHeader(http.StatusOK)
-						resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись удалена")
-						fmt.Fprintln(w, resulttext)
+						shared.HandleSuccessMessage(w, "Запись удалена")
 
 					} else {
 
@@ -201,9 +187,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 							return
 						}
 
-						w.WriteHeader(http.StatusOK)
-						resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Все записи удалены")
-						fmt.Fprintln(w, resulttext)
+						shared.HandleSuccessMessage(w, "Все записи удалены")
 					}
 
 				} else {

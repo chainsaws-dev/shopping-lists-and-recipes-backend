@@ -4,7 +4,6 @@ package recipes
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"shopping-lists-and-recipes/packages/databases"
@@ -28,102 +27,105 @@ var (
 
 // HandleRecipes - обрабатывает POST, GET и DELETE запросы для изменения рецептов
 //
+// Аутентификация
+//
+//  Куки
+//  Session - шифрованная сессия
+//	Email - шифрованный электронный адрес пользователя
+//
+//  или
+//
+//	Заголовки:
+//  Auth - Токен доступа
+//
+//	и
+//
+//	ApiKey - Постоянный ключ доступа к API *
+//
 // GET
 //
-// 	ожидается параметр key с API ключом
 // 	ожидается заголовок Page с номером страницы
 // 	ожидается заголовок Limit с максимумом элементов на странице
 //
 // POST
 //
-// 	ожидается параметр key с API ключом
 // 	тело запроса должно быть заполнено JSON объектом
 // 	идентичным по структуре RecipeDB
 //
 // DELETE
 //
-// 	ожидается параметр key с API ключом
 // 	ожидается заголовок RecipeID с номером рецепта на удаление
 func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 	// Проверяем API ключ
-	keys, ok := req.URL.Query()["key"]
+	found, err := signinupout.CheckAPIKey(w, req)
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
 	if found {
 		// Проверка токена и получение роли
-		issued, role := signinupout.CheckTokenIssued(*req)
+		issued, role := signinupout.TwoWayAuthentication(w, req)
 
 		if issued {
 
 			switch {
 			case req.Method == http.MethodGet:
-				// Обработка получения списка рецептов с поддержкой постраничных порций
-				w.Header().Set("Content-Type", "application/json")
 
-				PageStr := req.Header.Get("Page")
-				LimitStr := req.Header.Get("Limit")
+				if setup.ServerSettings.CheckRoleForRead(role, "HandleRecipes") {
+					// Обработка получения списка рецептов с поддержкой постраничных порций
 
-				var recipesresp databases.RecipesResponse
-				var err error
+					PageStr := req.Header.Get("Page")
+					LimitStr := req.Header.Get("Limit")
 
-				err = setup.ServerSettings.SQL.Connect(role)
+					var recipesresp databases.RecipesResponse
+					var err error
 
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-					return
-				}
-				defer setup.ServerSettings.SQL.Disconnect()
+					err = setup.ServerSettings.SQL.Connect(role)
 
-				if PageStr != "" && LimitStr != "" {
+					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+						return
+					}
+					defer setup.ServerSettings.SQL.Disconnect()
 
-					Page, err := strconv.Atoi(PageStr)
+					if PageStr != "" && LimitStr != "" {
 
-					if shared.HandleInternalServerError(w, err) {
+						Page, err := strconv.Atoi(PageStr)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						Limit, err := strconv.Atoi(LimitStr)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						recipesresp, err = databases.PostgreSQLRecipesSelect(Page, Limit)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+					} else {
+						shared.HandleOtherError(w, ErrHeadersFetchNotFilled.Error(), ErrHeadersFetchNotFilled, http.StatusBadRequest)
 						return
 					}
 
-					Limit, err := strconv.Atoi(LimitStr)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					recipesresp, err = databases.PostgreSQLRecipesSelect(Page, Limit)
+					shared.WriteObjectToJSON(w, recipesresp)
 
 				} else {
-					shared.HandleOtherError(w, ErrHeadersFetchNotFilled.Error(), ErrHeadersFetchNotFilled, http.StatusBadRequest)
-					return
-				}
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				js, err := json.Marshal(recipesresp)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				_, err = w.Write(js)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 				}
 
 			case req.Method == http.MethodPost:
 				// Обработка записи отдельного рецепта в базу данных
-				w.Header().Set("Content-Type", "application/json")
 
-				if role == "admin_role_CRUD" {
+				if setup.ServerSettings.CheckRoleForChange(role, "HandleRecipes") {
 
 					var Recipe databases.RecipeDB
 
@@ -146,27 +148,16 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 						return
 					}
 
-					js, err := json.Marshal(recipesresp)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					_, err = w.Write(js)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
+					shared.WriteObjectToJSON(w, recipesresp)
 
 				} else {
 					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 				}
 
 			case req.Method == http.MethodDelete:
-				// Обработка удаления отдельного рецепта из базы данных и его обложки с фаловой системы
-				w.Header().Set("Content-Type", "application/json")
 
-				if role == "admin_role_CRUD" {
+				if setup.ServerSettings.CheckRoleForDelete(role, "HandleRecipes") {
+					// Обработка удаления отдельного рецепта из базы данных и его обложки с фаловой системы
 
 					RecipeIDToDelStr := req.Header.Get("RecipeID")
 
@@ -198,9 +189,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 							return
 						}
 
-						w.WriteHeader(http.StatusOK)
-						resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись удалена")
-						fmt.Fprintln(w, resulttext)
+						shared.HandleSuccessMessage(w, "Запись удалена")
 
 					} else {
 						shared.HandleOtherError(w, "Bad request", ErrRecipeIDNotFilled, http.StatusBadRequest)
@@ -223,92 +212,97 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 // HandleRecipesSearch - обрабатывает GET запросы для поиска рецептов
 //
+// Аутентификация
+//
+//  Куки
+//  Session - шифрованная сессия
+//	Email - шифрованный электронный адрес пользователя
+//
+//  или
+//
+//	Заголовки:
+//  Auth - Токен доступа
+//
+//	и
+//
+//	ApiKey - Постоянный ключ доступа к API *
+//
 // GET
 //
-// 	ожидается параметр key с API ключом
 // 	ожидается заголовок Page с номером страницы
 // 	ожидается заголовок Limit с максимумом элементов на странице
 // 	ожидается заголовок Search с поисковым запросом пропущенным через encodeURIComponent
 func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 	// Проверяем API ключ
-	keys, ok := req.URL.Query()["key"]
+	found, err := signinupout.CheckAPIKey(w, req)
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
 	if found {
 		// Проверка токена и получение роли
-		issued, role := signinupout.CheckTokenIssued(*req)
+		issued, role := signinupout.TwoWayAuthentication(w, req)
 
 		if issued {
 			switch {
 			case req.Method == http.MethodGet:
-				// Обработка получения списка рецептов с поддержкой постраничных порций
-				w.Header().Set("Content-Type", "application/json")
 
-				PageStr := req.Header.Get("Page")
-				LimitStr := req.Header.Get("Limit")
-				SearchStr := req.Header.Get("Search")
+				if setup.ServerSettings.CheckRoleForRead(role, "HandleRecipesSearch") {
+					// Обработка получения списка рецептов с поддержкой постраничных порций
 
-				var recipesresp databases.RecipesResponse
-				var err error
+					PageStr := req.Header.Get("Page")
+					LimitStr := req.Header.Get("Limit")
+					SearchStr := req.Header.Get("Search")
 
-				err = setup.ServerSettings.SQL.Connect(role)
+					var recipesresp databases.RecipesResponse
+					var err error
 
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-					return
-				}
-				defer setup.ServerSettings.SQL.Disconnect()
+					err = setup.ServerSettings.SQL.Connect(role)
 
-				if PageStr != "" && LimitStr != "" && SearchStr != "" {
+					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+						return
+					}
+					defer setup.ServerSettings.SQL.Disconnect()
 
-					Page, err := strconv.Atoi(PageStr)
+					if PageStr != "" && LimitStr != "" && SearchStr != "" {
+
+						Page, err := strconv.Atoi(PageStr)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						Limit, err := strconv.Atoi(LimitStr)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						SearchStr, err := url.QueryUnescape(SearchStr)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr)
+
+					} else {
+						shared.HandleOtherError(w, ErrHeadersSearchNotFilled.Error(), ErrHeadersSearchNotFilled, http.StatusBadRequest)
+						return
+					}
 
 					if shared.HandleInternalServerError(w, err) {
 						return
 					}
 
-					Limit, err := strconv.Atoi(LimitStr)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					SearchStr, err := url.QueryUnescape(SearchStr)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr)
+					shared.WriteObjectToJSON(w, recipesresp)
 
 				} else {
-					shared.HandleOtherError(w, ErrHeadersSearchNotFilled.Error(), ErrHeadersSearchNotFilled, http.StatusBadRequest)
-					return
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 				}
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				js, err := json.Marshal(recipesresp)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
-				_, err = w.Write(js)
-
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
-
 			default:
 				shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 			}

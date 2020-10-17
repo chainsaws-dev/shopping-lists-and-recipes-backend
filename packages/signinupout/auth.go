@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -14,12 +12,13 @@ import (
 	"shopping-lists-and-recipes/packages/authentication"
 	"shopping-lists-and-recipes/packages/databases"
 	"shopping-lists-and-recipes/packages/messages"
+	"shopping-lists-and-recipes/packages/securecookies"
 	"shopping-lists-and-recipes/packages/setup"
 	"shopping-lists-and-recipes/packages/shared"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/gorilla/securecookie"
 	uuid "github.com/satori/go.uuid"
 
 	"encoding/base64"
@@ -51,22 +50,17 @@ var TokenList []authentication.ActiveToken
 //	Email и пароль должны быть пропущены через через encodeURIComponent и btoa
 func SignIn(w http.ResponseWriter, req *http.Request) {
 
-	keys, ok := req.URL.Query()["key"]
+	found, err := CheckAPIKey(w, req)
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
 	if found {
 		switch {
 		case req.Method == http.MethodPost:
-
-			w.Header().Set("Content-Type", "application/json")
 
 			// Читаем тело запроса в структуру
 			var AuthRequest authentication.AuthRequestData
@@ -129,22 +123,18 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 //	пропущены через через encodeURIComponent и btoa
 func SignUp(w http.ResponseWriter, req *http.Request) {
 
-	keys, ok := req.URL.Query()["key"]
+	found, err := CheckAPIKey(w, req)
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
 	if found {
 
 		switch {
 		case req.Method == http.MethodPost:
-			w.Header().Set("Content-Type", "application/json")
 
 			// Читаем тело запроса в структуру
 			var SignUpRequest authentication.AuthSignUpRequestData
@@ -238,17 +228,14 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 // 	ожидается параметр key с API ключом
 // 	ожидается заголовок Email с электронной почтой
 func ResendEmail(w http.ResponseWriter, req *http.Request) {
-	keys, ok := req.URL.Query()["key"]
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	found, err := CheckAPIKey(w, req)
+
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
-
 	if found {
 		switch {
 		case req.Method == http.MethodPost:
@@ -281,10 +268,8 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 				if mailexist {
 					messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host)
 
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusOK)
-					resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Письмо отправлено")
-					fmt.Fprintln(w, resulttext)
+					shared.HandleSuccessMessage(w, "Письмо отправлено")
+
 				} else {
 					shared.HandleOtherError(w, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 				}
@@ -308,16 +293,13 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 // 	ожидается параметр key с API ключом
 //	ожидается заголовок Token с токеном для доступа
 func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
-	keys, ok := req.URL.Query()["key"]
+	found, err := CheckAPIKey(w, req)
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
 	if found {
 		switch {
@@ -348,10 +330,7 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 				}
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Электронная почта подтверждена")
-			fmt.Fprintln(w, resulttext)
+			shared.HandleSuccessMessage(w, "Электронная почта подтверждена")
 
 		default:
 			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
@@ -368,16 +347,13 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 // 	ожидается параметр key с API ключом
 // 	ожидается заголовок Email с электронной почтой
 func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
-	keys, ok := req.URL.Query()["key"]
+	found, err := CheckAPIKey(w, req)
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
 	if found {
 		switch {
@@ -411,10 +387,7 @@ func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 				if mailexist {
 					messages.SendEmailPasswordReset(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host)
 
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusOK)
-					resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Письмо отправлено")
-					fmt.Fprintln(w, resulttext)
+					shared.HandleSuccessMessage(w, "Письмо отправлено")
 				} else {
 					shared.HandleOtherError(w, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 				}
@@ -439,17 +412,13 @@ func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 //	ожидается заголовок Token с токеном для доступа
 //  ожидается заголовок NewPassword c новым паролем
 func ResetPassword(w http.ResponseWriter, req *http.Request) {
-	keys, ok := req.URL.Query()["key"]
+	found, err := CheckAPIKey(w, req)
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
-
 	if found {
 		switch {
 		case req.Method == http.MethodPost:
@@ -494,10 +463,7 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 				}
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Пароль обновлён.")
-			fmt.Fprintln(w, resulttext)
+			shared.HandleSuccessMessage(w, "Пароль обновлён.")
 
 		default:
 			shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
@@ -509,46 +475,54 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 
 // HandleUsers - обработчик для работы с пользователями, принимает http запросы GET, POST и DELETE
 //
+// Аутентификация
+//
+//  Куки
+//  Session - шифрованная сессия
+//	Email - шифрованный электронный адрес пользователя
+//
+//  или
+//
+//	Заголовки:
+//  Auth - Токен доступа
+//
+//	и
+//
+//	ApiKey - Постоянный ключ доступа к API *
+//
 // GET
 //
-// 	ожидается параметр key с API ключом
 // 	ожидается заголовок Page с номером страницы
 // 	ожидается заголовок Limit с максимумом элементов на странице
 //
 // POST
 //
-// 	ожидается параметр key с API ключом
 // 	тело запроса должно быть заполнено JSON объектом
 // 	идентичным по структуре UserDB при этом пароль
 //	пропущен через через encodeURIComponent и btoa
 //
 // DELETE
 //
-// 	ожидается параметр key с API ключом
 // 	ожидается заголовок UserID с UUID пользователя пропущенным через encodeURIComponent и btoa (закодированным base64)
 func HandleUsers(w http.ResponseWriter, req *http.Request) {
-	keys, ok := req.URL.Query()["key"]
 
-	if !ok || len(keys[0]) < 1 {
-		shared.HandleOtherError(w, ErrNoKeyInParams.Error(), ErrNoKeyInParams, http.StatusBadRequest)
-		return
+	found, err := CheckAPIKey(w, req)
+
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
-
-	key := keys[0]
-
-	_, found := shared.FindInStringSlice(setup.APIkeys, key)
 
 	if found {
 		// Проверка токена и получение роли
-		issued, role := CheckTokenIssued(*req)
+		issued, role := TwoWayAuthentication(w, req)
 
 		if issued {
 
-			if role == "admin_role_CRUD" {
+			if setup.ServerSettings.CheckRoleForRead(role, "HandleUsers") {
 				switch {
 				case req.Method == http.MethodGet:
-
-					w.Header().Set("Content-Type", "application/json")
 
 					PageStr := req.Header.Get("Page")
 					LimitStr := req.Header.Get("Limit")
@@ -580,32 +554,27 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 						usersresp, err = databases.PostgreSQLUsersSelect(Page, Limit)
 
+						if err != nil {
+							if errors.Is(err, databases.ErrLimitOffsetInvalid) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+								return
+							}
+
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
+						}
+
+						shared.WriteObjectToJSON(w, usersresp)
+
 					} else {
 						shared.HandleOtherError(w, ErrHeadersNotFilled.Error(), ErrHeadersNotFilled, http.StatusBadRequest)
 						return
 					}
 
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					js, err := json.Marshal(usersresp)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					_, err = w.Write(js)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
 				case req.Method == http.MethodPost:
 					// Создание и изменение пользователя
-					w.Header().Set("Content-Type", "application/json")
-
-					var User databases.UserDB
+					var User databases.User
 
 					err := json.NewDecoder(req.Body).Decode(&User)
 
@@ -687,21 +656,10 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					}
 
 					// Пишем в тело ответа
-					js, err := json.Marshal(User)
+					shared.WriteObjectToJSON(w, User)
 
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					_, err = w.Write(js)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
 				case req.Method == http.MethodDelete:
 					// Удаление пользователя
-					w.Header().Set("Content-Type", "application/json")
-
 					UserIDtoDelStr := req.Header.Get("UserID")
 
 					if len(UserIDtoDelStr) > 0 {
@@ -742,9 +700,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 							return
 						}
 
-						w.WriteHeader(http.StatusOK)
-						resulttext := fmt.Sprintf(`{"Error":{"Code":%v, "Message":"%v"}}`, http.StatusOK, "Запись удалена")
-						fmt.Fprintln(w, resulttext)
+						shared.HandleSuccessMessage(w, "Запись удалена")
 
 					} else {
 						shared.HandleOtherError(w, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)
@@ -764,6 +720,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 }
 
 // secretauth - внутренняя функция для проверки пароля и авторизации
+// (если ReturnToken=false - то куки)
 func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentication.AuthRequestData) {
 	// Авторизация под ограниченной ролью
 	err := setup.ServerSettings.SQL.Connect("guest_role_read_only")
@@ -818,145 +775,35 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 		}
 
 		tb := time.Now()
-		te := tb.Add(3600 * time.Second)
+		te := tb.Add(time.Hour)
 
-		TokenList = append(TokenList, authentication.ActiveToken{
+		NewActiveToken := authentication.ActiveToken{
 			Email:     AuthRequest.Email,
 			Token:     AuthResponse.Token,
+			Session:   securecookie.GenerateRandomKey(64),
 			IssDate:   tb,
 			ExpDate:   te,
 			Role:      strrole,
 			UserAgent: UserAgent,
 			IP:        ClientIP,
-		})
+		}
 
+		TokenList = append(TokenList, NewActiveToken)
+
+		// Если не возвращаем токен, то пишем куки
 		if !AuthRequest.ReturnSecureToken {
 			AuthResponse.Token = ""
+
+			err = securecookies.SetCookies(te, NewActiveToken, w)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
 		}
 
-		js, err := json.Marshal(AuthResponse)
+		shared.WriteObjectToJSON(w, AuthResponse)
 
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
-
-		_, err = w.Write(js)
-
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
 	} else {
 		shared.HandleOtherError(w, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
-	}
-}
-
-// CleanOldTokens - удаляет старые токены из списка
-func CleanOldTokens() {
-	todel := []int{}
-
-	for i, t := range TokenList {
-		ct := time.Now()
-
-		if ct.After(t.ExpDate) {
-			todel = append(todel, i)
-		}
-
-	}
-
-	for _, idx := range todel {
-		SliceDelete(idx)
-	}
-}
-
-// SearchIssuedTokens - ищет уже выданные токены
-func SearchIssuedTokens(Email string) (authentication.ActiveToken, bool) {
-	if len(Email) != 0 {
-		for _, t := range TokenList {
-
-			ct := time.Now()
-
-			if ct.Before(t.ExpDate) && t.Email == Email {
-				return t, true
-			}
-		}
-	}
-
-	return authentication.ActiveToken{}, false
-}
-
-// SliceDelete - удаляет элемент из списка токенов
-func SliceDelete(idx int) {
-	l := len(TokenList)
-
-	TokenList[idx] = TokenList[l-1]
-	TokenList[l-1] = authentication.ActiveToken{}
-	TokenList = TokenList[:l-1]
-}
-
-// CheckTokenIssued - проверяет что токен есть в списке и не протух
-func CheckTokenIssued(req http.Request) (bool, string) {
-
-	CleanOldTokens()
-
-	Token := req.Header.Get("Auth")
-
-	if len(Token) > 0 {
-		for _, t := range TokenList {
-			ct := time.Now()
-
-			if ct.Before(t.ExpDate) && t.Token == Token {
-				return true, t.Role
-			}
-		}
-	}
-
-	return false, ""
-}
-
-// GetIP - получает IP адрес клиента
-func GetIP(r *http.Request) string {
-	IPAddress := r.Header.Get("X-Real-Ip")
-	if IPAddress == "" {
-		IPAddress = r.Header.Get("X-Forwarded-For")
-	}
-	if IPAddress == "" {
-		IPAddress = r.RemoteAddr
-	}
-	// Порт нас не интересует
-	if idx := strings.IndexByte(IPAddress, ':'); idx >= 0 {
-		IPAddress = IPAddress[:idx]
-	}
-
-	return IPAddress
-}
-
-// ConvertToSignInRequest - преобразует тип запроса регистрации в тип запроса авторизации
-func ConvertToSignInRequest(SignUpRequest authentication.AuthSignUpRequestData) authentication.AuthRequestData {
-	return authentication.AuthRequestData{
-		Email:             SignUpRequest.Email,
-		Password:          SignUpRequest.Password,
-		ReturnSecureToken: true,
-	}
-}
-
-// RegularConfirmTokensCleanup - в фоновом режиме удаляет устаревшие токены
-func RegularConfirmTokensCleanup() {
-	for {
-		log.Println("Очистка истекших токенов...")
-
-		err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
-
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		defer setup.ServerSettings.SQL.Disconnect()
-
-		databases.PostgreSQLCleanAccessTokens()
-
-		log.Println("Таблица токенов очищена!")
-
-		// Ждем пять минут
-		time.Sleep(time.Minute * 5)
 	}
 }
