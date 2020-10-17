@@ -317,6 +317,8 @@ func (ss WServerSettings) CheckRoleForRead(RoleName string, AppPart string) bool
 		return ss.CheckExistingRole(RoleName)
 	case AppPart == "HandleUsers":
 		return checkAdmin(RoleName)
+	case AppPart == "HandleSessions":
+		return checkAdmin(RoleName)
 	default:
 		return false
 	}
@@ -334,6 +336,8 @@ func (ss WServerSettings) CheckRoleForChange(RoleName string, AppPart string) bo
 	case AppPart == "UploadFile":
 		return checkAdmin(RoleName)
 	case AppPart == "HandleUsers":
+		return checkAdmin(RoleName)
+	case AppPart == "HandleSessions":
 		return checkAdmin(RoleName)
 	default:
 		return false
@@ -353,6 +357,8 @@ func (ss WServerSettings) CheckRoleForDelete(RoleName string, AppPart string) bo
 		return checkAdmin(RoleName)
 	case AppPart == "HandleUsers":
 		return RoleName == "admin_role_CRUD"
+	case AppPart == "HandleSessions":
+		return checkAdmin(RoleName)
 	default:
 		return false
 	}

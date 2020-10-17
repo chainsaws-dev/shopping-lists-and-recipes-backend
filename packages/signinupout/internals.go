@@ -2,10 +2,12 @@ package signinupout
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"log"
+	"math"
 	"net/http"
-	"strings"
 	"time"
 
 	"shopping-lists-and-recipes/packages/authentication"
@@ -13,7 +15,98 @@ import (
 	"shopping-lists-and-recipes/packages/securecookies"
 	"shopping-lists-and-recipes/packages/setup"
 	"shopping-lists-and-recipes/packages/shared"
+
+	"github.com/gorilla/securecookie"
 )
+
+// secretauth - внутренняя функция для проверки пароля и авторизации
+// (если ReturnToken=false - то куки)
+func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentication.AuthRequestData) {
+	// Авторизация под ограниченной ролью
+	err := setup.ServerSettings.SQL.Connect("guest_role_read_only")
+
+	if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+		return
+	}
+	defer setup.ServerSettings.SQL.Disconnect()
+
+	if len(AuthRequest.Password) < 6 {
+		shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
+		return
+	}
+
+	UserAgent := req.Header.Get("User-Agent")
+	ClientIP := GetIP(req)
+
+	// Получаем хеш из базы данных
+	strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email)
+
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusTeapot) {
+			return
+		}
+	}
+
+	// Проверяем пароль против хеша
+	match, err := authentication.Argon2ComparePasswordAndHash(AuthRequest.Password, strhash)
+
+	if shared.HandleInternalServerError(w, err) {
+		return
+	}
+
+	if match {
+
+		CleanOldTokens()
+
+		var AuthResponse authentication.AuthResponseData
+
+		tokenb, err := authentication.GenerateRandomBytes(32)
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+		AuthResponse = authentication.AuthResponseData{
+			Token:      hex.EncodeToString(tokenb),
+			Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
+			ExpiresIn:  3600,
+			Registered: true,
+			Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
+		}
+
+		tb := time.Now()
+		te := tb.Add(time.Hour)
+
+		NewActiveToken := authentication.ActiveToken{
+			Email:     AuthRequest.Email,
+			Token:     AuthResponse.Token,
+			Session:   securecookie.GenerateRandomKey(64),
+			IssDate:   tb,
+			ExpDate:   te,
+			Role:      strrole,
+			UserAgent: UserAgent,
+			IP:        ClientIP,
+		}
+
+		TokenList = append(TokenList, NewActiveToken)
+
+		// Если не возвращаем токен, то пишем куки
+		if !AuthRequest.ReturnSecureToken {
+			AuthResponse.Token = ""
+
+			err = securecookies.SetCookies(te, NewActiveToken, w)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+		}
+
+		shared.WriteObjectToJSON(w, AuthResponse)
+
+	} else {
+		shared.HandleOtherError(w, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
+	}
+}
 
 // CheckAPIKey - проверяет API ключ
 func CheckAPIKey(w http.ResponseWriter, req *http.Request) (bool, error) {
@@ -58,8 +151,15 @@ func CheckCookiesIssued(w http.ResponseWriter, req *http.Request) (issued bool, 
 	if err != nil {
 
 		if !errors.Is(http.ErrNoCookie, err) {
+
+			if errors.Is(securecookie.ErrMacInvalid, err) {
+				log.Println("Невозможно расширфровать куки (HMAC устарел)")
+				return false, ""
+			}
+
 			log.Println(err)
 			return false, ""
+
 		}
 	}
 
@@ -72,7 +172,7 @@ func CheckCookiesIssued(w http.ResponseWriter, req *http.Request) (issued bool, 
 			return found, at.Role
 		}
 
-		log.Println(securecookies.ErrPairNotFound)
+		log.Println(securecookies.ErrAuthCookiesNotFound)
 		return false, ""
 	}
 
@@ -112,6 +212,63 @@ func SearchIssuedSessions(Email string, Session []byte) (authentication.ActiveTo
 	}
 
 	return authentication.ActiveToken{}, false
+}
+
+// GetSessionsList - получает список сессий в постраничной разбивке
+func GetSessionsList(page int, limit int) (SessionsResponse, error) {
+
+	var result SessionsResponse
+
+	offset := int(math.RoundToEven(float64((page - 1) * limit)))
+
+	result.Total = len(TokenList)
+	result.Limit = limit
+	result.Offset = offset
+
+	if databases.PostgreSQLCheckLimitOffset(limit, offset) &&
+		result.Total > result.Offset {
+
+		if offset+limit >= result.Total {
+			result.Sessions = TokenList[offset:]
+		} else {
+			result.Sessions = TokenList[offset : offset+limit]
+		}
+
+	} else {
+		return result, ErrLimitOffsetInvalid
+	}
+
+	return result, nil
+
+}
+
+// DeleteSession - ищет сессию по электронной почте и удаляет её
+func DeleteSession(Email string) error {
+	sIdx := FindSessionIdxByEmail(Email)
+
+	if len(sIdx) < 1 {
+		return ErrSessionNotFoundByEmail
+	}
+
+	for _, idx := range sIdx {
+		SliceDelete(idx)
+	}
+
+	return nil
+}
+
+// FindSessionIdxByEmail - ищет сессию по электронному адресу
+func FindSessionIdxByEmail(Email string) []int {
+
+	var sIdx []int
+
+	for idx, session := range TokenList {
+		if session.Email == Email {
+			sIdx = append(sIdx, idx)
+		}
+	}
+
+	return sIdx
 }
 
 // CompareSessions - выполняет сравнение сессий
@@ -154,16 +311,15 @@ func SliceDelete(idx int) {
 
 // GetIP - получает IP адрес клиента
 func GetIP(r *http.Request) string {
+
 	IPAddress := r.Header.Get("X-Real-Ip")
+
 	if IPAddress == "" {
 		IPAddress = r.Header.Get("X-Forwarded-For")
 	}
+
 	if IPAddress == "" {
 		IPAddress = r.RemoteAddr
-	}
-	// Порт нас не интересует
-	if idx := strings.IndexByte(IPAddress, ':'); idx >= 0 {
-		IPAddress = IPAddress[:idx]
 	}
 
 	return IPAddress

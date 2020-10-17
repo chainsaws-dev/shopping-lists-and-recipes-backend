@@ -76,14 +76,24 @@ func main() {
 	http.HandleFunc("/reset-password/", RedirectToIndex)
 
 	// REST API
+
+	// Рецепты
 	http.HandleFunc("/api/Recipes", recipes.HandleRecipes)
 	http.HandleFunc("/api/Recipes/Search", recipes.HandleRecipesSearch)
 	http.HandleFunc("/api/SaveRecipePhoto", files.UploadFile)
+
+	// Список покупок
 	http.HandleFunc("/api/ShoppingList", shoppinglist.HandleShoppingList)
+
+	// Авторизация и регистрация
 	http.HandleFunc("/api/Accounts/SignUp", signinupout.SignUp)
 	http.HandleFunc("/api/Accounts/SignIn", signinupout.SignIn)
-	http.HandleFunc("/api/Users", signinupout.HandleUsers)
 
+	// Админка
+	http.HandleFunc("/api/Users", signinupout.HandleUsers)
+	http.HandleFunc("/api/Sessions", signinupout.HandleSessions)
+
+	// Сервис
 	http.HandleFunc("/api/ConfirmEmail", signinupout.ConfirmEmail)
 	http.HandleFunc("/api/ConfirmEmail/Send", signinupout.ResendEmail)
 	http.HandleFunc("/api/PasswordReset", signinupout.ResetPassword)

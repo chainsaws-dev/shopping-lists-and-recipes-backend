@@ -2,7 +2,6 @@
 package signinupout
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,13 +11,10 @@ import (
 	"shopping-lists-and-recipes/packages/authentication"
 	"shopping-lists-and-recipes/packages/databases"
 	"shopping-lists-and-recipes/packages/messages"
-	"shopping-lists-and-recipes/packages/securecookies"
 	"shopping-lists-and-recipes/packages/setup"
 	"shopping-lists-and-recipes/packages/shared"
 	"strconv"
-	"time"
 
-	"github.com/gorilla/securecookie"
 	uuid "github.com/satori/go.uuid"
 
 	"encoding/base64"
@@ -26,20 +22,22 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrNotAllowedMethod = errors.New("Запрошен недопустимый метод при авторизации")
-	ErrNoKeyInParams    = errors.New("API ключ не указан в параметрах")
-	ErrWrongKeyInParams = errors.New("API ключ не зарегистрирован")
-	ErrPasswordTooShort = errors.New("Выбран слишком короткий пароль")
-	ErrNotAuthorized    = errors.New("Неверный логин или пароль")
-	ErrForbidden        = errors.New("Доступ запрещён")
-	ErrBadEmail         = errors.New("Указана некорректная электронная почта")
-	ErrBadPhone         = errors.New("Указан некорректный телефонный номер")
-	ErrBadRole          = errors.New("Указана некорректная роль")
-	ErrHeadersNotFilled = errors.New("Не заполнены обязательные параметры запроса")
+	ErrNotAllowedMethod       = errors.New("Запрошен недопустимый метод при авторизации")
+	ErrNoKeyInParams          = errors.New("API ключ не указан в параметрах")
+	ErrWrongKeyInParams       = errors.New("API ключ не зарегистрирован")
+	ErrPasswordTooShort       = errors.New("Выбран слишком короткий пароль")
+	ErrNotAuthorized          = errors.New("Неверный логин или пароль")
+	ErrForbidden              = errors.New("Доступ запрещён")
+	ErrBadEmail               = errors.New("Указана некорректная электронная почта")
+	ErrBadPhone               = errors.New("Указан некорректный телефонный номер")
+	ErrBadRole                = errors.New("Указана некорректная роль")
+	ErrHeadersNotFilled       = errors.New("Не заполнены обязательные параметры запроса")
+	ErrLimitOffsetInvalid     = errors.New("Limit и Offset приняли недопустимое значение")
+	ErrSessionNotFoundByEmail = errors.New("Сессия не найдена для данной электронной почты")
 )
 
 // TokenList - список активных токенов
-var TokenList []authentication.ActiveToken
+var TokenList Sessions
 
 // SignIn - обработчик для авторизации пользователя POST запросом
 //
@@ -520,9 +518,10 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 		if issued {
 
-			if setup.ServerSettings.CheckRoleForRead(role, "HandleUsers") {
-				switch {
-				case req.Method == http.MethodGet:
+			switch {
+			case req.Method == http.MethodGet:
+
+				if setup.ServerSettings.CheckRoleForRead(role, "HandleUsers") {
 
 					PageStr := req.Header.Get("Page")
 					LimitStr := req.Header.Get("Limit")
@@ -572,7 +571,13 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 						return
 					}
 
-				case req.Method == http.MethodPost:
+				} else {
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+				}
+
+			case req.Method == http.MethodPost:
+
+				if setup.ServerSettings.CheckRoleForChange(role, "HandleUsers") {
 					// Создание и изменение пользователя
 					var User databases.User
 
@@ -664,7 +669,13 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					// Пишем в тело ответа
 					shared.WriteObjectToJSON(w, User)
 
-				case req.Method == http.MethodDelete:
+				} else {
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+				}
+
+			case req.Method == http.MethodDelete:
+
+				if setup.ServerSettings.CheckRoleForDelete(role, "HandleUsers") {
 					// Удаление пользователя
 					UserIDtoDelStr := req.Header.Get("UserID")
 
@@ -712,12 +723,14 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 						shared.HandleOtherError(w, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)
 					}
 
-				default:
-					shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+				} else {
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 				}
-			} else {
-				shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+
+			default:
+				shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 			}
+
 		} else {
 			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusUnauthorized)
 		}
@@ -725,91 +738,132 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 }
 
-// secretauth - внутренняя функция для проверки пароля и авторизации
-// (если ReturnToken=false - то куки)
-func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentication.AuthRequestData) {
-	// Авторизация под ограниченной ролью
-	err := setup.ServerSettings.SQL.Connect("guest_role_read_only")
+// HandleSessions - обработчик для работы с сессиями, принимает http запросы GET, POST и DELETE
+//
+// Аутентификация
+//
+//  Куки
+//  Session - шифрованная сессия
+//	Email - шифрованный электронный адрес пользователя
+//
+//  или
+//
+//	Заголовки:
+//  Auth - Токен доступа
+//
+//	и
+//
+//	ApiKey - Постоянный ключ доступа к API *
+//
+// GET
+//
+// 	ожидается заголовок Page с номером страницы
+// 	ожидается заголовок Limit с максимумом элементов на странице
+//
+// DELETE
+//
+// 	ожидается заголовок Email для удаления сессий из списка сессий
+func HandleSessions(w http.ResponseWriter, req *http.Request) {
 
-	if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-		return
-	}
-	defer setup.ServerSettings.SQL.Disconnect()
-
-	if len(AuthRequest.Password) < 6 {
-		shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
-		return
-	}
-
-	UserAgent := req.Header.Get("User-Agent")
-	ClientIP := GetIP(req)
-
-	// Получаем хеш из базы данных
-	strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email)
+	found, err := CheckAPIKey(w, req)
 
 	if err != nil {
-		if shared.HandleOtherError(w, err.Error(), err, http.StatusTeapot) {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
 			return
 		}
 	}
 
-	// Проверяем пароль против хеша
-	match, err := authentication.Argon2ComparePasswordAndHash(AuthRequest.Password, strhash)
+	if found {
+		// Проверка токена и получение роли
+		issued, role := TwoWayAuthentication(w, req)
 
-	if shared.HandleInternalServerError(w, err) {
-		return
-	}
+		if issued {
 
-	if match {
+			switch {
+			case req.Method == http.MethodGet:
 
-		CleanOldTokens()
+				if setup.ServerSettings.CheckRoleForRead(role, "HandleSessions") {
 
-		var AuthResponse authentication.AuthResponseData
+					PageStr := req.Header.Get("Page")
+					LimitStr := req.Header.Get("Limit")
 
-		tokenb, err := authentication.GenerateRandomBytes(32)
+					var sessionsresp SessionsResponse
 
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
+					if PageStr != "" && LimitStr != "" {
 
-		AuthResponse = authentication.AuthResponseData{
-			Token:      hex.EncodeToString(tokenb),
-			Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
-			ExpiresIn:  3600,
-			Registered: true,
-			Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
-		}
+						Page, err := strconv.Atoi(PageStr)
 
-		tb := time.Now()
-		te := tb.Add(time.Hour)
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
 
-		NewActiveToken := authentication.ActiveToken{
-			Email:     AuthRequest.Email,
-			Token:     AuthResponse.Token,
-			Session:   securecookie.GenerateRandomKey(64),
-			IssDate:   tb,
-			ExpDate:   te,
-			Role:      strrole,
-			UserAgent: UserAgent,
-			IP:        ClientIP,
-		}
+						Limit, err := strconv.Atoi(LimitStr)
 
-		TokenList = append(TokenList, NewActiveToken)
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
 
-		// Если не возвращаем токен, то пишем куки
-		if !AuthRequest.ReturnSecureToken {
-			AuthResponse.Token = ""
+						sessionsresp, err = GetSessionsList(Page, Limit)
 
-			err = securecookies.SetCookies(te, NewActiveToken, w)
+						if err != nil {
+							if errors.Is(err, databases.ErrLimitOffsetInvalid) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+								return
+							}
 
-			if shared.HandleInternalServerError(w, err) {
-				return
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
+						}
+
+						shared.WriteObjectToJSON(w, sessionsresp)
+
+					} else {
+						shared.HandleOtherError(w, ErrHeadersNotFilled.Error(), ErrHeadersNotFilled, http.StatusBadRequest)
+						return
+					}
+
+				} else {
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+				}
+
+			case req.Method == http.MethodDelete:
+
+				if setup.ServerSettings.CheckRoleForDelete(role, "HandleSessions") {
+					// Удаление сессии по электронной почте
+					Email := req.Header.Get("Email")
+
+					if len(Email) > 0 {
+
+						err = DeleteSession(Email)
+
+						if err != nil {
+							if errors.Is(err, ErrSessionNotFoundByEmail) {
+								shared.HandleOtherError(w, "Сессия не найдена, невозможно удалить", err, http.StatusBadRequest)
+								return
+							}
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						shared.HandleSuccessMessage(w, "Сессия удалена")
+
+					} else {
+						shared.HandleOtherError(w, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)
+					}
+
+				} else {
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+				}
+
+			default:
+				shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 			}
+
+		} else {
+			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusUnauthorized)
 		}
-
-		shared.WriteObjectToJSON(w, AuthResponse)
-
-	} else {
-		shared.HandleOtherError(w, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
 	}
 }

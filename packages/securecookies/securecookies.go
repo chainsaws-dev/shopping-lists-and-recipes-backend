@@ -12,7 +12,7 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrPairNotFound = errors.New("Не найдена запись по параметрам запроса")
+	ErrAuthCookiesNotFound = errors.New("Не обнаружены куки авторизациии")
 )
 
 var seccookie *securecookie.SecureCookie
