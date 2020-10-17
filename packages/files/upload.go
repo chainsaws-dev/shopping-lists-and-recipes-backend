@@ -14,16 +14,18 @@ import (
 	"shopping-lists-and-recipes/packages/setup"
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/signinupout"
+	"strconv"
 	"strings"
 )
 
 // Список типовых ошибок
 var (
-	ErrNotAllowedMethod = errors.New("Запрошен недопустимый метод для файлов")
-	ErrNoKeyInParams    = errors.New("API ключ не указан в параметрах")
-	ErrWrongKeyInParams = errors.New("API ключ не зарегистрирован")
-	ErrNotAuthorized    = errors.New("Пройдите авторизацию")
-	ErrForbidden        = errors.New("Доступ запрещён")
+	ErrNotAllowedMethod      = errors.New("Запрошен недопустимый метод для файлов")
+	ErrNoKeyInParams         = errors.New("API ключ не указан в параметрах")
+	ErrWrongKeyInParams      = errors.New("API ключ не зарегистрирован")
+	ErrNotAuthorized         = errors.New("Пройдите авторизацию")
+	ErrForbidden             = errors.New("Доступ запрещён")
+	ErrHeadersFetchNotFilled = errors.New("Не заполнены обязательные параметры запроса списка файлов: Page, Limit")
 )
 
 // FileUploadResponse - тип для ответа на запрос
@@ -36,7 +38,7 @@ type FileUploadResponse struct {
 	Error    string
 }
 
-// HandleFiles - обработчик для загрузки файлов POST запросом
+// HandleFiles - обрабатывает POST, GET и DELETE запросы для работы с файлами
 //
 // Аутентификация
 //
@@ -53,10 +55,25 @@ type FileUploadResponse struct {
 //
 //	ApiKey - Постоянный ключ доступа к API *
 //
+// GET
+//
+// 	ожидается заголовок Page с номером страницы
+// 	ожидается заголовок Limit с максимумом элементов на странице
+//
 // POST
 //
 // 	тело запроса должно быть заполнено двоичными данными файла,
-//	переданными через поле формы image
+//	переданными через поле формы file
+//
+// PUT
+//
+// 	тело запроса должно быть заполнено двоичными данными файла,
+//	переданными через поле формы file
+//  должен быть передан номер файла в базе в заголовке FileID
+//
+// DELETE
+//
+// 	ожидается заголовок FileID с номером файла на удаление
 func HandleFiles(w http.ResponseWriter, req *http.Request) {
 	// Проверяем API ключ
 	found, err := signinupout.CheckAPIKey(w, req)
@@ -72,14 +89,61 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 		issued, role := signinupout.TwoWayAuthentication(w, req)
 
 		if issued {
-			if req.Method == http.MethodPost {
+			switch {
+			case req.Method == http.MethodGet:
+
+				// Обработка получения списка файлов с поддержкой постраничных порций
+
+				PageStr := req.Header.Get("Page")
+				LimitStr := req.Header.Get("Limit")
+
+				var FilesResponse databases.FilesResponse
+				var err error
+
+				err = setup.ServerSettings.SQL.Connect(role)
+
+				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+					return
+				}
+				defer setup.ServerSettings.SQL.Disconnect()
+
+				if PageStr != "" && LimitStr != "" {
+					Page, err := strconv.Atoi(PageStr)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					Limit, err := strconv.Atoi(LimitStr)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					FilesResponse, err = databases.PostgreSQLFilesSelect(Page, Limit)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+				} else {
+					shared.HandleOtherError(w, ErrHeadersFetchNotFilled.Error(), ErrHeadersFetchNotFilled, http.StatusBadRequest)
+					return
+				}
+
+				shared.WriteObjectToJSON(w, FilesResponse)
+
+			case req.Method == http.MethodPost:
+
+				// Обработка добавления нового файла в список файлов
 
 				if setup.ServerSettings.CheckRoleForChange(role, "HandleFiles") {
 
 					log.Println("Начинаем получение файла...")
+
 					var furesp FileUploadResponse
 
-					f, fh, err := req.FormFile("image")
+					f, fh, err := req.FormFile("file")
 
 					if shared.HandleInternalServerError(w, err) {
 						return
@@ -171,10 +235,17 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 				} else {
 					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 				}
+			case req.Method == http.MethodPut:
+				// TODO
+				// UPDATE Handle
 
-			} else {
+			case req.Method == http.MethodDelete:
+				// TODO
+				// DELETE Handle
+			default:
 				shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 			}
+
 		} else {
 			shared.HandleOtherError(w, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
 		}
