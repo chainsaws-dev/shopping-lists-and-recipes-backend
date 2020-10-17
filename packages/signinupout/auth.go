@@ -45,7 +45,7 @@ var TokenList []authentication.ActiveToken
 //
 // POST
 //
-// 	ожидается параметр key с API ключом
+// 	ожидается заголовок ApiKey с API ключом
 // 	в теле запроса JSON объект AuthRequestData
 //	Email и пароль должны быть пропущены через через encodeURIComponent и btoa
 func SignIn(w http.ResponseWriter, req *http.Request) {
@@ -117,7 +117,7 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 //
 // POST
 //
-// 	ожидается параметр key с API ключом
+// 	ожидается заголовок ApiKey с API ключом
 // 	в теле запроса JSON объект AuthSignUpRequestData
 //	Email, имя пользователя и пароль должны быть
 //	пропущены через через encodeURIComponent и btoa
@@ -225,7 +225,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 //
 // POST
 //
-// 	ожидается параметр key с API ключом
+// 	ожидается заголовок ApiKey с API ключом
 // 	ожидается заголовок Email с электронной почтой
 func ResendEmail(w http.ResponseWriter, req *http.Request) {
 
@@ -290,7 +290,7 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 //
 // POST
 //
-// 	ожидается параметр key с API ключом
+// 	ожидается заголовок ApiKey с API ключом
 //	ожидается заголовок Token с токеном для доступа
 func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 	found, err := CheckAPIKey(w, req)
@@ -344,7 +344,7 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 //
 // POST
 //
-// 	ожидается параметр key с API ключом
+// 	ожидается заголовок ApiKey с API ключом
 // 	ожидается заголовок Email с электронной почтой
 func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 	found, err := CheckAPIKey(w, req)
@@ -408,7 +408,7 @@ func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 //
 // POST
 //
-// 	ожидается параметр key с API ключом
+// 	ожидается заголовок ApiKey с API ключом
 //	ожидается заголовок Token с токеном для доступа
 //  ожидается заголовок NewPassword c новым паролем
 func ResetPassword(w http.ResponseWriter, req *http.Request) {
