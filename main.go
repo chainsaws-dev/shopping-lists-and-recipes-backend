@@ -80,7 +80,9 @@ func main() {
 	// Рецепты
 	http.HandleFunc("/api/Recipes", recipes.HandleRecipes)
 	http.HandleFunc("/api/Recipes/Search", recipes.HandleRecipesSearch)
-	http.HandleFunc("/api/SaveRecipePhoto", files.UploadFile)
+
+	// Файлы
+	http.HandleFunc("/api/Files", files.HandleFiles)
 
 	// Список покупок
 	http.HandleFunc("/api/ShoppingList", shoppinglist.HandleShoppingList)

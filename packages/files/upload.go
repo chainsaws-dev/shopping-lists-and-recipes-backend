@@ -37,7 +37,7 @@ type FileUploadResponse struct {
 	Error    string
 }
 
-// UploadFile - обработчик для загрузки файлов POST запросом
+// HandleFiles - обработчик для загрузки файлов POST запросом
 //
 // Аутентификация
 //
@@ -58,7 +58,7 @@ type FileUploadResponse struct {
 //
 // 	тело запроса должно быть заполнено двоичными данными файла,
 //	переданными через поле формы image
-func UploadFile(w http.ResponseWriter, req *http.Request) {
+func HandleFiles(w http.ResponseWriter, req *http.Request) {
 	// Проверяем API ключ
 	found, err := signinupout.CheckAPIKey(w, req)
 
@@ -75,7 +75,7 @@ func UploadFile(w http.ResponseWriter, req *http.Request) {
 		if issued {
 			if req.Method == http.MethodPost {
 
-				if setup.ServerSettings.CheckRoleForChange(role, "UploadFile") {
+				if setup.ServerSettings.CheckRoleForChange(role, "HandleFiles") {
 
 					log.Println("Начинаем получение файла...")
 					var furesp FileUploadResponse
