@@ -244,31 +244,36 @@ func GetSessionsList(page int, limit int) (SessionsResponse, error) {
 
 // DeleteSession - ищет сессию по электронной почте и удаляет её
 func DeleteSession(Email string) error {
-	sIdx := FindSessionIdxByEmail(Email)
 
-	if len(sIdx) < 1 {
-		return ErrSessionNotFoundByEmail
+	var idx int
+	var found bool
+
+	for idx >= 0 {
+
+		idx = FindSessionIdxByEmail(Email)
+		if idx >= 0 {
+			found = true
+			SliceDelete(idx)
+		}
 	}
 
-	for _, idx := range sIdx {
-		SliceDelete(idx)
+	if !found {
+		return ErrSessionNotFoundByEmail
 	}
 
 	return nil
 }
 
 // FindSessionIdxByEmail - ищет сессию по электронному адресу
-func FindSessionIdxByEmail(Email string) []int {
-
-	var sIdx []int
+func FindSessionIdxByEmail(Email string) int {
 
 	for idx, session := range TokenList {
 		if session.Email == Email {
-			sIdx = append(sIdx, idx)
+			return idx
 		}
 	}
 
-	return sIdx
+	return -1
 }
 
 // CompareSessions - выполняет сравнение сессий

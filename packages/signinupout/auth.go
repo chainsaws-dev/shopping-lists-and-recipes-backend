@@ -844,10 +844,6 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 							}
 						}
 
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
 						shared.HandleSuccessMessage(w, "Сессия удалена")
 
 					} else {
