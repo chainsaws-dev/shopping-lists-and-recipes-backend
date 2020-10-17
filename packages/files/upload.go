@@ -114,7 +114,7 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 
 						filename := fmt.Sprintf("%x", fn.Sum(nil)) + "." + ext
 
-						filename = strings.Join([]string{"uploads", filename}, "/")
+						linktofile := strings.Join([]string{"uploads", filename}, "/")
 
 						path := filepath.Join(".", "public", "uploads", filename)
 
@@ -148,7 +148,7 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 
 						furesp = FileUploadResponse{
 							FileName: fh.Filename,
-							FileID:   filename,
+							FileID:   linktofile,
 							FileType: ext,
 							DbID:     fileid,
 							FileSize: fh.Size,
