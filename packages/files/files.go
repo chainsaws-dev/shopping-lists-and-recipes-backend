@@ -289,7 +289,7 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 						}
 					}
 
-					shared.HandleSuccessMessage(w, "Файл удалён")
+					shared.HandleSuccessMessage(w, fmt.Sprintf("Файл с индексом %v удалён", FileID))
 
 				} else {
 					shared.HandleOtherError(w, ErrHeaderDeleteNotFilled.Error(), ErrHeaderDeleteNotFilled, http.StatusBadRequest)
