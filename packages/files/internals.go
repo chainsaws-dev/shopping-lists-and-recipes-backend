@@ -15,24 +15,24 @@ import (
 	"strings"
 )
 
-// FileUpload - выполняет загрузку файла на сервер и сохранение в файловой системе и информации в базе данных
-func FileUpload(w http.ResponseWriter, req *http.Request, role string) (FileUploadResponse, error) {
+// fileUpload - выполняет загрузку файла на сервер и сохранение в файловой системе и информации в базе данных
+func fileUpload(w http.ResponseWriter, req *http.Request, role string) (databases.File, error) {
 
 	log.Println("Начинаем получение файла...")
 
-	var furesp FileUploadResponse
+	var NewFile databases.File
 
 	f, fh, err := req.FormFile("file")
 
 	if shared.HandleInternalServerError(w, err) {
-		return furesp, err
+		return NewFile, err
 	}
 	defer f.Close()
 
 	err = setup.ServerSettings.SQL.Connect(role)
 
 	if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-		return furesp, err
+		return NewFile, err
 	}
 	defer setup.ServerSettings.SQL.Disconnect()
 
@@ -41,7 +41,7 @@ func FileUpload(w http.ResponseWriter, req *http.Request, role string) (FileUplo
 	_, err = f.Read(buff)
 
 	if shared.HandleInternalServerError(w, err) {
-		return furesp, err
+		return NewFile, err
 	}
 
 	filetype := http.DetectContentType(buff)
@@ -64,7 +64,7 @@ func FileUpload(w http.ResponseWriter, req *http.Request, role string) (FileUplo
 		nf, err := os.Create(path)
 
 		if shared.HandleInternalServerError(w, err) {
-			return furesp, err
+			return NewFile, err
 		}
 
 		defer nf.Close()
@@ -72,52 +72,43 @@ func FileUpload(w http.ResponseWriter, req *http.Request, role string) (FileUplo
 		_, err = f.Seek(0, 0)
 
 		if shared.HandleInternalServerError(w, err) {
-			return furesp, err
+			return NewFile, err
 		}
 
 		_, err = io.Copy(nf, f)
 
 		if shared.HandleInternalServerError(w, err) {
-			return furesp, err
+			return NewFile, err
 		}
 
 		log.Printf("Файл получен и сохранён под именем %s", filename)
 
-		var fileid int
+		NewFile.Filename = fh.Filename
+		NewFile.Filesize = int(fh.Size)
+		NewFile.Filetype = ext
+		NewFile.FileID = filename
 
-		fileid, err = databases.PostgreSQLFileInsert(fh.Filename, fh.Size, ext, filename)
+		NewFile.ID, err = databases.PostgreSQLFileInsert(NewFile)
 
 		if err != nil {
 			if errors.Is(databases.ErrFirstNotUpdate, err) {
 				shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
-				return furesp, err
+				return NewFile, err
 			}
 
 			if shared.HandleInternalServerError(w, err) {
-				return furesp, err
+				return NewFile, err
 			}
 		}
 
-		furesp = FileUploadResponse{
-			FileName: fh.Filename,
-			FileID:   linktofile,
-			FileType: ext,
-			DbID:     fileid,
-			FileSize: fh.Size,
-			Error:    "",
-		}
+		NewFile.FileID = linktofile
 
 	} else {
-		furesp = FileUploadResponse{
-			FileName: fh.Filename,
-			FileID:   "",
-			FileType: "",
-			DbID:     -1,
-			FileSize: fh.Size,
-			Error:    "Unsupported file type",
-		}
+
+		shared.HandleOtherError(w, ErrUnsupportedFileType.Error(), ErrUnsupportedFileType, http.StatusBadRequest)
+		return NewFile, ErrUnsupportedFileType
 	}
 
-	return furesp, nil
+	return NewFile, nil
 
 }

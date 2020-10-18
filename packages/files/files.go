@@ -26,17 +26,8 @@ var (
 	ErrHeaderDeleteNotFilled = errors.New("Не заполнен обязательный параметр для удаления файла: FileID")
 	ErroNoRowsInResult       = errors.New("Не найдено ни одной записи для удаления")
 	ErrFkeyViolation         = errors.New("Нельзя удалять записи, на которые имеются ссылки")
+	ErrUnsupportedFileType   = errors.New("Неподдерживаемый тип файла")
 )
-
-// FileUploadResponse - тип для ответа на запрос
-type FileUploadResponse struct {
-	FileName string
-	FileSize int64
-	FileType string
-	DbID     int
-	FileID   string
-	Error    string
-}
 
 // HandleFiles - обрабатывает POST, GET и DELETE запросы для работы с файлами
 //
@@ -138,7 +129,7 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 
 				if setup.ServerSettings.CheckRoleForChange(role, "HandleFiles") {
 
-					furesp, err := FileUpload(w, req, role)
+					furesp, err := fileUpload(w, req, role)
 
 					if err != nil {
 						return

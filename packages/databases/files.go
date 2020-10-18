@@ -12,7 +12,7 @@ import (
 )
 
 // PostgreSQLFileInsert - создаёт записи в базе данных для хранения информации о загруженном файле
-func PostgreSQLFileInsert(filename string, filesize int64, filetype string, fileid string) (int, error) {
+func PostgreSQLFileInsert(NewFile File) (int, error) {
 
 	dbc.Exec("BEGIN")
 
@@ -22,13 +22,13 @@ func PostgreSQLFileInsert(filename string, filesize int64, filetype string, file
 		  VALUES 
 			($1, $2, $3, $4) RETURNING id;`
 
-	row := dbc.QueryRow(sql, filename, filesize, filetype, fileid)
+	row := dbc.QueryRow(sql, NewFile.Filename, NewFile.Filesize, NewFile.Filetype, NewFile.FileID)
 
 	var curid int
 	err := row.Scan(&curid)
 
 	if err != nil {
-		return curid, PostgreSQLRollbackIfError(err, true)
+		return -1, PostgreSQLRollbackIfError(err, true)
 	}
 
 	log.Printf("Данные о файле сохранены в базу данных под индексом %v", curid)

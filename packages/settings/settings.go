@@ -212,7 +212,14 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 			log.Fatalln(err)
 		}
 		databases.PostgreSQLCreateTables()
-		databases.PostgreSQLFileInsert("placeholder.jpg", 0, "jpg", "")
+
+		placeholder := databases.File{
+			Filename: "placeholder.jpg",
+			Filesize: 0,
+			Filetype: "jpg",
+			FileID:   "",
+		}
+		databases.PostgreSQLFileInsert(placeholder)
 
 		for _, currole := range SQLsrv.Roles {
 
