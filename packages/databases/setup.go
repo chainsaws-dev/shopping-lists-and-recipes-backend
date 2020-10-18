@@ -132,7 +132,7 @@ func PostgreSQLCreateTables() {
 				ADD CONSTRAINT "Recipes_image_id_fkey" FOREIGN KEY (image_id)
 				REFERENCES public."Files" (id) MATCH FULL
 				ON UPDATE RESTRICT
-				ON DELETE CASCADE;
+				ON DELETE RESTRICT;
 			CREATE INDEX "fki_Recipes_image_id_fkey"
 				ON public."Recipes"(image_id);`
 
@@ -278,7 +278,7 @@ func PostgreSQLCreateTables() {
 				ADD CONSTRAINT hashes_user_id_fkey FOREIGN KEY (user_id)
 				REFERENCES secret.users (id) MATCH FULL
 				ON UPDATE RESTRICT
-				ON DELETE CASCADE;
+				ON DELETE RESTRICT;
 			CREATE INDEX fki_hashes_user_id_fkey
 				ON secret.hashes(user_id);`
 
@@ -294,7 +294,7 @@ func PostgreSQLCreateTables() {
 				"Expires" timestamp with time zone NOT NULL,
 				CONSTRAINT confirmations_user_id_fkey FOREIGN KEY (user_id)
 					REFERENCES secret.users (id) MATCH FULL
-					ON UPDATE NO ACTION
+					ON UPDATE RESTRICT
 					ON DELETE RESTRICT
 			);
 			ALTER TABLE secret.confirmations
@@ -318,7 +318,7 @@ func PostgreSQLCreateTables() {
 				"Expires" timestamp with time zone NOT NULL,
 				CONSTRAINT password_resets_user_id_fkey FOREIGN KEY (user_id)
 					REFERENCES secret.users (id) MATCH FULL
-					ON UPDATE NO ACTION
+					ON UPDATE RESTRICT
 					ON DELETE RESTRICT
 			)
 			
