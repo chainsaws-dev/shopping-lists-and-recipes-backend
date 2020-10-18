@@ -39,10 +39,10 @@ func PostgreSQLFileInsert(filename string, filesize int64, filetype string, file
 }
 
 // PostgreSQLFileUpdate - обновляет записи в базе данных для хранения информации о загруженном файле
-func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, fileid string, id int) (int, error) {
+func PostgreSQLFileUpdate(f File) error {
 
-	if id == 1 {
-		return -1, ErrFirstNotUpdate
+	if f.ID == 1 {
+		return ErrFirstNotUpdate
 	}
 
 	dbc.Exec("BEGIN")
@@ -52,23 +52,17 @@ func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, file
 			SET 
 				(filename, filesize, filetype, file_id) = ($1, $2, $3, $4) 
 			WHERE 
-				id = $5
-			RETURNING id;`
+				id = $5;`
 
-	row := dbc.QueryRow(sql, filename, filesize, filetype, fileid, id)
-
-	var curid int
-	err := row.Scan(&curid)
-
-	log.Printf("Данные о файле сохранены в базу данных под индексом %v", curid)
+	_, err := dbc.Exec(sql, f.Filename, f.Filesize, f.Filetype, strings.ReplaceAll(f.FileID, "/uploads/", ""), f.ID)
 
 	if err != nil {
-		return -1, PostgreSQLRollbackIfError(err, true)
+		return PostgreSQLRollbackIfError(err, true)
 	}
 
 	dbc.Exec("COMMIT")
 
-	return curid, nil
+	return nil
 }
 
 // PostgreSQLFileDelete - удаляет запись в базе данных о загруженном файле

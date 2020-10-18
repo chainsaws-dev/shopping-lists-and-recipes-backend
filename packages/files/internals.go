@@ -16,7 +16,7 @@ import (
 )
 
 // FileUpload - выполняет загрузку файла на сервер и сохранение в файловой системе и информации в базе данных
-func FileUpload(w http.ResponseWriter, req *http.Request, role string, FileID int) (FileUploadResponse, error) {
+func FileUpload(w http.ResponseWriter, req *http.Request, role string) (FileUploadResponse, error) {
 
 	log.Println("Начинаем получение файла...")
 
@@ -85,11 +85,7 @@ func FileUpload(w http.ResponseWriter, req *http.Request, role string, FileID in
 
 		var fileid int
 
-		if FileID < 0 {
-			fileid, err = databases.PostgreSQLFileInsert(fh.Filename, fh.Size, ext, filename)
-		} else {
-			fileid, err = databases.PostgreSQLFileUpdate(fh.Filename, fh.Size, ext, filename, FileID)
-		}
+		fileid, err = databases.PostgreSQLFileInsert(fh.Filename, fh.Size, ext, filename)
 
 		if err != nil {
 			if errors.Is(databases.ErrFirstNotUpdate, err) {
