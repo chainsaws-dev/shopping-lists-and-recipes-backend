@@ -100,7 +100,10 @@ func PostgreSQLFileDelete(fileid int) error {
 	}
 
 	path := strings.Join([]string{".", "public", "uploads", filename}, "/")
-	err = os.Remove(path)
+
+	if СheckExists(path) {
+		err = os.Remove(path)
+	}
 
 	if err != nil {
 		return err

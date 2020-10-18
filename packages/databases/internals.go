@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"shopping-lists-and-recipes/packages/shared"
 )
 
@@ -81,4 +82,14 @@ func PostgreSQLConnect(ConnString string) error {
 //
 func PostgreSQLCheckLimitOffset(Limit int, Offset int) bool {
 	return Offset >= 0 && Limit > 0 && Limit <= 50
+}
+
+// СheckExists - проверяем что файл или папка существует
+func СheckExists(filename string) bool {
+
+	if _, err := os.Stat(filename); err == nil {
+		return true
+	}
+
+	return false
 }
