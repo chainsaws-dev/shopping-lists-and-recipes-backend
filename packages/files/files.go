@@ -3,6 +3,7 @@ package files
 
 import (
 	"crypto/sha1"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -26,6 +27,8 @@ var (
 	ErrNotAuthorized         = errors.New("Пройдите авторизацию")
 	ErrForbidden             = errors.New("Доступ запрещён")
 	ErrHeadersFetchNotFilled = errors.New("Не заполнены обязательные параметры запроса списка файлов: Page, Limit")
+	ErrHeaderDeleteNotFilled = errors.New("Не заполнен обязательный параметр для удаления файла: FileID")
+	ErroNoRowsInResult       = errors.New("Не найдено ни одной записи для удаления")
 )
 
 // FileUploadResponse - тип для ответа на запрос
@@ -110,13 +113,13 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 				if PageStr != "" && LimitStr != "" {
 					Page, err := strconv.Atoi(PageStr)
 
-					if shared.HandleInternalServerError(w, err) {
+					if shared.HandleBadRequestError(w, err) {
 						return
 					}
 
 					Limit, err := strconv.Atoi(LimitStr)
 
-					if shared.HandleInternalServerError(w, err) {
+					if shared.HandleBadRequestError(w, err) {
 						return
 					}
 
@@ -240,8 +243,53 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 				// UPDATE Handle
 
 			case req.Method == http.MethodDelete:
-				// TODO
-				// DELETE Handle
+
+				// Обработка удаления файла по номеру в базе
+
+				FileID := req.Header.Get("FileID")
+
+				var err error
+
+				err = setup.ServerSettings.SQL.Connect(role)
+
+				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+					return
+				}
+				defer setup.ServerSettings.SQL.Disconnect()
+
+				if FileID != "" {
+
+					ID, err := strconv.Atoi(FileID)
+
+					if shared.HandleBadRequestError(w, err) {
+						return
+					}
+
+					err = databases.PostgreSQLFileDelete(ID)
+
+					if err != nil {
+						if errors.Is(databases.ErrFirstNotDelete, err) {
+							shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+							return
+						}
+
+						if errors.Is(sql.ErrNoRows, err) {
+							shared.HandleOtherError(w, ErroNoRowsInResult.Error(), ErroNoRowsInResult, http.StatusBadRequest)
+							return
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+					}
+
+					shared.HandleSuccessMessage(w, "Файл удалён")
+
+				} else {
+					shared.HandleOtherError(w, ErrHeaderDeleteNotFilled.Error(), ErrHeaderDeleteNotFilled, http.StatusBadRequest)
+					return
+				}
+
 			default:
 				shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 			}
