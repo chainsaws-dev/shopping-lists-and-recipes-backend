@@ -29,6 +29,7 @@ var (
 	ErrHeadersFetchNotFilled = errors.New("Не заполнены обязательные параметры запроса списка файлов: Page, Limit")
 	ErrHeaderDeleteNotFilled = errors.New("Не заполнен обязательный параметр для удаления файла: FileID")
 	ErroNoRowsInResult       = errors.New("Не найдено ни одной записи для удаления")
+	ErrFkeyViolation         = errors.New("Нельзя удалять записи, на которые имеются ссылки")
 )
 
 // FileUploadResponse - тип для ответа на запрос
@@ -275,6 +276,11 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 
 						if errors.Is(sql.ErrNoRows, err) {
 							shared.HandleOtherError(w, ErroNoRowsInResult.Error(), ErroNoRowsInResult, http.StatusBadRequest)
+							return
+						}
+
+						if strings.Contains(err.Error(), "violates foreign key constraint") {
+							shared.HandleOtherError(w, ErrFkeyViolation.Error(), ErrFkeyViolation, http.StatusBadRequest)
 							return
 						}
 

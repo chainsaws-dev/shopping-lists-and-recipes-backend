@@ -142,6 +142,8 @@ func HandleSuccessMessage(w http.ResponseWriter, message string) {
 		},
 	}
 
+	log.Println(message)
+
 	WriteObjectToJSON(w, Response)
 
 }
