@@ -39,7 +39,11 @@ func PostgreSQLFileInsert(filename string, filesize int64, filetype string, file
 }
 
 // PostgreSQLFileUpdate - обновляет записи в базе данных для хранения информации о загруженном файле
-func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, fileid string, id string) (int, error) {
+func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, fileid string, id int) (int, error) {
+
+	if id == 1 {
+		return -1, ErrFirstNotUpdate
+	}
 
 	dbc.Exec("BEGIN")
 
@@ -59,7 +63,7 @@ func PostgreSQLFileUpdate(filename string, filesize int64, filetype string, file
 	log.Printf("Данные о файле сохранены в базу данных под индексом %v", curid)
 
 	if err != nil {
-		return 1, PostgreSQLRollbackIfError(err, true)
+		return -1, PostgreSQLRollbackIfError(err, true)
 	}
 
 	dbc.Exec("COMMIT")

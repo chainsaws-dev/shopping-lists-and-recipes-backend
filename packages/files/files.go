@@ -2,15 +2,10 @@
 package files
 
 import (
-	"crypto/sha1"
 	"database/sql"
 	"errors"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"shopping-lists-and-recipes/packages/databases"
 	"shopping-lists-and-recipes/packages/setup"
 	"shopping-lists-and-recipes/packages/shared"
@@ -143,95 +138,10 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 
 				if setup.ServerSettings.CheckRoleForChange(role, "HandleFiles") {
 
-					log.Println("Начинаем получение файла...")
+					furesp, err := FileUpload(w, req, role, -1)
 
-					var furesp FileUploadResponse
-
-					f, fh, err := req.FormFile("file")
-
-					if shared.HandleInternalServerError(w, err) {
+					if err != nil {
 						return
-					}
-					defer f.Close()
-
-					err = setup.ServerSettings.SQL.Connect(role)
-
-					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-						return
-					}
-					defer setup.ServerSettings.SQL.Disconnect()
-
-					// Проверяем тип файла
-					buff := make([]byte, 512)
-					_, err = f.Read(buff)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					filetype := http.DetectContentType(buff)
-
-					if filetype == "image/jpeg" || filetype == "image/jpg" || filetype == "image/gif" ||
-						filetype == "image/png" || filetype == "application/pdf" {
-
-						ext := strings.Split(fh.Filename, ".")[1]
-
-						fn := sha1.New()
-
-						io.Copy(fn, f)
-
-						filename := fmt.Sprintf("%x", fn.Sum(nil)) + "." + ext
-
-						linktofile := strings.Join([]string{"uploads", filename}, "/")
-
-						path := filepath.Join(".", "public", "uploads", filename)
-
-						nf, err := os.Create(path)
-
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
-						defer nf.Close()
-
-						_, err = f.Seek(0, 0)
-
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
-						_, err = io.Copy(nf, f)
-
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
-						log.Printf("Файл получен и сохранён под именем %s", filename)
-
-						fileid, err := databases.PostgreSQLFileInsert(fh.Filename, fh.Size, ext, filename)
-
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
-						furesp = FileUploadResponse{
-							FileName: fh.Filename,
-							FileID:   linktofile,
-							FileType: ext,
-							DbID:     fileid,
-							FileSize: fh.Size,
-							Error:    "",
-						}
-
-					} else {
-						furesp = FileUploadResponse{
-							FileName: fh.Filename,
-							FileID:   "",
-							FileType: "",
-							DbID:     -1,
-							FileSize: fh.Size,
-							Error:    "Unsupported file type",
-						}
 					}
 
 					shared.WriteObjectToJSON(w, furesp)
@@ -240,8 +150,33 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 				}
 			case req.Method == http.MethodPut:
-				// TODO
-				// UPDATE Handle
+
+				// Обработка обновления существующего файла по номеру в базе
+
+				if setup.ServerSettings.CheckRoleForChange(role, "HandleFiles") {
+
+					FileID := req.Header.Get("FileID")
+
+					if len(FileID) > 0 {
+						ID, err := strconv.Atoi(FileID)
+
+						if shared.HandleBadRequestError(w, err) {
+							return
+						}
+
+						furesp, err := FileUpload(w, req, role, ID)
+
+						if err != nil {
+							return
+						}
+
+						shared.WriteObjectToJSON(w, furesp)
+
+					}
+
+				} else {
+					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+				}
 
 			case req.Method == http.MethodDelete:
 
@@ -258,7 +193,7 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 				}
 				defer setup.ServerSettings.SQL.Disconnect()
 
-				if FileID != "" {
+				if len(FileID) > 0 {
 
 					ID, err := strconv.Atoi(FileID)
 

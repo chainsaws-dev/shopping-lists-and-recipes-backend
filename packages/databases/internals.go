@@ -11,6 +11,7 @@ import (
 // Список типовых ошибок
 var (
 	ErrFirstNotDelete       = errors.New("Первая запись в списке файлов техническая и не подлежит удалению")
+	ErrFirstNotUpdate       = errors.New("Первая запись в списке файлов техническая и не подлежит изменению")
 	ErrRecipeNotFound       = errors.New("В таблице рецептов не найден указанный id")
 	ErrShoppingListNotFound = errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
 	ErrEmptyPassword        = errors.New("Не допустимо использование паролей с длинной менее шести символов")
