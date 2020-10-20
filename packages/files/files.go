@@ -3,7 +3,6 @@ package files
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -55,11 +54,6 @@ var (
 //
 // 	тело запроса должно быть заполнено двоичными данными файла,
 //	переданными через поле формы file
-//
-// PUT
-//
-// 	тело запроса должно содержать объект FileUploadResponse
-//  должен быть передан номер файла в базе в заголовке FileID
 //
 // DELETE
 //
@@ -136,38 +130,6 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 					}
 
 					shared.WriteObjectToJSON(w, furesp)
-
-				} else {
-					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
-				}
-			case req.Method == http.MethodPut:
-
-				// Обработка обновления существующего файла по номеру в базе
-
-				if setup.ServerSettings.CheckRoleForChange(role, "HandleFiles") {
-
-					var FileInfo databases.File
-
-					err := json.NewDecoder(req.Body).Decode(&FileInfo)
-
-					if shared.HandleOtherError(w, "Invalid object in request body", err, http.StatusBadRequest) {
-						return
-					}
-
-					err = setup.ServerSettings.SQL.Connect(role)
-
-					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-						return
-					}
-					defer setup.ServerSettings.SQL.Disconnect()
-
-					err = databases.PostgreSQLFileUpdate(FileInfo)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					shared.HandleSuccessMessage(w, fmt.Sprintf("Данные о файле с индексом %v обновлены.", FileInfo.ID))
 
 				} else {
 					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)

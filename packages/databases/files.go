@@ -38,33 +38,6 @@ func PostgreSQLFileInsert(NewFile File) (int, error) {
 	return curid, nil
 }
 
-// PostgreSQLFileUpdate - обновляет записи в базе данных для хранения информации о загруженном файле
-func PostgreSQLFileUpdate(f File) error {
-
-	if f.ID == 1 {
-		return ErrFirstNotUpdate
-	}
-
-	dbc.Exec("BEGIN")
-
-	sql := `UPDATE
-				public."Files" 
-			SET 
-				(filename, filesize, filetype, file_id) = ($1, $2, $3, $4) 
-			WHERE 
-				id = $5;`
-
-	_, err := dbc.Exec(sql, f.Filename, f.Filesize, f.Filetype, strings.ReplaceAll(f.FileID, "/uploads/", ""), f.ID)
-
-	if err != nil {
-		return PostgreSQLRollbackIfError(err, true)
-	}
-
-	dbc.Exec("COMMIT")
-
-	return nil
-}
-
 // PostgreSQLFileDelete - удаляет запись в базе данных о загруженном файле
 func PostgreSQLFileDelete(fileid int) error {
 
