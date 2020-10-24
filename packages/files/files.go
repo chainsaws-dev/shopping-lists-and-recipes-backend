@@ -158,7 +158,9 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 						return
 					}
 
-					err = databases.PostgreSQLFileDelete(ID)
+					if ID > 1 {
+						err = databases.PostgreSQLFileDelete(ID)
+					}
 
 					if err != nil {
 						if errors.Is(databases.ErrFirstNotDelete, err) {
