@@ -199,14 +199,14 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 // PostgreSQLShoppingListDelete - удаляет запись из списка покупок по имени
 func PostgreSQLShoppingListDelete(IngName string) error {
 
-	sql := `SELECT 
+	sqlreq := `SELECT 
 				COUNT(*)
 			FROM 
 				public."Ingredients"
 			WHERE 
 				"Ingredients".name=$1;`
 
-	row := dbc.QueryRow(sql, IngName)
+	row := dbc.QueryRow(sqlreq, IngName)
 
 	var IngCount int
 
@@ -221,14 +221,14 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 
 	if IngCount > 0 {
 
-		sql := `SELECT 
+		sqlreq := `SELECT 
 					id
 				FROM 
 					public."Ingredients"
 				WHERE 
 					"Ingredients".name=$1;`
 
-		ingrow := dbc.QueryRow(sql, IngName)
+		ingrow := dbc.QueryRow(sqlreq, IngName)
 
 		err = ingrow.Scan(&ingID)
 
@@ -236,14 +236,14 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 			return err
 		}
 
-		sql = `SELECT 
+		sqlreq = `SELECT 
 					COUNT(*)
 				FROM 
 					public."ShoppingList"
 				WHERE 
 					ingredient_id=$1;`
 
-		slrow := dbc.QueryRow(sql, ingID)
+		slrow := dbc.QueryRow(sqlreq, ingID)
 
 		err = slrow.Scan(&CountRows)
 
@@ -257,8 +257,16 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 
 		dbc.Exec("BEGIN")
 
-		sql = `DELETE FROM public."ShoppingList" WHERE ingredient_id=$1;`
-		_, err = dbc.Exec(sql, ingID)
+		sqlreq = `DELETE FROM public."ShoppingList" WHERE ingredient_id=$1;`
+		_, err = dbc.Exec(sqlreq, ingID)
+
+		if err != nil {
+			return PostgreSQLRollbackIfError(err, false)
+		}
+
+		sqlreq = `select setval('"public"."ShoppingList_id_seq"',(select COALESCE(max("id"),1) from "public"."ShoppingList")::bigint);`
+
+		_, err = dbc.Exec(sqlreq)
 
 		if err != nil {
 			return PostgreSQLRollbackIfError(err, false)
@@ -279,9 +287,17 @@ func PostgreSQLShoppingListDeleteAll() error {
 
 	dbc.Exec("BEGIN")
 
-	sql := `DELETE FROM public."ShoppingList";`
+	sqlreq := `DELETE FROM public."ShoppingList";`
 
-	_, err := dbc.Exec(sql)
+	_, err := dbc.Exec(sqlreq)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	sqlreq = `select setval('"public"."ShoppingList_id_seq"',(select COALESCE(max("id"),1) from "public"."ShoppingList")::bigint);`
+
+	_, err = dbc.Exec(sqlreq)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false)
