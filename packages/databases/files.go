@@ -11,24 +11,56 @@ import (
 	_ "github.com/lib/pq" // Драйвер PostgreSQL
 )
 
+// PostgreSQLFileChange - определяет существует ли такой же файл в базе
+// и изменяет или создаёт новый в зависимости от результата проверки
+func PostgreSQLFileChange(f File) (int, error) {
+
+	sqlreq := `SELECT 
+					COUNT(*)
+				FROM
+					public."Files"
+				WHERE 
+					file_id=$1`
+
+	row := dbc.QueryRow(sqlreq, f.FileID)
+
+	var CountRows int
+	err := row.Scan(&CountRows)
+
+	if err != nil {
+		return -1, err
+	}
+
+	if CountRows > 0 {
+		return PostgreSQLFileUpdate(f)
+	}
+
+	return PostgreSQLFileInsert(f)
+}
+
 // PostgreSQLFileInsert - создаёт записи в базе данных для хранения информации о загруженном файле
-func PostgreSQLFileInsert(NewFile File) (int, error) {
+//
+// Параметры:
+//
+// f - тип файл, содержащий данные о файле (имя, размер, тип, имя на сервере)
+//
+func PostgreSQLFileInsert(f File) (int, error) {
 
 	dbc.Exec("BEGIN")
 
-	sql := `INSERT INTO 
-			public."Files" 
+	sqlreq := `INSERT INTO 
+			public."Files"
 			(filename, filesize, filetype, file_id) 
 		  VALUES 
 			($1, $2, $3, $4) RETURNING id;`
 
-	row := dbc.QueryRow(sql, NewFile.Filename, NewFile.Filesize, NewFile.Filetype, NewFile.FileID)
+	row := dbc.QueryRow(sqlreq, f.Filename, f.Filesize, f.Filetype, f.FileID)
 
 	var curid int
 	err := row.Scan(&curid)
 
 	if err != nil {
-		return -1, PostgreSQLRollbackIfError(err, true)
+		return curid, PostgreSQLRollbackIfError(err, true)
 	}
 
 	log.Printf("Данные о файле сохранены в базу данных под индексом %v", curid)
@@ -36,6 +68,51 @@ func PostgreSQLFileInsert(NewFile File) (int, error) {
 	dbc.Exec("COMMIT")
 
 	return curid, nil
+}
+
+// PostgreSQLFileUpdate - перезаписывает данные в базе о уже существующем файле
+//
+// Параметры:
+//
+// f - тип файл, содержащий данные о файле (имя, размер, тип, имя на сервере)
+//
+func PostgreSQLFileUpdate(f File) (int, error) {
+
+	sqlreq := `SELECT 
+					id
+				FROM
+					public."Files"
+				WHERE 
+					file_id=$1`
+
+	row := dbc.QueryRow(sqlreq, f.FileID)
+
+	var DbID int
+	err := row.Scan(&DbID)
+
+	if err != nil {
+		return -1, err
+	}
+
+	f.ID = DbID
+
+	dbc.Exec("BEGIN")
+
+	sqlreq = `UPDATE 
+				public."Files"
+				SET (filename, filesize, filetype, file_id) = ($1, $2, $3, $4)
+				WHERE
+					file_id=$4;`
+
+	_, err = dbc.Exec(sqlreq, f.Filename, f.Filesize, f.Filetype, f.FileID)
+
+	if err != nil {
+		return f.ID, PostgreSQLRollbackIfError(err, false)
+	}
+
+	dbc.Exec("COMMIT")
+
+	return f.ID, nil
 }
 
 // PostgreSQLFileDelete - удаляет запись в базе данных о загруженном файле
@@ -47,13 +124,13 @@ func PostgreSQLFileDelete(fileid int) error {
 
 	dbc.Exec("BEGIN")
 
-	sql := `SELECT 
+	sqlreq := `SELECT 
 				file_id
 			FROM 
-				public."Files" 
+				public."Files"
 			WHERE id=$1;`
 
-	row := dbc.QueryRow(sql, fileid)
+	row := dbc.QueryRow(sqlreq, fileid)
 
 	var filename string
 	err := row.Scan(&filename)
@@ -62,11 +139,11 @@ func PostgreSQLFileDelete(fileid int) error {
 		return err
 	}
 
-	sql = `DELETE FROM 
-				public."Files" 
+	sqlreq = `DELETE FROM 
+				public."Files"
 			WHERE id=$1;`
 
-	_, err = dbc.Exec(sql, fileid)
+	_, err = dbc.Exec(sqlreq, fileid)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false)
@@ -80,6 +157,14 @@ func PostgreSQLFileDelete(fileid int) error {
 
 	if err != nil {
 		return err
+	}
+
+	sqlreq = `select setval('"public"."Files_id_seq"',(select COALESCE(max("id"),1) from "public"."Files")::bigint);`
+
+	_, err = dbc.Exec(sqlreq)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
 	}
 
 	dbc.Exec("COMMIT")

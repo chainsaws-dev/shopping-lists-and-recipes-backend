@@ -219,7 +219,7 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 			Filetype: "jpg",
 			FileID:   "",
 		}
-		databases.PostgreSQLFileInsert(placeholder)
+		databases.PostgreSQLFileChange(placeholder)
 
 		for _, currole := range SQLsrv.Roles {
 

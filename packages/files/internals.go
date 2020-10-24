@@ -88,7 +88,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 		NewFile.Filetype = ext
 		NewFile.FileID = filename
 
-		NewFile.ID, err = databases.PostgreSQLFileInsert(NewFile)
+		NewFile.ID, err = databases.PostgreSQLFileChange(NewFile)
 
 		if err != nil {
 			if errors.Is(databases.ErrFirstNotUpdate, err) {

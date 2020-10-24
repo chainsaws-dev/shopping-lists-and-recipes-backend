@@ -388,7 +388,7 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	PostgreSQLRollbackIfError(err, true)
 
-	grantsql = fmt.Sprintf(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "public, secret", roleName)
+	grantsql = fmt.Sprintf(`GRANT UPDATE, USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "public, secret", roleName)
 
 	_, err = dbc.Exec(grantsql)
 
