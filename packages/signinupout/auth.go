@@ -34,6 +34,7 @@ var (
 	ErrHeadersNotFilled       = errors.New("Не заполнены обязательные параметры запроса")
 	ErrLimitOffsetInvalid     = errors.New("Limit и Offset приняли недопустимое значение")
 	ErrSessionNotFoundByEmail = errors.New("Сессия не найдена для данной электронной почты")
+	ErrSessionNotFoundByToken = errors.New("Сессия не найдена для данного токена")
 )
 
 // TokenList - список активных токенов
@@ -762,7 +763,11 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 //
 // DELETE
 //
-// 	ожидается заголовок Email для удаления сессий из списка сессий
+// 	ожидается заголовок Email для удаления сессий из списка сессий по электронной почте
+//
+//  или
+//
+//	ожидается заголовок Token для удаления сессий из списка сессий по токену
 func HandleSessions(w http.ResponseWriter, req *http.Request) {
 
 	found, err := CheckAPIKey(w, req)
@@ -832,19 +837,35 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 				if setup.ServerSettings.CheckRoleForDelete(role, "HandleSessions") {
 					// Удаление сессии по электронной почте
 					Email := req.Header.Get("Email")
+					Token := req.Header.Get("Token")
 
-					if len(Email) > 0 {
+					if len(Email) > 0 || len(Token) > 0 {
 
-						err = DeleteSession(Email)
+						if len(Email) > 0 {
+							err = DeleteSessionByEmail(Email)
 
-						if err != nil {
-							if errors.Is(err, ErrSessionNotFoundByEmail) {
-								shared.HandleOtherError(w, "Сессия не найдена, невозможно удалить", err, http.StatusBadRequest)
-								return
+							if err != nil {
+								if errors.Is(err, ErrSessionNotFoundByEmail) {
+									shared.HandleOtherError(w, "Сессии не найдены, невозможно удалить", err, http.StatusBadRequest)
+									return
+								}
 							}
+
+							shared.HandleSuccessMessage(w, "Сессии удалены")
 						}
 
-						shared.HandleSuccessMessage(w, "Сессия удалена")
+						if len(Token) > 0 {
+							err = DeleteSessionByToken(Token)
+
+							if err != nil {
+								if errors.Is(err, ErrSessionNotFoundByToken) {
+									shared.HandleOtherError(w, "Сессия не найдена, невозможно удалить", err, http.StatusBadRequest)
+									return
+								}
+							}
+
+							shared.HandleSuccessMessage(w, "Сессия удалена")
+						}
 
 					} else {
 						shared.HandleOtherError(w, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)

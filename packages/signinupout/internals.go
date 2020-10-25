@@ -242,8 +242,8 @@ func GetSessionsList(page int, limit int) (SessionsResponse, error) {
 
 }
 
-// DeleteSession - ищет сессию по электронной почте и удаляет её
-func DeleteSession(Email string) error {
+// DeleteSessionByEmail - ищет сессию по электронной почте и удаляет её
+func DeleteSessionByEmail(Email string) error {
 
 	var idx int
 	var found bool
@@ -264,11 +264,44 @@ func DeleteSession(Email string) error {
 	return nil
 }
 
-// FindSessionIdxByEmail - ищет сессию по электронному адресу
+// DeleteSessionByToken - ищет сессию по токену и удаляет её
+func DeleteSessionByToken(Token string) error {
+	var idx int
+	var found bool
+
+	for idx >= 0 {
+
+		idx = FindSessionIdxByToken(Token)
+		if idx >= 0 {
+			found = true
+			SliceDelete(idx)
+		}
+	}
+
+	if !found {
+		return ErrSessionNotFoundByToken
+	}
+
+	return nil
+}
+
+// FindSessionIdxByEmail - ищет сессию по электронному адресу и возвращает индекс
 func FindSessionIdxByEmail(Email string) int {
 
 	for idx, session := range TokenList {
 		if session.Email == Email {
+			return idx
+		}
+	}
+
+	return -1
+}
+
+// FindSessionIdxByToken - ищет сессию по токену и возвращает индекс
+func FindSessionIdxByToken(Token string) int {
+
+	for idx, session := range TokenList {
+		if session.Token == Token {
 			return idx
 		}
 	}
