@@ -4,7 +4,6 @@ package signinupout
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -839,8 +838,6 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 					// Удаление сессии по электронной почте
 					Email := req.Header.Get("Email")
 					Token := req.Header.Get("Token")
-
-					log.Println(Email)
 
 					if len(Email) > 0 || len(Token) > 0 {
 
