@@ -187,7 +187,9 @@ func PostgreSQLFilesSelect(page int, limit int) (FilesResponse, error) {
 	sql := `SELECT 
 				COUNT(*)
 			FROM 
-				public."Files";`
+				public."Files"
+			WHERE
+				id<>1;`
 
 	row := dbc.QueryRow(sql)
 
@@ -214,6 +216,8 @@ func PostgreSQLFilesSelect(page int, limit int) (FilesResponse, error) {
 							files.file_id
 						FROM 
 							public."Files" AS files
+						WHERE
+							id<>1
 						ORDER BY files.id
 						OFFSET %v LIMIT %v;`, offset, limit)
 	} else {
