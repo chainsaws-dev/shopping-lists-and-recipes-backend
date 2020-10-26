@@ -884,3 +884,70 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 }
+
+// GetCurrentUser - обработчик для получения данных текущего пользователя
+//
+// Аутентификация
+//
+//  Куки
+//  Session - шифрованная сессия
+//	Email - шифрованный электронный адрес пользователя
+//
+//  или
+//
+//	Заголовки:
+//  Auth - Токен доступа
+//
+//	и
+//
+//	ApiKey - Постоянный ключ доступа к API *
+//
+// GET
+//
+// Ничего не требуется
+func GetCurrentUser(w http.ResponseWriter, req *http.Request) {
+	found, err := CheckAPIKey(w, req)
+
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
+	}
+
+	if found {
+		// Проверка токена и получение роли
+		issued, role := TwoWayAuthentication(w, req)
+
+		if issued {
+
+			// Получаем данные текущего пользователя
+
+			Email := GetCurrentUserEmail(w, req)
+
+			err := setup.ServerSettings.SQL.Connect(role)
+
+			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				return
+			}
+			defer setup.ServerSettings.SQL.Disconnect()
+
+			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+
+			if err != nil {
+				if errors.Is(databases.ErrNoUserWithEmail, err) {
+					shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+				}
+			}
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+
+			shared.WriteObjectToJSON(w, FoundUser)
+
+		} else {
+			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusUnauthorized)
+		}
+
+	}
+}

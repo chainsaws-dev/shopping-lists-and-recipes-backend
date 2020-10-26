@@ -251,3 +251,68 @@ func PostgreSQLCheckUserMailExists(Email string) (bool, error) {
 
 	return false, nil
 }
+
+// PostgreSQLGetUserByEmail - получает данные о пользователе по электронной почте
+func PostgreSQLGetUserByEmail(Email string) (User, error) {
+
+	var result User
+
+	if len(Email) > 0 {
+
+		sqlreq := `SELECT 
+					COUNT(*) 
+				FROM 
+					secret.users
+				WHERE 
+					users.email=$1;`
+
+		row := dbc.QueryRow(sqlreq, Email)
+
+		var countRows int
+
+		err := row.Scan(&countRows)
+
+		if err != nil {
+			return result, err
+		}
+
+		if countRows > 0 {
+
+			sqlreq := `SELECT 
+							users.id,
+							users.role,
+							users.email,
+							users.phone,
+							users.name,
+							users.isadmin,
+							users.confirmed
+						FROM 
+							secret.users
+						WHERE 
+							users.email=$1
+						LIMIT 1`
+
+			rows, err := dbc.Query(sqlreq, Email)
+
+			if err != nil {
+				return result, err
+			}
+
+			for rows.Next() {
+
+				err = rows.Scan(&result.GUID, &result.Role, &result.Email, &result.Phone, &result.Name, &result.IsAdmin, &result.Confirmed)
+
+				if err != nil {
+					return result, err
+				}
+
+			}
+
+		} else {
+			return result, ErrNoUserWithEmail
+		}
+
+	}
+
+	return result, nil
+}

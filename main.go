@@ -93,6 +93,7 @@ func main() {
 
 	// Админка
 	http.HandleFunc("/api/Users", signinupout.HandleUsers)
+	http.HandleFunc("/api/Users/Current", signinupout.GetCurrentUser)
 	http.HandleFunc("/api/Sessions", signinupout.HandleSessions)
 
 	// Сервис

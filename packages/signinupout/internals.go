@@ -393,3 +393,67 @@ func RegularConfirmTokensCleanup() {
 		time.Sleep(time.Minute * 5)
 	}
 }
+
+// GetCurrentUserEmail - получает текущую почту пользователя
+func GetCurrentUserEmail(w http.ResponseWriter, req *http.Request) (Email string) {
+
+	// Освобождаем память от истекших токенов
+	CleanOldTokens()
+
+	result := GetEmailBasedOnCookies(w, req)
+
+	if len(result) > 0 {
+		return result
+	}
+
+	return GetEmailBasedOnToken(req)
+
+}
+
+// GetEmailBasedOnCookies - получает электронную почту из списка сессий по куки
+func GetEmailBasedOnCookies(w http.ResponseWriter, req *http.Request) (Email string) {
+
+	mycookies, err := securecookies.GetCookies(w, req)
+
+	if err != nil {
+
+		if !errors.Is(http.ErrNoCookie, err) {
+			log.Println(err)
+			return ""
+		}
+	}
+
+	if len(mycookies.Email) > 0 && len(mycookies.Session) > 0 {
+
+		// Ищем живые токены по сессии
+		at, found := SearchIssuedSessions(mycookies.Email, mycookies.Session)
+
+		if found {
+			return at.Email
+		}
+
+		log.Println(securecookies.ErrAuthCookiesNotFound)
+		return ""
+	}
+
+	return ""
+}
+
+// GetEmailBasedOnToken - получает почту пользователя из списка сессий
+func GetEmailBasedOnToken(req *http.Request) (Email string) {
+
+	Token := req.Header.Get("Auth")
+
+	if len(Token) > 0 {
+		for _, t := range TokenList {
+
+			ct := time.Now()
+
+			if ct.Before(t.ExpDate) && t.Token == Token {
+				return t.Email
+			}
+		}
+	}
+
+	return ""
+}
