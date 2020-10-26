@@ -56,7 +56,13 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 
 	if match {
 
+		// Удаляем просроченые токены
 		CleanOldTokens()
+
+		if CountTokensByEmail(AuthRequest.Email) > 1 {
+			// Удаляем остальные токены если число сессий превышает 2
+			DeleteSessionByEmail(AuthRequest.Email)
+		}
 
 		var AuthResponse authentication.AuthResponseData
 
@@ -351,6 +357,22 @@ func CleanOldTokens() error {
 
 	return nil
 
+}
+
+// CountTokensByEmail - cчитает количество токенов с одним Email в списке сессий
+func CountTokensByEmail(Email string) int {
+
+	var result int
+
+	for _, t := range TokenList {
+
+		if t.Email == Email {
+			result++
+		}
+
+	}
+
+	return result
 }
 
 // SliceDelete - удаляет элемент из списка токенов
