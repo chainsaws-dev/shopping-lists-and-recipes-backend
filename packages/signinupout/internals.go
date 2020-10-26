@@ -309,6 +309,21 @@ func FindSessionIdxByToken(Token string) int {
 	return -1
 }
 
+// FindSessionIdxExpired - ищет первую попавшуюся истёкшую сессию и возвращает её индекс
+func FindSessionIdxExpired() int {
+
+	ct := time.Now()
+
+	for idx, session := range TokenList {
+
+		if ct.After(session.ExpDate) {
+			return idx
+		}
+	}
+
+	return -1
+}
+
 // CompareSessions - выполняет сравнение сессий
 func CompareSessions(at authentication.ActiveToken, SessionToCompare []byte) bool {
 	res := bytes.Compare(at.Session, SessionToCompare)
@@ -321,21 +336,21 @@ func CompareSessions(at authentication.ActiveToken, SessionToCompare []byte) boo
 }
 
 // CleanOldTokens - удаляет старые токены из списка
-func CleanOldTokens() {
-	todel := []int{}
+func CleanOldTokens() error {
 
-	for i, t := range TokenList {
-		ct := time.Now()
+	var idx int
 
-		if ct.After(t.ExpDate) {
-			todel = append(todel, i)
+	for idx >= 0 {
+
+		idx = FindSessionIdxExpired()
+
+		if idx >= 0 {
+			SliceDelete(idx)
 		}
-
 	}
 
-	for _, idx := range todel {
-		SliceDelete(idx)
-	}
+	return nil
+
 }
 
 // SliceDelete - удаляет элемент из списка токенов
@@ -376,6 +391,9 @@ func ConvertToSignInRequest(SignUpRequest authentication.AuthSignUpRequestData) 
 func RegularConfirmTokensCleanup() {
 	for {
 		log.Println("Очистка истекших токенов...")
+
+		// Освобождаем память от истекших токенов
+		CleanOldTokens()
 
 		err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
 
