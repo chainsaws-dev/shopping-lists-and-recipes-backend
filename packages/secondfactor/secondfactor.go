@@ -1,143 +1,112 @@
 package secondfactor
 
 import (
-	"bytes"
-	"errors"
-	"image/png"
-	"shopping-lists-and-recipes/packages/aesencryptor"
-	"shopping-lists-and-recipes/packages/databases"
-
-	"github.com/pquerna/otp"
-	"github.com/pquerna/otp/totp"
+	"net/http"
+	"shopping-lists-and-recipes/packages/setup"
+	"shopping-lists-and-recipes/packages/shared"
+	"shopping-lists-and-recipes/packages/signinupout"
 )
 
-// Список типовых ошибок
-var (
-	ErrSecretNotSaved = errors.New("Секретный ключ не сохранён, неверный код")
-)
-
-// UserSecondFactor - тип агрегирующий в себе данные о пользователе
-type UserSecondFactor struct {
-	URL  string
-	User databases.User
-	key  *otp.Key
-}
-
-// generateUserKey - создаёт новый ключ пользователя
-func (usf *UserSecondFactor) generateUserKey() error {
-
-	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      usf.URL,
-		AccountName: usf.User.Email,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	usf.key = key
-
-	es, encrkey, err := aesencryptor.GetStringEncrypted(key.Secret())
-
-	if err != nil {
-		return err
-	}
-
-	totps := databases.TOTPSecret{
-		UserID:    usf.User.GUID,
-		Secret:    es,
-		EncKey:    encrkey,
-		Confirmed: false,
-	}
-
-	databases.PostgreSQLChangeSecondFactorSecret(totps)
-
-	return nil
-}
-
-// GetQR - получает буфер из байтов содержащий данные QR кода для приложения аутентификатора
-func (usf *UserSecondFactor) GetQR(width int, height int) (bytes.Buffer, error) {
-
-	usf.generateUserKey()
-
-	// Convert TOTP key into a PNG
-	var b bytes.Buffer
-
-	img, err := usf.key.Image(width, height)
+// SecondFactor - обработчик для работы с настройками двухфакторной авторизации, принимает http запросы GET, POST и DELETE
+//
+// Аутентификация
+//
+//  Куки
+//  Session - шифрованная сессия
+//	Email - шифрованный электронный адрес пользователя
+//
+//  или
+//
+//	Заголовки:
+//  Auth - Токен доступа
+//
+//	и
+//
+//	ApiKey - Постоянный ключ доступа к API *
+//
+// GET
+//
+// Ничего не требуется
+//
+// POST
+//
+// 	тело запроса должно быть заполнено JSON объектом
+// 	идентичным по структуре TOTPSecret
+//
+// DELETE
+//
+// 	ожидается заголовок UserID с UUID пользователя пропущенным через encodeURIComponent и btoa (закодированным base64)
+func SecondFactor(w http.ResponseWriter, req *http.Request) {
+	found, err := signinupout.CheckAPIKey(w, req)
 
 	if err != nil {
-		return b, err
-	}
-
-	png.Encode(&b, img)
-
-	return b, err
-}
-
-// EnableTOTP - проверяет правильность кода и сохраняет секрет если он верный
-func EnableTOTP(Passcode string, u databases.User) error {
-
-	result, err := databases.PostgreSQLGetSecretByUserID(u.GUID)
-
-	if err != nil {
-		return err
-	}
-
-	// Расшифровываем строку
-	var encr aesencryptor.AESencryptor
-
-	encr.SetKey(result.EncKey)
-
-	result.Secret, err = encr.Decrypt(result.Secret)
-
-	if err != nil {
-		return err
-	}
-
-	valid := totp.Validate(Passcode, result.Secret)
-
-	if valid {
-		result.Confirmed = true
-		err = databases.PostgreSQLChangeSecondFactorSecret(result)
-
-		if err != nil {
-			return err
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
 		}
-
-		u.SecondFactor = true
-		_, err = databases.PostgreSQLUsersInsertUpdate(u, "", false, true)
-
-		return nil
 	}
 
-	return ErrSecretNotSaved
+	if found {
+		// Проверка токена и получение роли
+		issued, role := signinupout.TwoWayAuthentication(w, req)
+
+		if issued {
+
+			switch {
+			case req.Method == http.MethodGet:
+				if setup.ServerSettings.CheckRoleForRead(role, "HandleUsers") {
+				} else {
+					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+				}
+
+			case req.Method == http.MethodPost:
+
+				if setup.ServerSettings.CheckRoleForChange(role, "HandleUsers") {
+
+				} else {
+					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+				}
+
+			case req.Method == http.MethodDelete:
+
+				if setup.ServerSettings.CheckRoleForDelete(role, "HandleUsers") {
+
+				} else {
+					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+				}
+
+			default:
+				shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+			}
+
+		} else {
+			shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusUnauthorized)
+		}
+	}
 }
 
-// Validate - проверяет код токена против секрета из базы
-func Validate(Passcode string, u databases.User) (bool, error) {
-
-	result, err := databases.PostgreSQLGetSecretByUserID(u.GUID)
-
-	if err != nil {
-		return false, err
-	}
-
-	// Расшифровываем строку
-	var encr aesencryptor.AESencryptor
-
-	encr.SetKey(result.EncKey)
-
-	result.Secret, err = encr.Decrypt(result.Secret)
+// CheckSecondFactor - проверяет второй фактор для авторизации
+//
+// POST
+//
+// 	ожидается заголовок ApiKey с API ключом
+//  TODO
+func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
+	found, err := signinupout.CheckAPIKey(w, req)
 
 	if err != nil {
-		return false, err
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return
+		}
 	}
 
-	valid := totp.Validate(Passcode, result.Secret)
+	if found {
+		switch {
+		case req.Method == http.MethodPost:
 
-	if valid {
-		return true, nil
+		default:
+			shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		}
+	} else {
+		shared.HandleOtherError(w, "Bad request", signinupout.ErrWrongKeyInParams, http.StatusBadRequest)
 	}
-
-	return false, nil
 }
