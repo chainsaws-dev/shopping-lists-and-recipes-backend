@@ -2,6 +2,7 @@
 package shared
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"log"
@@ -174,4 +175,17 @@ func WriteObjectToJSON(w http.ResponseWriter, v interface{}) {
 	if HandleInternalServerError(w, err) {
 		return
 	}
+}
+
+// WriteBufferToPNG - записывает двоичный буффер в поток ответа для формата png
+func WriteBufferToPNG(w http.ResponseWriter, b bytes.Buffer) {
+
+	w.Header().Set("Content-Type", "image/png")
+
+	_, err := w.Write(b.Bytes())
+
+	if HandleInternalServerError(w, err) {
+		return
+	}
+
 }

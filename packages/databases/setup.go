@@ -344,6 +344,7 @@ func PostgreSQLCreateTables() {
 		user_id uuid NOT NULL,
 		secret text COLLATE pg_catalog."default",
 		key bytea,
+		confirmed boolean,
 		CONSTRAINT user_id_fkey FOREIGN KEY (user_id)
 			REFERENCES secret.users (id) MATCH FULL
 			ON UPDATE RESTRICT
