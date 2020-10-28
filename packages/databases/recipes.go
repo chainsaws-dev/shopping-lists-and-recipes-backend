@@ -14,12 +14,12 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 	var result RecipesResponse
 	result.Recipes = RecipesDB{}
 
-	sql := `SELECT 
+	sqlreq := `SELECT 
 				COUNT(*)
 			FROM 
 				public."Recipes"`
 
-	row := dbc.QueryRow(sql)
+	row := dbc.QueryRow(sqlreq)
 
 	var countRows int
 
@@ -33,7 +33,7 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 
 	if PostgreSQLCheckLimitOffset(limit, offset) {
 
-		sql = fmt.Sprintf(`SELECT 
+		sqlreq = fmt.Sprintf(`SELECT 
 							"Recipes".id, 
 							"Recipes".name, 
 							"Recipes".description,
@@ -51,7 +51,7 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 		return result, ErrLimitOffsetInvalid
 	}
 
-	rows, err := dbc.Query(sql)
+	rows, err := dbc.Query(sqlreq)
 
 	if err != nil {
 		return result, err
@@ -68,7 +68,7 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 			cur.ImageDbID = 1
 		}
 
-		sql = `SELECT 	
+		sqlreq = `SELECT 	
 				Ing.name,
 				RecIng.quantity
 			FROM 
@@ -84,7 +84,7 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 				public."Ingredients" AS Ing
 			ON Ing.id = RecIng.ingredient_id`
 
-		ings, err := dbc.Query(sql, cur.ID)
+		ings, err := dbc.Query(sqlreq, cur.ID)
 
 		if err != nil {
 			return result, err
@@ -114,7 +114,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesR
 
 	search = "%" + search + "%"
 
-	sql := `SELECT 
+	sqlreq := `SELECT 
 				COUNT(*)
 			FROM 
 				public."Recipes"
@@ -122,7 +122,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesR
 				"Recipes".name LIKE $1
 				OR "Recipes".description LIKE $1`
 
-	row := dbc.QueryRow(sql, search)
+	row := dbc.QueryRow(sqlreq, search)
 
 	var countRows int
 
@@ -136,7 +136,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesR
 
 	if PostgreSQLCheckLimitOffset(limit, offset) {
 
-		sql = fmt.Sprintf(`SELECT 
+		sqlreq = fmt.Sprintf(`SELECT 
 							"Recipes".id, 
 							"Recipes".name, 
 							"Recipes".description,
@@ -157,7 +157,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesR
 		return result, ErrLimitOffsetInvalid
 	}
 
-	rows, err := dbc.Query(sql, search)
+	rows, err := dbc.Query(sqlreq, search)
 
 	if err != nil {
 		return result, err
@@ -174,7 +174,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesR
 			cur.ImageDbID = 1
 		}
 
-		sql = `SELECT 	
+		sqlreq = `SELECT 	
 				Ing.name,
 				RecIng.quantity
 			FROM 
@@ -190,7 +190,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesR
 				public."Ingredients" AS Ing
 			ON Ing.id = RecIng.ingredient_id`
 
-		ings, err := dbc.Query(sql, cur.ID)
+		ings, err := dbc.Query(sqlreq, cur.ID)
 
 		if err != nil {
 			return result, err
@@ -219,14 +219,14 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 		RecipeUpd.ImageDbID = 1
 	}
 
-	sql := `SELECT 
+	sqlreq := `SELECT 
 				COUNT(*)
 			FROM 
 				public."Recipes"
 			WHERE 
 				id=$1;`
 
-	row := dbc.QueryRow(sql, RecipeUpd.ID)
+	row := dbc.QueryRow(sqlreq, RecipeUpd.ID)
 
 	var recipecount int
 	err := row.Scan(&recipecount)
@@ -240,20 +240,20 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 	if recipecount > 0 && RecipeUpd.ID != 0 {
 		// Если запись найдена по индексу и индекс не равен нулю (случай новой записи)
 		// Обновляем существующую запись
-		sql = `UPDATE 
+		sqlreq = `UPDATE 
 					public."Recipes" 
 				SET 
 					(name, description, image_id) = ($1, $2, $3) 
 				WHERE 
 					id=$4;`
 
-		_, err = dbc.Exec(sql, RecipeUpd.Name, RecipeUpd.Description, RecipeUpd.ImageDbID, RecipeUpd.ID)
+		_, err = dbc.Exec(sqlreq, RecipeUpd.Name, RecipeUpd.Description, RecipeUpd.ImageDbID, RecipeUpd.ID)
 
 	} else {
 		// Иначе вставляем новую запись
-		sql = `INSERT INTO public."Recipes" (name, description, image_id) VALUES ($1, $2, $3) RETURNING id;`
+		sqlreq = `INSERT INTO public."Recipes" (name, description, image_id) VALUES ($1, $2, $3) RETURNING id;`
 
-		row := dbc.QueryRow(sql, RecipeUpd.Name, RecipeUpd.Description, RecipeUpd.ImageDbID)
+		row := dbc.QueryRow(sqlreq, RecipeUpd.Name, RecipeUpd.Description, RecipeUpd.ImageDbID)
 
 		err = row.Scan(&RecipeUpd.ID)
 	}
@@ -262,9 +262,9 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 		return RecipeUpd, PostgreSQLRollbackIfError(err, false)
 	}
 
-	sql = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
+	sqlreq = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
 
-	_, err = dbc.Exec(sql, RecipeUpd.ID)
+	_, err = dbc.Exec(sqlreq, RecipeUpd.ID)
 
 	if err != nil {
 		return RecipeUpd, PostgreSQLRollbackIfError(err, false)
@@ -272,7 +272,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 
 	for _, OneRecipe := range RecipeUpd.Ingredients {
 
-		sql = `SELECT 
+		sqlreq = `SELECT 
 					COUNT(*)
 				FROM 
 					public."Ingredients" 
@@ -280,7 +280,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 					name = $1
 				LIMIT 1;`
 
-		row := dbc.QueryRow(sql, OneRecipe.Name)
+		row := dbc.QueryRow(sqlreq, OneRecipe.Name)
 
 		var count int
 		err := row.Scan(&count)
@@ -293,7 +293,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 
 		if count > 0 {
 
-			sql = `SELECT 
+			sqlreq = `SELECT 
 						id						 
 					FROM 
 						public."Ingredients" 
@@ -301,7 +301,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 						name = $1
 					LIMIT 1;`
 
-			row := dbc.QueryRow(sql, OneRecipe.Name)
+			row := dbc.QueryRow(sqlreq, OneRecipe.Name)
 
 			err := row.Scan(&curid)
 
@@ -310,9 +310,9 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 			}
 
 		} else {
-			sql = `INSERT INTO public."Ingredients" (name) VALUES ($1) RETURNING id;`
+			sqlreq = `INSERT INTO public."Ingredients" (name) VALUES ($1) RETURNING id;`
 
-			row := dbc.QueryRow(sql, OneRecipe.Name)
+			row := dbc.QueryRow(sqlreq, OneRecipe.Name)
 
 			err := row.Scan(&curid)
 
@@ -321,9 +321,9 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 			}
 		}
 
-		sql = `INSERT INTO public."RecipesIngredients" (recipe_id, ingredient_id, quantity) VALUES ($1,$2,$3);`
+		sqlreq = `INSERT INTO public."RecipesIngredients" (recipe_id, ingredient_id, quantity) VALUES ($1,$2,$3);`
 
-		_, err = dbc.Exec(sql, RecipeUpd.ID, curid, OneRecipe.Amount)
+		_, err = dbc.Exec(sqlreq, RecipeUpd.ID, curid, OneRecipe.Amount)
 
 		if err != nil {
 			return RecipeUpd, PostgreSQLRollbackIfError(err, false)

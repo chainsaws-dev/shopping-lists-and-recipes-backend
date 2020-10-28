@@ -37,7 +37,7 @@ func PostgreSQLCreateDatabase(dbName string) {
 		// Иначе создаём базу данных с заданным именем
 		// Параметром не подставляется не кртично ибо не используется в обычной работе
 		// а только при установке, а так то это место для SQL инъекций
-		createsql := fmt.Sprintf(`CREATE DATABASE "%s"
+		sqlreq := fmt.Sprintf(`CREATE DATABASE "%s"
 									WITH
 									OWNER = postgres
 									ENCODING = 'UTF8'
@@ -46,7 +46,7 @@ func PostgreSQLCreateDatabase(dbName string) {
 									TABLESPACE = pg_default
 									CONNECTION LIMIT = -1;`, dbName)
 
-		_, err = dbc.Exec(createsql)
+		_, err = dbc.Exec(sqlreq)
 
 		shared.WriteErrToLog(err)
 
@@ -61,14 +61,14 @@ func PostgreSQLCreateTables() {
 	log.Println("Проверяем, что база пустая")
 
 	// Проверяем что таблиц нет
-	sql := `SELECT 
+	sqlreq := `SELECT 
 				count(*)
 			FROM 
 				information_schema.tables
 			WHERE 
 				table_schema = 'public';`
 
-	rows, err := dbc.Query(sql)
+	rows, err := dbc.Query(sqlreq)
 
 	shared.WriteErrToLog(err)
 
@@ -87,7 +87,7 @@ func PostgreSQLCreateTables() {
 
 	dbc.Exec("BEGIN")
 
-	sql = `CREATE TABLE public."Files"
+	sqlreq = `CREATE TABLE public."Files"
 			(
 				id bigserial NOT NULL,
 				filename character varying(255),
@@ -102,13 +102,13 @@ func PostgreSQLCreateTables() {
 			ALTER TABLE public."Files"
 				OWNER to postgres;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу Files")
 
-	sql = `CREATE TABLE public."Recipes"
+	sqlreq = `CREATE TABLE public."Recipes"
 			(
 				id bigserial NOT NULL,
 				name character varying(100),
@@ -122,13 +122,13 @@ func PostgreSQLCreateTables() {
 			ALTER TABLE public."Recipes"
 				OWNER to postgres;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу Recipes")
 
-	sql = `ALTER TABLE public."Recipes"
+	sqlreq = `ALTER TABLE public."Recipes"
 				ADD CONSTRAINT "Recipes_image_id_fkey" FOREIGN KEY (image_id)
 				REFERENCES public."Files" (id) MATCH FULL
 				ON UPDATE RESTRICT
@@ -136,11 +136,11 @@ func PostgreSQLCreateTables() {
 			CREATE INDEX "fki_Recipes_image_id_fkey"
 				ON public."Recipes"(image_id);`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
-	sql = `CREATE TABLE public."RecipesIngredients"
+	sqlreq = `CREATE TABLE public."RecipesIngredients"
 			(
 				recipe_id bigserial NOT NULL,
 				ingredient_id bigint NOT NULL,
@@ -152,13 +152,13 @@ func PostgreSQLCreateTables() {
 			ALTER TABLE public."RecipesIngredients"
 				OWNER to postgres;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу RecipesIngredients")
 
-	sql = `CREATE TABLE public."Ingredients"
+	sqlreq = `CREATE TABLE public."Ingredients"
 			(
 				id bigserial NOT NULL,
 				name character varying(100) NOT NULL,
@@ -170,23 +170,23 @@ func PostgreSQLCreateTables() {
 			ALTER TABLE public."Ingredients"
 				OWNER to postgres;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу Ingredients")
 
-	sql = `ALTER TABLE public."RecipesIngredients"
+	sqlreq = `ALTER TABLE public."RecipesIngredients"
 			ADD CONSTRAINT "RecipesIngredients_recipe_id_fkey" FOREIGN KEY (recipe_id)
 			REFERENCES public."Recipes" (id) MATCH FULL
 			ON UPDATE RESTRICT
 			ON DELETE SET NULL;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
-	sql = `ALTER TABLE public."RecipesIngredients"
+	sqlreq = `ALTER TABLE public."RecipesIngredients"
 			ADD CONSTRAINT "RecipesIngredients_ingredient_id_fkey" FOREIGN KEY (ingredient_id)
 			REFERENCES public."Ingredients" (id) MATCH FULL
 			ON UPDATE RESTRICT
@@ -194,11 +194,11 @@ func PostgreSQLCreateTables() {
 		CREATE INDEX "fki_RecipesIngredients_ingredient_id_fkey"
 			ON public."RecipesIngredients"(ingredient_id);`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
-	sql = `CREATE TABLE public."ShoppingList"
+	sqlreq = `CREATE TABLE public."ShoppingList"
 			(
 				id bigserial NOT NULL,
 				ingredient_id bigint NOT NULL,
@@ -211,13 +211,13 @@ func PostgreSQLCreateTables() {
 			ALTER TABLE public."ShoppingList"
 				OWNER to postgres;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу ShoppingList")
 
-	sql = `ALTER TABLE public."ShoppingList"
+	sqlreq = `ALTER TABLE public."ShoppingList"
 				ADD CONSTRAINT "ShoppingList_ingredient_id_fkey" FOREIGN KEY (ingredient_id)
 				REFERENCES public."Ingredients" (id) MATCH FULL
 				ON UPDATE RESTRICT
@@ -225,18 +225,18 @@ func PostgreSQLCreateTables() {
 			CREATE INDEX "fki_ShoppingList_ingredient_id_fkey"
 				ON public."ShoppingList"(ingredient_id);`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
-	sql = `CREATE SCHEMA secret
+	sqlreq = `CREATE SCHEMA secret
 			AUTHORIZATION postgres;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
-	sql = `CREATE TABLE secret.users
+	sqlreq = `CREATE TABLE secret.users
 			(
 				id uuid NOT NULL,
 				role character varying(50) NOT NULL,
@@ -251,13 +251,13 @@ func PostgreSQLCreateTables() {
 			ALTER TABLE secret.users
 				OWNER to postgres;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу users")
 
-	sql = `CREATE TABLE secret.hashes
+	sqlreq = `CREATE TABLE secret.hashes
 		(
 			id bigserial NOT NULL,
 			user_id uuid NOT NULL,
@@ -268,13 +268,13 @@ func PostgreSQLCreateTables() {
 		ALTER TABLE secret.hashes
 			OWNER to postgres;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу hashes")
 
-	sql = `ALTER TABLE secret.hashes
+	sqlreq = `ALTER TABLE secret.hashes
 				ADD CONSTRAINT hashes_user_id_fkey FOREIGN KEY (user_id)
 				REFERENCES secret.users (id) MATCH FULL
 				ON UPDATE RESTRICT
@@ -282,11 +282,11 @@ func PostgreSQLCreateTables() {
 			CREATE INDEX fki_hashes_user_id_fkey
 				ON secret.hashes(user_id);`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
-	sql = `CREATE TABLE secret.confirmations
+	sqlreq = `CREATE TABLE secret.confirmations
 			(
 				user_id uuid,
 				token character varying(200) COLLATE pg_catalog."default" NOT NULL,
@@ -304,13 +304,13 @@ func PostgreSQLCreateTables() {
 				(user_id ASC NULLS LAST)
 				TABLESPACE pg_default;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу confirmations")
 
-	sql = `CREATE TABLE secret.password_resets
+	sqlreq = `CREATE TABLE secret.password_resets
 			(
 				user_id uuid,
 				token character varying(200) COLLATE pg_catalog."default" NOT NULL,
@@ -332,11 +332,38 @@ func PostgreSQLCreateTables() {
 				(user_id ASC NULLS LAST)
 				TABLESPACE pg_default;`
 
-	_, err = dbc.Exec(sql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
 	log.Println("Создали таблицу password_resets")
+
+	sqlreq = `CREATE TABLE secret.totp
+	(
+		user_id uuid NOT NULL,
+		secret text COLLATE pg_catalog."default",
+		key bytea,
+		CONSTRAINT user_id_fkey FOREIGN KEY (user_id)
+			REFERENCES secret.users (id) MATCH FULL
+			ON UPDATE RESTRICT
+			ON DELETE RESTRICT
+	)
+	
+	TABLESPACE pg_default;
+	
+	ALTER TABLE secret.totp
+		OWNER to postgres;
+	
+	CREATE INDEX fki_user_id_fkey
+		ON secret.totp USING btree
+		(user_id ASC NULLS LAST)
+		TABLESPACE pg_default;`
+
+	_, err = dbc.Exec(sqlreq)
+
+	PostgreSQLRollbackIfError(err, true)
+
+	log.Println("Создали таблицу totp")
 
 	dbc.Exec("COMMIT")
 
@@ -370,33 +397,33 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	dbc.Exec("BEGIN")
 
-	rolecreatesql := fmt.Sprintf(`CREATE USER %s WITH LOGIN ENCRYPTED PASSWORD 'md5%x';`, roleName, h.Sum(nil))
+	sqlreq := fmt.Sprintf(`CREATE USER %s WITH LOGIN ENCRYPTED PASSWORD 'md5%x';`, roleName, h.Sum(nil))
 
-	_, err = dbc.Exec(rolecreatesql)
-
-	PostgreSQLRollbackIfError(err, true)
-
-	grantsql := fmt.Sprintf(`GRANT CONNECT ON DATABASE "%s" TO %s;`, dbName, roleName)
-
-	_, err = dbc.Exec(grantsql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
-	grantsql = fmt.Sprintf(`GRANT USAGE ON SCHEMA %s TO %s;`, "public, secret", roleName)
+	sqlreq = fmt.Sprintf(`GRANT CONNECT ON DATABASE "%s" TO %s;`, dbName, roleName)
 
-	_, err = dbc.Exec(grantsql)
-
-	PostgreSQLRollbackIfError(err, true)
-
-	grantsql = fmt.Sprintf(`GRANT UPDATE, USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "public, secret", roleName)
-
-	_, err = dbc.Exec(grantsql)
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
-	grantsql = fmt.Sprintf(`REVOKE CREATE ON SCHEMA %s FROM %s;`, "public, secret", roleName)
+	sqlreq = fmt.Sprintf(`GRANT USAGE ON SCHEMA %s TO %s;`, "public, secret", roleName)
 
-	_, err = dbc.Exec(grantsql)
+	_, err = dbc.Exec(sqlreq)
+
+	PostgreSQLRollbackIfError(err, true)
+
+	sqlreq = fmt.Sprintf(`GRANT UPDATE, USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "public, secret", roleName)
+
+	_, err = dbc.Exec(sqlreq)
+
+	PostgreSQLRollbackIfError(err, true)
+
+	sqlreq = fmt.Sprintf(`REVOKE CREATE ON SCHEMA %s FROM %s;`, "public, secret", roleName)
+
+	_, err = dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 
@@ -415,9 +442,9 @@ func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []str
 
 	log.Printf("Даём доступ %s к таблице %s c правами %s ", roleName, tableName, reqrights)
 
-	grantsql := fmt.Sprintf(`GRANT %s ON %s TO %s`, reqrights, tableName, roleName)
+	sqlreq := fmt.Sprintf(`GRANT %s ON %s TO %s`, reqrights, tableName, roleName)
 
-	_, err := dbc.Exec(grantsql)
+	_, err := dbc.Exec(sqlreq)
 
 	PostgreSQLRollbackIfError(err, true)
 

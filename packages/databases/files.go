@@ -184,14 +184,14 @@ func PostgreSQLFilesSelect(page int, limit int) (FilesResponse, error) {
 	var result FilesResponse
 	result.Files = FilesList{}
 
-	sql := `SELECT 
+	sqlreq := `SELECT 
 				COUNT(*)
 			FROM 
 				public."Files"
 			WHERE
 				id<>1;`
 
-	row := dbc.QueryRow(sql)
+	row := dbc.QueryRow(sqlreq)
 
 	var countRows int
 
@@ -208,7 +208,7 @@ func PostgreSQLFilesSelect(page int, limit int) (FilesResponse, error) {
 	offset := int(math.RoundToEven(float64((page - 1) * limit)))
 
 	if PostgreSQLCheckLimitOffset(limit, offset) {
-		sql = fmt.Sprintf(`SELECT 
+		sqlreq = fmt.Sprintf(`SELECT 
 							files.id,
 							files.filename,
 							files.filesize,
@@ -224,7 +224,7 @@ func PostgreSQLFilesSelect(page int, limit int) (FilesResponse, error) {
 		return result, ErrLimitOffsetInvalid
 	}
 
-	rows, err := dbc.Query(sql)
+	rows, err := dbc.Query(sqlreq)
 
 	if err != nil {
 		return result, err

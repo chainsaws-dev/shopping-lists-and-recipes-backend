@@ -16,12 +16,12 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 	var result UsersResponse
 	result.Users = Users{}
 
-	sql := `SELECT 
+	sqlreq := `SELECT 
 				COUNT(*) 
 			FROM 
 				secret.users;`
 
-	row := dbc.QueryRow(sql)
+	row := dbc.QueryRow(sqlreq)
 
 	var countRows int
 
@@ -35,7 +35,7 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 
 	if PostgreSQLCheckLimitOffset(limit, offset) {
 
-		sql = fmt.Sprintf(`SELECT 
+		sqlreq = fmt.Sprintf(`SELECT 
 								users.id,
 								users.role,
 								users.email,
@@ -53,7 +53,7 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 		return result, ErrLimitOffsetInvalid
 	}
 
-	rows, err := dbc.Query(sql)
+	rows, err := dbc.Query(sqlreq)
 
 	if err != nil {
 		return result, err
@@ -84,9 +84,9 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 	// Проверяем что почта уникальна
 	var EmailCount int
 
-	sql := `SELECT COUNT(*) FROM secret.users WHERE email=$1;`
+	sqlreq := `SELECT COUNT(*) FROM secret.users WHERE email=$1;`
 
-	EmailCountRow := dbc.QueryRow(sql, NewUserInfo.Email)
+	EmailCountRow := dbc.QueryRow(sqlreq, NewUserInfo.Email)
 
 	err := EmailCountRow.Scan(&EmailCount)
 
@@ -101,9 +101,9 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 	// Проверяем что пользователь с ID существует
 	var UserCount int
 
-	sql = `SELECT COUNT(*) FROM secret.users WHERE id=$1;`
+	sqlreq = `SELECT COUNT(*) FROM secret.users WHERE id=$1;`
 
-	UserCountRow := dbc.QueryRow(sql, NewUserInfo.GUID)
+	UserCountRow := dbc.QueryRow(sqlreq, NewUserInfo.GUID)
 
 	err = UserCountRow.Scan(&UserCount)
 
@@ -117,9 +117,9 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 
 		// Обновляем существующего
 
-		sql = `UPDATE secret.users SET (role, email, phone, name, isadmin, confirmed) = ($1,$2,$3,$4,$5,$6) WHERE id=$7;`
+		sqlreq = `UPDATE secret.users SET (role, email, phone, name, isadmin, confirmed) = ($1,$2,$3,$4,$5,$6) WHERE id=$7;`
 
-		_, err = dbc.Exec(sql, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.GUID)
+		_, err = dbc.Exec(sqlreq, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.GUID)
 
 		if err != nil {
 			return NewUserInfo, PostgreSQLRollbackIfError(err, false)
@@ -128,9 +128,9 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 		if UpdatePassword {
 			if len(Hash) > 0 {
 
-				sql = `UPDATE secret.hashes SET value=$2 WHERE user_id=$1;`
+				sqlreq = `UPDATE secret.hashes SET value=$2 WHERE user_id=$1;`
 
-				_, err = dbc.Exec(sql, NewUserInfo.GUID, Hash)
+				_, err = dbc.Exec(sqlreq, NewUserInfo.GUID, Hash)
 
 				if err != nil {
 					return NewUserInfo, PostgreSQLRollbackIfError(err, false)
@@ -147,9 +147,9 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 		// Генерируем новый уникальный идентификатор
 		NewUserInfo.GUID = uuid.NewV4()
 
-		sql = `INSERT INTO secret.users (id, role, email, phone, name, isadmin, confirmed) VALUES ($1,$2,$3,$4,$5,$6,$7);`
+		sqlreq = `INSERT INTO secret.users (id, role, email, phone, name, isadmin, confirmed) VALUES ($1,$2,$3,$4,$5,$6,$7);`
 
-		_, err = dbc.Exec(sql, NewUserInfo.GUID, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed)
+		_, err = dbc.Exec(sqlreq, NewUserInfo.GUID, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed)
 
 		if err != nil {
 			return NewUserInfo, PostgreSQLRollbackIfError(err, false)
@@ -157,9 +157,9 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 
 		if len(Hash) > 0 {
 
-			sql = `INSERT INTO secret.hashes (user_id, value) VALUES ($1,$2);`
+			sqlreq = `INSERT INTO secret.hashes (user_id, value) VALUES ($1,$2);`
 
-			_, err = dbc.Exec(sql, NewUserInfo.GUID, Hash)
+			_, err = dbc.Exec(sqlreq, NewUserInfo.GUID, Hash)
 
 			if err != nil {
 				return NewUserInfo, PostgreSQLRollbackIfError(err, false)
@@ -178,14 +178,14 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 // PostgreSQLUsersDelete - удаляет пользователя с указанным GUID
 func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 
-	sql := `SELECT 
+	sqlreq := `SELECT 
 				COUNT(*)
 			FROM 
 				secret.users
 			WHERE 
 				id=$1;`
 
-	row := dbc.QueryRow(sql, UserID)
+	row := dbc.QueryRow(sqlreq, UserID)
 
 	var usercount int
 	err := row.Scan(&usercount)
@@ -199,27 +199,27 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 	dbc.Exec("BEGIN")
 
 	// Удаляем связанные хеши
-	sql = `DELETE FROM secret.hashes WHERE user_id=$1;`
+	sqlreq = `DELETE FROM secret.hashes WHERE user_id=$1;`
 
-	_, err = dbc.Exec(sql, UserID)
+	_, err = dbc.Exec(sqlreq, UserID)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false)
 	}
 
 	// Удаляем подтверждения если есть
-	sql = `DELETE FROM secret.confirmations WHERE user_id=$1;`
+	sqlreq = `DELETE FROM secret.confirmations WHERE user_id=$1;`
 
-	_, err = dbc.Exec(sql, UserID)
+	_, err = dbc.Exec(sqlreq, UserID)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false)
 	}
 
 	// Удаляем пользователя
-	sql = `DELETE FROM secret.users WHERE id=$1;`
+	sqlreq = `DELETE FROM secret.users WHERE id=$1;`
 
-	_, err = dbc.Exec(sql, UserID)
+	_, err = dbc.Exec(sqlreq, UserID)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false)
@@ -233,9 +233,9 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 // PostgreSQLCheckUserMailExists - проверяет что почтовый ящик живого пользователя
 func PostgreSQLCheckUserMailExists(Email string) (bool, error) {
 
-	sql := `SELECT COUNT(*) FROM secret.users WHERE email=$1;`
+	sqlreq := `SELECT COUNT(*) FROM secret.users WHERE email=$1;`
 
-	row := dbc.QueryRow(sql, Email)
+	row := dbc.QueryRow(sqlreq, Email)
 
 	var UsersCount int
 
