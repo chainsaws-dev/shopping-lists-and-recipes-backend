@@ -20,6 +20,8 @@ var (
 	ErrNoHashForUser        = errors.New("Хеш пароля не найден")
 	ErrEmailIsOccupied      = errors.New("Указанный адрес электронной почты уже занят")
 	ErrUserNotFound         = errors.New("В таблице пользователей не найден указанный id")
+	ErrUserTOTPNotFound     = errors.New("В таблице секретов для двухфакторной авторизации не найден указанный id")
+	ErrTOTPConfirmed        = errors.New("В таблице секретов для двухфакторной авторизации указанный id уже привязан")
 	ErrEmailNotConfirmed    = errors.New("Подтвердите адрес электронной почты")
 	ErrTokenExpired         = errors.New("Токен истёк или не существует")
 	ErrLimitOffsetInvalid   = errors.New("Limit и Offset приняли недопустимое значение")

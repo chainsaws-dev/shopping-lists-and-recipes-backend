@@ -9,6 +9,28 @@ import (
 	"io"
 )
 
+// GetStringEncrypted - шифрует строку и возвращает ключ шифрования
+func GetStringEncrypted(s string) (dataenc string, key []byte, e error) {
+
+	var enc AESencryptor
+
+	err := enc.MakeSecretKey()
+
+	if err != nil {
+		return "", []byte{}, err
+	}
+
+	es, err := enc.Encrypt(s)
+
+	if err != nil {
+		return "", []byte{}, err
+	}
+
+	enckey := enc.GetKey()
+
+	return es, enckey, nil
+}
+
 // AESencryptor - тип для хранения информации о шифровании
 type AESencryptor struct {
 	key []byte
@@ -17,6 +39,11 @@ type AESencryptor struct {
 // GetKey - возвращает слайс байтов ключа шифрования
 func (enc *AESencryptor) GetKey() []byte {
 	return enc.key
+}
+
+// SetKey - устанавливает слайс байтов ключа шифрования
+func (enc *AESencryptor) SetKey(newkey []byte) {
+	enc.key = newkey
 }
 
 // MakeSecretKey - генерит случайный ключ шифрования для AES 256

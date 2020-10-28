@@ -86,3 +86,11 @@ type UsersResponse struct {
 	Offset int
 	Limit  int
 }
+
+// TOTPSecret - секрет для Time Based One Time Password
+type TOTPSecret struct {
+	UserID    uuid.UUID
+	Secret    string
+	EncKey    []byte
+	Confirmed bool
+}

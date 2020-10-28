@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"image/png"
+	"shopping-lists-and-recipes/packages/aesencryptor"
 	"shopping-lists-and-recipes/packages/databases"
 
 	"github.com/pquerna/otp"
@@ -36,17 +37,28 @@ func (usf *UserSecondFactor) generateUserKey() error {
 
 	usf.key = key
 
-	//databases.PostgreSQLSetSecret(usf.User.ID, key.Secret(), false)
+	es, encrkey, err := aesencryptor.GetStringEncrypted(key.Secret())
+
+	if err != nil {
+		return err
+	}
+
+	totps := databases.TOTPSecret{
+		UserID:    usf.User.GUID,
+		Secret:    es,
+		EncKey:    encrkey,
+		Confirmed: false,
+	}
+
+	databases.PostgreSQLChangeSecondFactorSecret(totps)
 
 	return nil
 }
 
 // GetQR - получает буфер из байтов содержащий данные QR кода для приложения аутентификатора
-func (usf *UserSecondFactor) GetQR(width int, height int, new bool) (bytes.Buffer, error) {
+func (usf *UserSecondFactor) GetQR(width int, height int) (bytes.Buffer, error) {
 
-	if new {
-		usf.generateUserKey()
-	}
+	usf.generateUserKey()
 
 	// Convert TOTP key into a PNG
 	var b bytes.Buffer
@@ -62,21 +74,39 @@ func (usf *UserSecondFactor) GetQR(width int, height int, new bool) (bytes.Buffe
 	return b, err
 }
 
-// SaveSecret - проверяет правильность кода и сохраняет секрет если он верный
-func SaveSecret(Passcode string) error {
+// EnableTOTP - проверяет правильность кода и сохраняет секрет если он верный
+func EnableTOTP(Passcode string, u databases.User) error {
 
-	// TODO
-
-	secret, err := "", errors.New("Not implemented") //databases.PostgreSQLGetSecret(usf.User.ID)
+	result, err := databases.PostgreSQLGetSecretByUserID(u.GUID)
 
 	if err != nil {
 		return err
 	}
 
-	valid := totp.Validate(Passcode, secret)
+	// Расшифровываем строку
+	var encr aesencryptor.AESencryptor
+
+	encr.SetKey(result.EncKey)
+
+	result.Secret, err = encr.Decrypt(result.Secret)
+
+	if err != nil {
+		return err
+	}
+
+	valid := totp.Validate(Passcode, result.Secret)
 
 	if valid {
-		//databases.PostgreSQLSetSecret(UserID, secret, true)
+		result.Confirmed = true
+		err = databases.PostgreSQLChangeSecondFactorSecret(result)
+
+		if err != nil {
+			return err
+		}
+
+		u.SecondFactor = true
+		_, err = databases.PostgreSQLUsersInsertUpdate(u, "", false, true)
+
 		return nil
 	}
 
@@ -84,17 +114,26 @@ func SaveSecret(Passcode string) error {
 }
 
 // Validate - проверяет код токена против секрета из базы
-func Validate(Passcode string) (bool, error) {
+func Validate(Passcode string, u databases.User) (bool, error) {
 
-	// TODO
-
-	secret, err := "", errors.New("Not implemented") //databases.PostgreSQLGetSecret(usf.User.ID)
+	result, err := databases.PostgreSQLGetSecretByUserID(u.GUID)
 
 	if err != nil {
 		return false, err
 	}
 
-	valid := totp.Validate(Passcode, secret)
+	// Расшифровываем строку
+	var encr aesencryptor.AESencryptor
+
+	encr.SetKey(result.EncKey)
+
+	result.Secret, err = encr.Decrypt(result.Secret)
+
+	if err != nil {
+		return false, err
+	}
+
+	valid := totp.Validate(Passcode, result.Secret)
 
 	if valid {
 		return true, nil
