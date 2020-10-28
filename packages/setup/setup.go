@@ -50,6 +50,15 @@ func InitialSettings(forcesetup bool, createdb bool) {
 
 		AskInt("Укажите порт для https соединений (например 443): ", &ServerSettings.HTTPS)
 
+		// 2FA
+		var TwoFactor string
+		AskString("Обязательная двухфакторная авторизация (Да или Нет): ", &TwoFactor)
+		TwoFactor = strings.ToLower(TwoFactor)
+
+		if TwoFactor == "да" || TwoFactor == "д" {
+			ServerSettings.TFO = true
+		}
+
 		var ConfirmEmails string
 		AskString("Подтверждать электронную почту письмом со ссылкой (Да или Нет): ", &ConfirmEmails)
 		ConfirmEmails = strings.ToLower(ConfirmEmails)

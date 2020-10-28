@@ -65,13 +65,14 @@ type ShoppingListResponse struct {
 
 // User - тип для хранения данных о пользователе в базе данных
 type User struct {
-	GUID      uuid.UUID
-	Role      string
-	Email     string
-	Phone     string
-	Name      string
-	IsAdmin   bool
-	Confirmed bool
+	GUID         uuid.UUID
+	Role         string
+	Email        string
+	Phone        string
+	Name         string
+	IsAdmin      bool
+	Confirmed    bool
+	SecondFactor bool
 }
 
 // Users - тип для хранения списка пользователей

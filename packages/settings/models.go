@@ -6,6 +6,7 @@ type WServerSettings struct {
 	HTTPS int
 	SMTP  CredSMTP
 	SQL   SQLServer
+	TFO   bool
 }
 
 // CredSMTP - данные для входа SMTP

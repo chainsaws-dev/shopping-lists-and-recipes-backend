@@ -20,11 +20,12 @@ type AuthRequestData struct {
 
 // AuthResponseData - ответ при авторизации и регистрации
 type AuthResponseData struct {
-	Token      string
-	Email      string
-	ExpiresIn  int
-	Registered bool
-	Role       string
+	Token        string
+	Email        string
+	ExpiresIn    int
+	Registered   bool
+	SecondFactor bool
+	Role         string
 }
 
 // AuthSignUpRequestData - запрос при регистрации

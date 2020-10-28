@@ -245,7 +245,7 @@ func PostgreSQLCreateTables() {
 				name character varying(150),
 				isadmin boolean,
 				confirmed boolean,
-				2fa_active boolean,
+				totp_active boolean,
 				PRIMARY KEY (id)
 			);
 			

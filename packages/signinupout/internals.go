@@ -107,6 +107,20 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 			}
 		}
 
+		FoundUser, err := databases.PostgreSQLGetUserByEmail(AuthRequest.Email)
+
+		if err != nil {
+			if errors.Is(databases.ErrNoUserWithEmail, err) {
+				shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+			}
+		}
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+		AuthResponse.SecondFactor = FoundUser.SecondFactor
+
 		shared.WriteObjectToJSON(w, AuthResponse)
 
 	} else {
