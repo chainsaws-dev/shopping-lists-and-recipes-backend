@@ -936,6 +936,7 @@ func GetCurrentUser(w http.ResponseWriter, req *http.Request) {
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
 					shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+					return
 				}
 			}
 

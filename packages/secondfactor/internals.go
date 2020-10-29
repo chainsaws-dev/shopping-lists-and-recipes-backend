@@ -23,8 +23,8 @@ type UserSecondFactor struct {
 	key  *otp.Key
 }
 
-// generateUserKey - создаёт новый ключ пользователя
-func (usf *UserSecondFactor) generateUserKey() error {
+// GenerateUserKey - создаёт новый ключ пользователя
+func (usf *UserSecondFactor) GenerateUserKey() error {
 
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      usf.URL,
@@ -58,7 +58,7 @@ func (usf *UserSecondFactor) generateUserKey() error {
 // GetQR - получает буфер из байтов содержащий данные QR кода для приложения аутентификатора
 func (usf *UserSecondFactor) GetQR(width int, height int) (bytes.Buffer, error) {
 
-	usf.generateUserKey()
+	usf.GenerateUserKey()
 
 	// Convert TOTP key into a PNG
 	var b bytes.Buffer
