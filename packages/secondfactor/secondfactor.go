@@ -340,8 +340,15 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 						}
 
 						if Correct {
-							// TODO
+							at, err := signinupout.GetCurrentSession(w, req)
 
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
+
+							at.SecondFactor.CheckResult = Correct
+
+							signinupout.SetTokenStrict(at)
 						}
 
 					} else {

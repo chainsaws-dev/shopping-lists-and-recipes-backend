@@ -590,3 +590,14 @@ func GetTokenBasedOnToken(req *http.Request) (authentication.ActiveToken, error)
 
 	return result, ErrSessionNotFoundByToken
 }
+
+// SetTokenStrict - перезаписывает токен новым значением
+func SetTokenStrict(NewValue authentication.ActiveToken) {
+	for idx, t := range TokenList {
+
+		if t.Token == NewValue.Token {
+			TokenList[idx] = NewValue
+		}
+
+	}
+}
