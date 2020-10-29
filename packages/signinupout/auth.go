@@ -517,180 +517,102 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 		// Проверка токена и получение роли
 		issued, role := TwoWayAuthentication(w, req)
 
+		// Проверка прохождения двухфакторной авторизации
+		sf := SecondFactorAuthenticationCheck(w, req)
+
 		if issued {
+			if sf {
 
-			switch {
-			case req.Method == http.MethodGet:
+				switch {
+				case req.Method == http.MethodGet:
 
-				if setup.ServerSettings.CheckRoleForRead(role, "HandleUsers") {
+					if setup.ServerSettings.CheckRoleForRead(role, "HandleUsers") {
 
-					PageStr := req.Header.Get("Page")
-					LimitStr := req.Header.Get("Limit")
+						PageStr := req.Header.Get("Page")
+						LimitStr := req.Header.Get("Limit")
 
-					var usersresp databases.UsersResponse
-					var err error
+						var usersresp databases.UsersResponse
+						var err error
 
-					// Авторизация под ролью пользователя
-					err = setup.ServerSettings.SQL.Connect(role)
+						// Авторизация под ролью пользователя
+						err = setup.ServerSettings.SQL.Connect(role)
 
-					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-						return
-					}
-					defer setup.ServerSettings.SQL.Disconnect()
-
-					if PageStr != "" && LimitStr != "" {
-
-						Page, err := strconv.Atoi(PageStr)
-
-						if shared.HandleInternalServerError(w, err) {
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 							return
 						}
+						defer setup.ServerSettings.SQL.Disconnect()
 
-						Limit, err := strconv.Atoi(LimitStr)
+						if PageStr != "" && LimitStr != "" {
 
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
-						usersresp, err = databases.PostgreSQLUsersSelect(Page, Limit)
-
-						if err != nil {
-							if errors.Is(err, databases.ErrLimitOffsetInvalid) {
-								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
-								return
-							}
+							Page, err := strconv.Atoi(PageStr)
 
 							if shared.HandleInternalServerError(w, err) {
 								return
 							}
-						}
 
-						shared.WriteObjectToJSON(w, usersresp)
+							Limit, err := strconv.Atoi(LimitStr)
+
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
+
+							usersresp, err = databases.PostgreSQLUsersSelect(Page, Limit)
+
+							if err != nil {
+								if errors.Is(err, databases.ErrLimitOffsetInvalid) {
+									shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+									return
+								}
+
+								if shared.HandleInternalServerError(w, err) {
+									return
+								}
+							}
+
+							shared.WriteObjectToJSON(w, usersresp)
+
+						} else {
+							shared.HandleOtherError(w, ErrHeadersNotFilled.Error(), ErrHeadersNotFilled, http.StatusBadRequest)
+							return
+						}
 
 					} else {
-						shared.HandleOtherError(w, ErrHeadersNotFilled.Error(), ErrHeadersNotFilled, http.StatusBadRequest)
-						return
+						shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 					}
 
-				} else {
-					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
-				}
+				case req.Method == http.MethodPost:
 
-			case req.Method == http.MethodPost:
+					if setup.ServerSettings.CheckRoleForChange(role, "HandleUsers") {
+						// Создание и изменение пользователя
+						var User databases.User
 
-				if setup.ServerSettings.CheckRoleForChange(role, "HandleUsers") {
-					// Создание и изменение пользователя
-					var User databases.User
-
-					err := json.NewDecoder(req.Body).Decode(&User)
-
-					if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-						return
-					}
-
-					remai := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
-
-					if !remai.MatchString(User.Email) {
-						shared.HandleOtherError(w, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
-						return
-					}
-
-					if len(User.Phone) > 0 {
-
-						repho := regexp.MustCompile(`^((8|\+7)[\- ]?)?(\(?\d{3,4}\)?[\- ]?)?[\d\- ]{5,10}$`)
-
-						if !repho.MatchString(User.Phone) {
-							shared.HandleOtherError(w, "Некорректный телефонный номер", ErrBadPhone, http.StatusBadRequest)
-							return
-						}
-					}
-
-					if User.Role != "guest_role_read_only" && User.Role != "admin_role_CRUD" {
-						shared.HandleOtherError(w, "Указана некорректная роль", ErrBadRole, http.StatusBadRequest)
-						return
-					}
-
-					err = setup.ServerSettings.SQL.Connect(role)
-
-					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-						return
-					}
-					defer setup.ServerSettings.SQL.Disconnect()
-
-					// Значение по умолчанию для хеша и пароля
-					Hash := ""
-					UpdatePassword := false
-
-					NewPassword := req.Header.Get("NewPassword")
-
-					if len(NewPassword) > 0 {
-
-						// Разбираем и декодируем зашифрованный base64 пароль
-						resbytepas, err := base64.StdEncoding.DecodeString(NewPassword)
+						err := json.NewDecoder(req.Body).Decode(&User)
 
 						if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
 							return
 						}
 
-						NewPassword = string(resbytepas)
-						NewPassword, err = url.QueryUnescape(NewPassword)
+						remai := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
-						if len(NewPassword) < 6 {
-							shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
-							return
-						}
-						Hash, err = authentication.Argon2GenerateHash(NewPassword, &authentication.HashParams)
-
-						if shared.HandleInternalServerError(w, err) {
+						if !remai.MatchString(User.Email) {
+							shared.HandleOtherError(w, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
 							return
 						}
 
-						UpdatePassword = true
-					}
+						if len(User.Phone) > 0 {
 
-					if len(NewPassword) == 0 && uuid.Equal(uuid.Nil, User.GUID) {
-						shared.HandleOtherError(w, "Пароль нового пользователя должен быть задан", ErrPasswordTooShort, http.StatusBadRequest)
-						return
-					}
+							repho := regexp.MustCompile(`^((8|\+7)[\- ]?)?(\(?\d{3,4}\)?[\- ]?)?[\d\- ]{5,10}$`)
 
-					// Получаем обновлённого юзера (если новый с GUID)
-					User, err = databases.PostgreSQLUsersInsertUpdate(User, Hash, UpdatePassword, true)
-
-					if err != nil {
-						if errors.Is(err, databases.ErrEmailIsOccupied) {
-							shared.HandleOtherError(w, "Указанный адрес электронной почты уже занят", err, http.StatusInternalServerError)
-							return
-						}
-					}
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					// Пишем в тело ответа
-					shared.WriteObjectToJSON(w, User)
-
-				} else {
-					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
-				}
-
-			case req.Method == http.MethodDelete:
-
-				if setup.ServerSettings.CheckRoleForDelete(role, "HandleUsers") {
-					// Удаление пользователя
-					UserIDtoDelStr := req.Header.Get("UserID")
-
-					if len(UserIDtoDelStr) > 0 {
-
-						// Разбираем и декодируем зашифрованный base64 идентификатор
-						resbytepas, err := base64.StdEncoding.DecodeString(UserIDtoDelStr)
-
-						if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-							return
+							if !repho.MatchString(User.Phone) {
+								shared.HandleOtherError(w, "Некорректный телефонный номер", ErrBadPhone, http.StatusBadRequest)
+								return
+							}
 						}
 
-						UserIDtoDelStr = string(resbytepas)
-						UserIDtoDelStr, err = url.QueryUnescape(UserIDtoDelStr)
+						if User.Role != "guest_role_read_only" && User.Role != "admin_role_CRUD" {
+							shared.HandleOtherError(w, "Указана некорректная роль", ErrBadRole, http.StatusBadRequest)
+							return
+						}
 
 						err = setup.ServerSettings.SQL.Connect(role)
 
@@ -699,17 +621,48 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 						}
 						defer setup.ServerSettings.SQL.Disconnect()
 
-						UserID, err := uuid.FromString(UserIDtoDelStr)
+						// Значение по умолчанию для хеша и пароля
+						Hash := ""
+						UpdatePassword := false
 
-						if shared.HandleOtherError(w, "Некорректный идентификатор пользователя", err, http.StatusBadRequest) {
+						NewPassword := req.Header.Get("NewPassword")
+
+						if len(NewPassword) > 0 {
+
+							// Разбираем и декодируем зашифрованный base64 пароль
+							resbytepas, err := base64.StdEncoding.DecodeString(NewPassword)
+
+							if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+								return
+							}
+
+							NewPassword = string(resbytepas)
+							NewPassword, err = url.QueryUnescape(NewPassword)
+
+							if len(NewPassword) < 6 {
+								shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
+								return
+							}
+							Hash, err = authentication.Argon2GenerateHash(NewPassword, &authentication.HashParams)
+
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
+
+							UpdatePassword = true
+						}
+
+						if len(NewPassword) == 0 && uuid.Equal(uuid.Nil, User.GUID) {
+							shared.HandleOtherError(w, "Пароль нового пользователя должен быть задан", ErrPasswordTooShort, http.StatusBadRequest)
 							return
 						}
 
-						err = databases.PostgreSQLUsersDelete(UserID)
+						// Получаем обновлённого юзера (если новый с GUID)
+						User, err = databases.PostgreSQLUsersInsertUpdate(User, Hash, UpdatePassword, true)
 
 						if err != nil {
-							if errors.Is(err, databases.ErrUserNotFound) {
-								shared.HandleOtherError(w, "Пользователь не найден, невозможно удалить", err, http.StatusBadRequest)
+							if errors.Is(err, databases.ErrEmailIsOccupied) {
+								shared.HandleOtherError(w, "Указанный адрес электронной почты уже занят", err, http.StatusInternalServerError)
 								return
 							}
 						}
@@ -718,22 +671,75 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 							return
 						}
 
-						shared.HandleSuccessMessage(w, "Запись удалена")
+						// Пишем в тело ответа
+						shared.WriteObjectToJSON(w, User)
 
 					} else {
-						shared.HandleOtherError(w, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)
+						shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 					}
 
-				} else {
-					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+				case req.Method == http.MethodDelete:
+
+					if setup.ServerSettings.CheckRoleForDelete(role, "HandleUsers") {
+						// Удаление пользователя
+						UserIDtoDelStr := req.Header.Get("UserID")
+
+						if len(UserIDtoDelStr) > 0 {
+
+							// Разбираем и декодируем зашифрованный base64 идентификатор
+							resbytepas, err := base64.StdEncoding.DecodeString(UserIDtoDelStr)
+
+							if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+								return
+							}
+
+							UserIDtoDelStr = string(resbytepas)
+							UserIDtoDelStr, err = url.QueryUnescape(UserIDtoDelStr)
+
+							err = setup.ServerSettings.SQL.Connect(role)
+
+							if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+								return
+							}
+							defer setup.ServerSettings.SQL.Disconnect()
+
+							UserID, err := uuid.FromString(UserIDtoDelStr)
+
+							if shared.HandleOtherError(w, "Некорректный идентификатор пользователя", err, http.StatusBadRequest) {
+								return
+							}
+
+							err = databases.PostgreSQLUsersDelete(UserID)
+
+							if err != nil {
+								if errors.Is(err, databases.ErrUserNotFound) {
+									shared.HandleOtherError(w, "Пользователь не найден, невозможно удалить", err, http.StatusBadRequest)
+									return
+								}
+							}
+
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
+
+							shared.HandleSuccessMessage(w, "Запись удалена")
+
+						} else {
+							shared.HandleOtherError(w, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)
+						}
+
+					} else {
+						shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+					}
+
+				default:
+					shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 				}
-
-			default:
-				shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+			} else {
+				shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
 			}
-
 		} else {
-			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusUnauthorized)
+			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 		}
 	}
 
@@ -782,105 +788,110 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 		// Проверка токена и получение роли
 		issued, role := TwoWayAuthentication(w, req)
 
+		// Проверка прохождения двухфакторной авторизации
+		sf := SecondFactorAuthenticationCheck(w, req)
+
 		if issued {
+			if sf {
+				switch {
+				case req.Method == http.MethodGet:
 
-			switch {
-			case req.Method == http.MethodGet:
+					if setup.ServerSettings.CheckRoleForRead(role, "HandleSessions") {
 
-				if setup.ServerSettings.CheckRoleForRead(role, "HandleSessions") {
+						PageStr := req.Header.Get("Page")
+						LimitStr := req.Header.Get("Limit")
 
-					PageStr := req.Header.Get("Page")
-					LimitStr := req.Header.Get("Limit")
+						var sessionsresp SessionsResponse
 
-					var sessionsresp SessionsResponse
+						if PageStr != "" && LimitStr != "" {
 
-					if PageStr != "" && LimitStr != "" {
-
-						Page, err := strconv.Atoi(PageStr)
-
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
-						Limit, err := strconv.Atoi(LimitStr)
-
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
-						sessionsresp, err = GetSessionsList(Page, Limit)
-
-						if err != nil {
-							if errors.Is(err, databases.ErrLimitOffsetInvalid) {
-								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
-								return
-							}
+							Page, err := strconv.Atoi(PageStr)
 
 							if shared.HandleInternalServerError(w, err) {
 								return
 							}
-						}
 
-						shared.WriteObjectToJSON(w, sessionsresp)
+							Limit, err := strconv.Atoi(LimitStr)
 
-					} else {
-						shared.HandleOtherError(w, ErrHeadersNotFilled.Error(), ErrHeadersNotFilled, http.StatusBadRequest)
-						return
-					}
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
 
-				} else {
-					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
-				}
-
-			case req.Method == http.MethodDelete:
-
-				if setup.ServerSettings.CheckRoleForDelete(role, "HandleSessions") {
-					// Удаление сессии по электронной почте
-					Email := req.Header.Get("Email")
-					Token := req.Header.Get("Token")
-
-					if len(Email) > 0 || len(Token) > 0 {
-
-						if len(Email) > 0 {
-							err = DeleteSessionByEmail(Email)
+							sessionsresp, err = GetSessionsList(Page, Limit)
 
 							if err != nil {
-								if errors.Is(err, ErrSessionNotFoundByEmail) {
-									shared.HandleOtherError(w, "Сессии не найдены, невозможно удалить", err, http.StatusBadRequest)
+								if errors.Is(err, databases.ErrLimitOffsetInvalid) {
+									shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+									return
+								}
+
+								if shared.HandleInternalServerError(w, err) {
 									return
 								}
 							}
 
-							shared.HandleSuccessMessage(w, "Сессии удалены")
-						}
+							shared.WriteObjectToJSON(w, sessionsresp)
 
-						if len(Token) > 0 {
-							err = DeleteSessionByToken(Token)
-
-							if err != nil {
-								if errors.Is(err, ErrSessionNotFoundByToken) {
-									shared.HandleOtherError(w, "Сессия не найдена, невозможно удалить", err, http.StatusBadRequest)
-									return
-								}
-							}
-
-							shared.HandleSuccessMessage(w, "Сессия удалена")
+						} else {
+							shared.HandleOtherError(w, ErrHeadersNotFilled.Error(), ErrHeadersNotFilled, http.StatusBadRequest)
+							return
 						}
 
 					} else {
-						shared.HandleOtherError(w, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)
+						shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 					}
 
-				} else {
-					shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
-				}
+				case req.Method == http.MethodDelete:
 
-			default:
-				shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+					if setup.ServerSettings.CheckRoleForDelete(role, "HandleSessions") {
+						// Удаление сессии по электронной почте
+						Email := req.Header.Get("Email")
+						Token := req.Header.Get("Token")
+
+						if len(Email) > 0 || len(Token) > 0 {
+
+							if len(Email) > 0 {
+								err = DeleteSessionByEmail(Email)
+
+								if err != nil {
+									if errors.Is(err, ErrSessionNotFoundByEmail) {
+										shared.HandleOtherError(w, "Сессии не найдены, невозможно удалить", err, http.StatusBadRequest)
+										return
+									}
+								}
+
+								shared.HandleSuccessMessage(w, "Сессии удалены")
+							}
+
+							if len(Token) > 0 {
+								err = DeleteSessionByToken(Token)
+
+								if err != nil {
+									if errors.Is(err, ErrSessionNotFoundByToken) {
+										shared.HandleOtherError(w, "Сессия не найдена, невозможно удалить", err, http.StatusBadRequest)
+										return
+									}
+								}
+
+								shared.HandleSuccessMessage(w, "Сессия удалена")
+							}
+
+						} else {
+							shared.HandleOtherError(w, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)
+						}
+
+					} else {
+						shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+					}
+
+				default:
+					shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+				}
+			} else {
+				shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
 			}
-
 		} else {
-			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusUnauthorized)
+			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 		}
 	}
 }
@@ -918,36 +929,41 @@ func GetCurrentUser(w http.ResponseWriter, req *http.Request) {
 		// Проверка токена и получение роли
 		issued, role := TwoWayAuthentication(w, req)
 
+		// Проверка прохождения двухфакторной авторизации
+		sf := SecondFactorAuthenticationCheck(w, req)
+
 		if issued {
+			if sf {
+				// Получаем данные текущего пользователя
 
-			// Получаем данные текущего пользователя
+				Email := GetCurrentUserEmail(w, req)
 
-			Email := GetCurrentUserEmail(w, req)
+				err := setup.ServerSettings.SQL.Connect(role)
 
-			err := setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-				return
-			}
-			defer setup.ServerSettings.SQL.Disconnect()
-
-			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
-
-			if err != nil {
-				if errors.Is(databases.ErrNoUserWithEmail, err) {
-					shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 					return
 				}
+				defer setup.ServerSettings.SQL.Disconnect()
+
+				FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+
+				if err != nil {
+					if errors.Is(databases.ErrNoUserWithEmail, err) {
+						shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+						return
+					}
+				}
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				shared.WriteObjectToJSON(w, FoundUser)
+			} else {
+				shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
 			}
-
-			if shared.HandleInternalServerError(w, err) {
-				return
-			}
-
-			shared.WriteObjectToJSON(w, FoundUser)
-
 		} else {
-			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusUnauthorized)
+			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 		}
 
 	}

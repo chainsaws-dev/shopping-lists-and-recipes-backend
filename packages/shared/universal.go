@@ -5,8 +5,22 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+)
+
+// Список общих типовых ошибок
+var (
+	ErrNotAllowedMethod       = errors.New("Запрошен недопустимый метод для файлов")
+	ErrNoKeyInParams          = errors.New("API ключ не указан в параметрах")
+	ErrWrongKeyInParams       = errors.New("API ключ не зарегистрирован")
+	ErrNotAuthorized          = errors.New("Пройдите авторизацию")
+	ErrNotAuthorizedTwoFactor = errors.New("Пройдите авторизацию по второму фактору")
+	ErrForbidden              = errors.New("Доступ запрещён")
+	ErrHeadersFetchNotFilled  = errors.New("Не заполнены обязательные параметры запроса списка файлов: Page, Limit")
+	ErrFkeyViolation          = errors.New("Нельзя удалять записи, на которые имеются ссылки")
+	ErroNoRowsInResult        = errors.New("Не найдено ни одной записи для удаления")
 )
 
 // CurrentPrefix - префикс URL

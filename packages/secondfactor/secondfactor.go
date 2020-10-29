@@ -10,6 +10,11 @@ import (
 	"shopping-lists-and-recipes/packages/signinupout"
 )
 
+// Список типовых ошибок
+var (
+	ErrAlreadySetSecondFactor = errors.New("Двухфакторная авторизация уже настроена")
+)
+
 // SecondFactor - обработчик для работы с настройками двухфакторной авторизации, принимает http запросы GET, POST и DELETE
 //
 // Аутентификация
@@ -54,138 +59,143 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 		// Проверка токена и получение роли
 		issued, role := signinupout.TwoWayAuthentication(w, req)
 
+		// Проверка прохождения двухфакторной авторизации
+		sf := signinupout.SecondFactorAuthenticationCheck(w, req)
+
 		if issued {
+			if sf {
+				switch {
+				case req.Method == http.MethodGet:
+					if setup.ServerSettings.CheckRoleForRead(role, "SecondFactor") {
 
-			switch {
-			case req.Method == http.MethodGet:
-				if setup.ServerSettings.CheckRoleForRead(role, "SecondFactor") {
+						// Получаем данные текущего пользователя
 
-					// Получаем данные текущего пользователя
+						Email := signinupout.GetCurrentUserEmail(w, req)
 
-					Email := signinupout.GetCurrentUserEmail(w, req)
+						err := setup.ServerSettings.SQL.Connect(role)
 
-					err := setup.ServerSettings.SQL.Connect(role)
-
-					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-						return
-					}
-					defer setup.ServerSettings.SQL.Disconnect()
-
-					FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
-
-					if err != nil {
-						if errors.Is(databases.ErrNoUserWithEmail, err) {
-							shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 							return
 						}
-					}
+						defer setup.ServerSettings.SQL.Disconnect()
 
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					Totp, err := databases.PostgreSQLGetSecretByUserID(FoundUser.GUID)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					var result databases.TOTPResponse
-
-					result.Confirmed = Totp.Confirmed
-					result.UserID = Totp.UserID
-
-					shared.WriteObjectToJSON(w, result)
-
-				} else {
-					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
-				}
-
-			case req.Method == http.MethodPost:
-
-				if setup.ServerSettings.CheckRoleForChange(role, "SecondFactor") {
-
-					PassStr := req.Header.Get("Passcode")
-
-					if len(PassStr) > 0 {
-
-						var CurUser databases.User
-
-						err := json.NewDecoder(req.Body).Decode(&CurUser)
-
-						if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-							return
-						}
-
-						err = EnableTOTP(PassStr, CurUser)
+						FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
 
 						if err != nil {
-							if errors.Is(ErrSecretNotSaved, err) {
-								shared.HandleOtherError(w, err.Error(), err, http.StatusUnauthorized)
-								return
-							}
-
-							if shared.HandleInternalServerError(w, err) {
+							if errors.Is(databases.ErrNoUserWithEmail, err) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
 								return
 							}
 						}
 
-						shared.HandleSuccessMessage(w, "Второй фактор успешно настроен")
-
-					} else {
-						shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest)
-						return
-					}
-
-				} else {
-					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
-				}
-
-			case req.Method == http.MethodDelete:
-
-				if setup.ServerSettings.CheckRoleForDelete(role, "SecondFactor") {
-
-					// Получаем данные текущего пользователя
-					Email := signinupout.GetCurrentUserEmail(w, req)
-
-					err := setup.ServerSettings.SQL.Connect(role)
-
-					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-						return
-					}
-					defer setup.ServerSettings.SQL.Disconnect()
-
-					FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
-
-					if err != nil {
-						if errors.Is(databases.ErrNoUserWithEmail, err) {
-							shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+						if shared.HandleInternalServerError(w, err) {
 							return
 						}
+
+						Totp, err := databases.PostgreSQLGetSecretByUserID(FoundUser.GUID)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						var result databases.TOTPResponse
+
+						result.Confirmed = Totp.Confirmed
+						result.UserID = Totp.UserID
+
+						shared.WriteObjectToJSON(w, result)
+
+					} else {
+						shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 					}
 
-					if shared.HandleInternalServerError(w, err) {
-						return
+				case req.Method == http.MethodPost:
+
+					if setup.ServerSettings.CheckRoleForChange(role, "SecondFactor") {
+
+						PassStr := req.Header.Get("Passcode")
+
+						if len(PassStr) > 0 {
+
+							var CurUser databases.User
+
+							err := json.NewDecoder(req.Body).Decode(&CurUser)
+
+							if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+								return
+							}
+
+							err = EnableTOTP(PassStr, CurUser)
+
+							if err != nil {
+								if errors.Is(ErrSecretNotSaved, err) {
+									shared.HandleOtherError(w, err.Error(), err, http.StatusUnauthorized)
+									return
+								}
+
+								if shared.HandleInternalServerError(w, err) {
+									return
+								}
+							}
+
+							shared.HandleSuccessMessage(w, "Второй фактор успешно настроен")
+
+						} else {
+							shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest)
+							return
+						}
+
+					} else {
+						shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 					}
 
-					err = databases.PostgreSQLDeleteSecondFactorSecret(FoundUser.GUID)
+				case req.Method == http.MethodDelete:
 
-					if shared.HandleInternalServerError(w, err) {
-						return
+					if setup.ServerSettings.CheckRoleForDelete(role, "SecondFactor") {
+
+						// Получаем данные текущего пользователя
+						Email := signinupout.GetCurrentUserEmail(w, req)
+
+						err := setup.ServerSettings.SQL.Connect(role)
+
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+							return
+						}
+						defer setup.ServerSettings.SQL.Disconnect()
+
+						FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+
+						if err != nil {
+							if errors.Is(databases.ErrNoUserWithEmail, err) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+								return
+							}
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						err = databases.PostgreSQLDeleteSecondFactorSecret(FoundUser.GUID)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						shared.HandleSuccessMessage(w, "Второй фактор успешно удалён")
+
+					} else {
+						shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 					}
 
-					shared.HandleSuccessMessage(w, "Второй фактор успешно удалён")
-
-				} else {
-					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+				default:
+					shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 				}
-
-			default:
-				shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+			} else {
+				shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
 			}
-
 		} else {
-			shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusUnauthorized)
+			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 		}
 	}
 }
@@ -224,59 +234,64 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 		// Проверка токена и получение роли
 		issued, role := signinupout.TwoWayAuthentication(w, req)
 
+		// Проверка прохождения двухфакторной авторизации
+		sf := signinupout.SecondFactorAuthenticationCheck(w, req)
+
 		if issued {
+			if !sf {
+				switch {
+				case req.Method == http.MethodGet:
+					if setup.ServerSettings.CheckRoleForRead(role, "GetQRCode") {
 
-			switch {
-			case req.Method == http.MethodGet:
-				if setup.ServerSettings.CheckRoleForRead(role, "GetQRCode") {
+						// Получаем данные текущего пользователя
 
-					// Получаем данные текущего пользователя
+						Email := signinupout.GetCurrentUserEmail(w, req)
 
-					Email := signinupout.GetCurrentUserEmail(w, req)
+						err := setup.ServerSettings.SQL.Connect(role)
 
-					err := setup.ServerSettings.SQL.Connect(role)
-
-					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-						return
-					}
-					defer setup.ServerSettings.SQL.Disconnect()
-
-					FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
-
-					if err != nil {
-						if errors.Is(databases.ErrNoUserWithEmail, err) {
-							shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 							return
 						}
+						defer setup.ServerSettings.SQL.Disconnect()
+
+						FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+
+						if err != nil {
+							if errors.Is(databases.ErrNoUserWithEmail, err) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+								return
+							}
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						var usf UserSecondFactor
+
+						usf.User = FoundUser
+						usf.URL = shared.CurrentPrefix + req.Host
+
+						b, err := usf.GetQR(200, 200)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						shared.WriteBufferToPNG(w, b)
+
+					} else {
+						shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 					}
 
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					var usf UserSecondFactor
-
-					usf.User = FoundUser
-					usf.URL = shared.CurrentPrefix + req.Host
-
-					b, err := usf.GetQR(200, 200)
-
-					if shared.HandleInternalServerError(w, err) {
-						return
-					}
-
-					shared.WriteBufferToPNG(w, b)
-
-				} else {
-					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+				default:
+					shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 				}
-
-			default:
-				shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+			} else {
+				shared.HandleOtherError(w, ErrAlreadySetSecondFactor.Error(), ErrAlreadySetSecondFactor, http.StatusBadRequest)
 			}
-
 		} else {
-			shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusUnauthorized)
+			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 		}
 	}
 }
@@ -300,72 +315,77 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 		// Проверка токена и получение роли
 		issued, role := signinupout.TwoWayAuthentication(w, req)
 
+		// Проверка прохождения двухфакторной авторизации
+		sf := signinupout.SecondFactorAuthenticationCheck(w, req)
+
 		if issued {
+			if sf {
+				switch {
+				case req.Method == http.MethodPost:
+					if setup.ServerSettings.CheckRoleForRead(role, "CheckSecondFactor") {
 
-			switch {
-			case req.Method == http.MethodPost:
-				if setup.ServerSettings.CheckRoleForRead(role, "CheckSecondFactor") {
+						PassStr := req.Header.Get("Passcode")
 
-					PassStr := req.Header.Get("Passcode")
+						if len(PassStr) > 0 {
 
-					if len(PassStr) > 0 {
+							// Получаем данные текущего пользователя
+							Email := signinupout.GetCurrentUserEmail(w, req)
 
-						// Получаем данные текущего пользователя
-						Email := signinupout.GetCurrentUserEmail(w, req)
+							err := setup.ServerSettings.SQL.Connect(role)
 
-						err := setup.ServerSettings.SQL.Connect(role)
-
-						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-							return
-						}
-						defer setup.ServerSettings.SQL.Disconnect()
-
-						FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
-
-						if err != nil {
-							if errors.Is(databases.ErrNoUserWithEmail, err) {
-								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+							if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 								return
 							}
-						}
+							defer setup.ServerSettings.SQL.Disconnect()
 
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
+							FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
 
-						Correct, err := Validate(PassStr, FoundUser)
-
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
-						if Correct {
-							at, err := signinupout.GetCurrentSession(w, req)
+							if err != nil {
+								if errors.Is(databases.ErrNoUserWithEmail, err) {
+									shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+									return
+								}
+							}
 
 							if shared.HandleInternalServerError(w, err) {
 								return
 							}
 
-							at.SecondFactor.CheckResult = Correct
+							Correct, err := Validate(PassStr, FoundUser)
 
-							signinupout.SetTokenStrict(at)
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
+
+							if Correct {
+								at, err := signinupout.GetCurrentSession(w, req)
+
+								if shared.HandleInternalServerError(w, err) {
+									return
+								}
+
+								at.SecondFactor.CheckResult = Correct
+
+								signinupout.SetTokenStrict(at)
+							}
+
+						} else {
+							shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest)
+							return
 						}
 
 					} else {
-						shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest)
-						return
+						shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 					}
 
-				} else {
-					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+				default:
+					shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 				}
-
-			default:
-				shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+			} else {
+				shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
 			}
-
 		} else {
-			shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusUnauthorized)
+			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 		}
 	} else {
 		shared.HandleOtherError(w, "Bad request", signinupout.ErrWrongKeyInParams, http.StatusBadRequest)

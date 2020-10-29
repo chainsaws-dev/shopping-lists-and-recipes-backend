@@ -165,6 +165,26 @@ func TwoWayAuthentication(w http.ResponseWriter, req *http.Request) (issued bool
 
 }
 
+// SecondFactorAuthenticationCheck - проверяет значение двухфакторной авторизации
+func SecondFactorAuthenticationCheck(w http.ResponseWriter, req *http.Request) bool {
+
+	result, err := GetCurrentSession(w, req)
+
+	if shared.HandleInternalServerError(w, err) {
+		return false
+	}
+
+	if result.SecondFactor.Enabled && result.SecondFactor.CheckResult {
+		return true
+	}
+
+	if !result.SecondFactor.Enabled && !result.SecondFactor.CheckResult {
+		return true
+	}
+
+	return false
+}
+
 // CheckCookiesIssued - проверяет выпущенные куки
 func CheckCookiesIssued(w http.ResponseWriter, req *http.Request) (issued bool, role string) {
 	mycookies, err := securecookies.GetCookies(w, req)
