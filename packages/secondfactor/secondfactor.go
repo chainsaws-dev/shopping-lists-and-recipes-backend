@@ -151,6 +151,11 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 									return
 								}
 
+								if errors.Is(databases.ErrUserTOTPNotFound, err) {
+									shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+									return
+								}
+
 								if shared.HandleInternalServerError(w, err) {
 									return
 								}
