@@ -95,8 +95,14 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 						Totp, err := databases.PostgreSQLGetSecretByUserID(FoundUser.GUID)
 
-						if shared.HandleInternalServerError(w, err) {
-							return
+						if err != nil {
+							if errors.Is(databases.ErrUserTOTPNotFound, err) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusNotFound)
+							}
+
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
 						}
 
 						var result databases.TOTPResponse
@@ -206,6 +212,8 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 		} else {
 			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 		}
+	} else {
+		shared.HandleOtherError(w, "Bad request", shared.ErrWrongKeyInParams, http.StatusBadRequest)
 	}
 }
 
@@ -309,6 +317,8 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 		} else {
 			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 		}
+	} else {
+		shared.HandleOtherError(w, "Bad request", shared.ErrWrongKeyInParams, http.StatusBadRequest)
 	}
 }
 
@@ -403,6 +413,6 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 		}
 	} else {
-		shared.HandleOtherError(w, "Bad request", signinupout.ErrWrongKeyInParams, http.StatusBadRequest)
+		shared.HandleOtherError(w, "Bad request", shared.ErrWrongKeyInParams, http.StatusBadRequest)
 	}
 }

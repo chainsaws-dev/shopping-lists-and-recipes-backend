@@ -177,7 +177,8 @@ func SecondFactorAuthenticationCheck(w http.ResponseWriter, req *http.Request) b
 
 	result, err := GetCurrentSession(w, req)
 
-	if shared.HandleInternalServerError(w, err) {
+	if err != nil {
+		log.Println(err)
 		return false
 	}
 
