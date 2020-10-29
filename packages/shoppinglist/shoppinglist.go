@@ -75,7 +75,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 					}
 					defer setup.ServerSettings.SQL.Disconnect()
 
-					if PageStr != "" && LimitStr != "" {
+					if len(PageStr) > 0 && len(LimitStr) > 0 {
 
 						Page, err := strconv.Atoi(PageStr)
 

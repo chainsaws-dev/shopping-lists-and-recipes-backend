@@ -91,7 +91,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 					}
 					defer setup.ServerSettings.SQL.Disconnect()
 
-					if PageStr != "" && LimitStr != "" {
+					if len(PageStr) > 0 && len(LimitStr) > 0 {
 
 						Page, err := strconv.Atoi(PageStr)
 
@@ -267,7 +267,7 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 					}
 					defer setup.ServerSettings.SQL.Disconnect()
 
-					if PageStr != "" && LimitStr != "" && SearchStr != "" {
+					if len(PageStr) > 0 && len(LimitStr) > 0 && len(SearchStr) > 0 {
 
 						Page, err := strconv.Atoi(PageStr)
 

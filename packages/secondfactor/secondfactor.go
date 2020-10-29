@@ -1,6 +1,7 @@
 package secondfactor
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"shopping-lists-and-recipes/packages/databases"
@@ -32,12 +33,14 @@ import (
 //
 // POST
 //
+//	ожидается заголовок Passcode с ключом с токена
 // 	тело запроса должно быть заполнено JSON объектом
-// 	идентичным по структуре TOTPSecret
+// 	идентичным по структуре User
+//
 //
 // DELETE
 //
-// 	ожидается заголовок UserID с UUID пользователя пропущенным через encodeURIComponent и btoa (закодированным base64)
+// 	Ничего не требуется
 func SecondFactor(w http.ResponseWriter, req *http.Request) {
 	found, err := signinupout.CheckAPIKey(w, req)
 
@@ -56,6 +59,44 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 			switch {
 			case req.Method == http.MethodGet:
 				if setup.ServerSettings.CheckRoleForRead(role, "SecondFactor") {
+
+					// Получаем данные текущего пользователя
+
+					Email := signinupout.GetCurrentUserEmail(w, req)
+
+					err := setup.ServerSettings.SQL.Connect(role)
+
+					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+						return
+					}
+					defer setup.ServerSettings.SQL.Disconnect()
+
+					FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+
+					if err != nil {
+						if errors.Is(databases.ErrNoUserWithEmail, err) {
+							shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+							return
+						}
+					}
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					Totp, err := databases.PostgreSQLGetSecretByUserID(FoundUser.GUID)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					var result databases.TOTPResponse
+
+					result.Confirmed = Totp.Confirmed
+					result.UserID = Totp.UserID
+
+					shared.WriteObjectToJSON(w, result)
+
 				} else {
 					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 				}
@@ -64,6 +105,38 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 				if setup.ServerSettings.CheckRoleForChange(role, "SecondFactor") {
 
+					PassStr := req.Header.Get("Passcode")
+
+					if len(PassStr) > 0 {
+
+						var CurUser databases.User
+
+						err := json.NewDecoder(req.Body).Decode(&CurUser)
+
+						if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+							return
+						}
+
+						err = EnableTOTP(PassStr, CurUser)
+
+						if err != nil {
+							if errors.Is(ErrSecretNotSaved, err) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusUnauthorized)
+								return
+							}
+
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
+						}
+
+						shared.HandleSuccessMessage(w, "Второй фактор успешно настроен")
+
+					} else {
+						shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest)
+						return
+					}
+
 				} else {
 					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 				}
@@ -71,6 +144,37 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 			case req.Method == http.MethodDelete:
 
 				if setup.ServerSettings.CheckRoleForDelete(role, "SecondFactor") {
+
+					// Получаем данные текущего пользователя
+					Email := signinupout.GetCurrentUserEmail(w, req)
+
+					err := setup.ServerSettings.SQL.Connect(role)
+
+					if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+						return
+					}
+					defer setup.ServerSettings.SQL.Disconnect()
+
+					FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+
+					if err != nil {
+						if errors.Is(databases.ErrNoUserWithEmail, err) {
+							shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+							return
+						}
+					}
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					err = databases.PostgreSQLDeleteSecondFactorSecret(FoundUser.GUID)
+
+					if shared.HandleInternalServerError(w, err) {
+						return
+					}
+
+					shared.HandleSuccessMessage(w, "Второй фактор успешно удалён")
 
 				} else {
 					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)

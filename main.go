@@ -9,6 +9,7 @@ import (
 	"os"
 	"shopping-lists-and-recipes/packages/files"
 	"shopping-lists-and-recipes/packages/recipes"
+	"shopping-lists-and-recipes/packages/secondfactor"
 	"shopping-lists-and-recipes/packages/setup"
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/shoppinglist"
@@ -90,6 +91,11 @@ func main() {
 	// Авторизация и регистрация
 	http.HandleFunc("/api/Accounts/SignUp", signinupout.SignUp)
 	http.HandleFunc("/api/Accounts/SignIn", signinupout.SignIn)
+
+	// Второй фактор
+	http.HandleFunc("/api/TOTP/Check", secondfactor.CheckSecondFactor)
+	http.HandleFunc("/api/TOTP/Settings", secondfactor.SecondFactor)
+	http.HandleFunc("/api/TOTP/Qr.png", secondfactor.GetQRCode)
 
 	// Админка
 	http.HandleFunc("/api/Users", signinupout.HandleUsers)

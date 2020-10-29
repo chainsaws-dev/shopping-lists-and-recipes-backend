@@ -85,7 +85,7 @@ func GetTRulesForGuest() SQLTRules {
 			TName:      "secret.\"users\"",
 			SELECT:     true,
 			INSERT:     false,
-			UPDATE:     false,
+			UPDATE:     true,
 			DELETE:     false,
 			REFERENCES: false,
 		},
@@ -112,6 +112,14 @@ func GetTRulesForGuest() SQLTRules {
 			UPDATE:     false,
 			DELETE:     false,
 			REFERENCES: false,
+		},
+		TRule{
+			TName:      "secret.\"totp\"",
+			SELECT:     true,
+			INSERT:     true,
+			UPDATE:     true,
+			DELETE:     true,
+			REFERENCES: true,
 		},
 	}
 }
@@ -185,6 +193,14 @@ func GetTRulesForAdmin() SQLTRules {
 		},
 		TRule{
 			TName:      "secret.\"password_resets\"",
+			SELECT:     true,
+			INSERT:     true,
+			UPDATE:     true,
+			DELETE:     true,
+			REFERENCES: true,
+		},
+		TRule{
+			TName:      "secret.\"totp\"",
 			SELECT:     true,
 			INSERT:     true,
 			UPDATE:     true,

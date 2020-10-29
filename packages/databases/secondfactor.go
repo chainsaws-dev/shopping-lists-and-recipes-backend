@@ -140,6 +140,24 @@ func PostgreSQLUpdateSecondFactorSecret(totps TOTPSecret) error {
 	return nil
 }
 
+// PostgreSQLUpdateSecondFactorConfirmed - взводит флаг подтверждения для второго фактора
+func PostgreSQLUpdateSecondFactorConfirmed(Confirmed bool, UserID uuid.UUID) error {
+
+	dbc.Exec("BEGIN")
+
+	sqlreq := `UPDATE secret.totp SET confirmed = $1 WHERE user_id=$2;`
+
+	_, err := dbc.Exec(sqlreq, Confirmed, UserID)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	dbc.Exec("COMMIT")
+
+	return nil
+}
+
 // PostgreSQLDeleteSecondFactorSecret - удаляет привязанные секреты для двухфакторной авторизации пользователя
 func PostgreSQLDeleteSecondFactorSecret(UserID uuid.UUID) error {
 

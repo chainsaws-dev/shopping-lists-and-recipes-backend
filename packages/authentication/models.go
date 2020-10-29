@@ -24,8 +24,16 @@ type AuthResponseData struct {
 	Email        string
 	ExpiresIn    int
 	Registered   bool
-	SecondFactor bool
+	SecondFactor TOTP
 	Role         string
+}
+
+// TOTP - содержит информацию о проверке
+// Time Based One Time Password
+// включена ли она и каков результат проверки
+type TOTP struct {
+	Enabled     bool
+	CheckResult bool
 }
 
 // AuthSignUpRequestData - запрос при регистрации

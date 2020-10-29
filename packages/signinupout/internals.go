@@ -119,7 +119,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 			return
 		}
 
-		AuthResponse.SecondFactor = FoundUser.SecondFactor
+		AuthResponse.SecondFactor.Enabled = FoundUser.SecondFactor
 
 		shared.WriteObjectToJSON(w, AuthResponse)
 

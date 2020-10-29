@@ -97,8 +97,8 @@ func EnableTOTP(Passcode string, u databases.User) error {
 	valid := totp.Validate(Passcode, result.Secret)
 
 	if valid {
-		result.Confirmed = true
-		err = databases.PostgreSQLChangeSecondFactorSecret(result)
+
+		err = databases.PostgreSQLUpdateSecondFactorConfirmed(true, result.UserID)
 
 		if err != nil {
 			return err

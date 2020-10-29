@@ -94,3 +94,9 @@ type TOTPSecret struct {
 	EncKey    []byte
 	Confirmed bool
 }
+
+// TOTPResponse - тип для подтверждения наличия секрета
+type TOTPResponse struct {
+	UserID    uuid.UUID
+	Confirmed bool
+}
