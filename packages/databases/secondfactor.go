@@ -153,6 +153,12 @@ func PostgreSQLUpdateSecondFactorConfirmed(Confirmed bool, UserID uuid.UUID) err
 		return PostgreSQLRollbackIfError(err, false)
 	}
 
+	err = PostgreSQLSetUserSecondFactorActive(true, UserID)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
 	dbc.Exec("COMMIT")
 
 	return nil
@@ -171,7 +177,24 @@ func PostgreSQLDeleteSecondFactorSecret(UserID uuid.UUID) error {
 		return PostgreSQLRollbackIfError(err, false)
 	}
 
+	err = PostgreSQLSetUserSecondFactorActive(false, UserID)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
 	dbc.Exec("COMMIT")
 
 	return nil
+}
+
+// PostgreSQLSetUserSecondFactorActive - меняет статус флага двухфакторной авторизации в пользователе
+func PostgreSQLSetUserSecondFactorActive(Activate bool, UserID uuid.UUID) error {
+
+	sqlreq := `UPDATE secret.users SET totp_active = $1 WHERE id=$2;`
+
+	_, err := dbc.Exec(sqlreq, Activate, UserID)
+
+	return err
+
 }

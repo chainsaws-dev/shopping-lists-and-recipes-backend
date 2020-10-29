@@ -111,9 +111,6 @@ func EnableTOTP(Passcode string, u databases.User) error {
 			return err
 		}
 
-		u.SecondFactor = true
-		_, err = databases.PostgreSQLUsersInsertUpdate(u, "", false, true)
-
 		return nil
 	}
 
