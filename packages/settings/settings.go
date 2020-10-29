@@ -330,6 +330,8 @@ func (SQLsrv *SQLServer) Disconnect() {
 func (ss WServerSettings) CheckRoleForRead(RoleName string, AppPart string) bool {
 
 	switch {
+	case AppPart == "CurrentUser":
+		return ss.CheckExistingRole(RoleName)
 	case AppPart == "CheckSecondFactor":
 		return ss.CheckExistingRole(RoleName)
 	case AppPart == "SecondFactor":
@@ -356,6 +358,8 @@ func (ss WServerSettings) CheckRoleForRead(RoleName string, AppPart string) bool
 // CheckRoleForChange - проверяет роль для разрешения изменений в разделе системы
 func (ss WServerSettings) CheckRoleForChange(RoleName string, AppPart string) bool {
 	switch {
+	case AppPart == "CurrentUser":
+		return ss.CheckExistingRole(RoleName)
 	case AppPart == "CheckSecondFactor":
 		return ss.CheckExistingRole(RoleName)
 	case AppPart == "SecondFactor":
@@ -382,6 +386,8 @@ func (ss WServerSettings) CheckRoleForChange(RoleName string, AppPart string) bo
 // CheckRoleForDelete - проверяет роль для разрешения доступа к удалению элементов раздела системы
 func (ss WServerSettings) CheckRoleForDelete(RoleName string, AppPart string) bool {
 	switch {
+	case AppPart == "CurrentUser":
+		return ss.CheckExistingRole(RoleName)
 	case AppPart == "CheckSecondFactor":
 		return ss.CheckExistingRole(RoleName)
 	case AppPart == "SecondFactor":

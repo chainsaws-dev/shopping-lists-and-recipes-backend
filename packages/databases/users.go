@@ -316,7 +316,61 @@ func PostgreSQLGetUserByEmail(Email string) (User, error) {
 			return result, ErrNoUserWithEmail
 		}
 
+	} else {
+		return result, ErrNoUserWithEmail
 	}
 
 	return result, nil
+}
+
+// PostgreSQLCurrentUserUpdate - функция позволяющая менять поля, которые пользователь может менять
+func PostgreSQLCurrentUserUpdate(NewUserInfo User, Hash string, UpdatePassword bool) (User, error) {
+
+	// Проверяем что пользователь с ID существует
+	var UserCount int
+
+	sqlreq := `SELECT COUNT(*) FROM secret.users WHERE id=$1;`
+
+	UserCountRow := dbc.QueryRow(sqlreq, NewUserInfo.GUID)
+
+	err := UserCountRow.Scan(&UserCount)
+
+	if err != nil {
+		return NewUserInfo, err
+	}
+
+	dbc.Exec("BEGIN")
+
+	if UserCount > 0 {
+		// Обновляем существующего
+		sqlreq = `UPDATE secret.users SET (phone, name, confirmed, totp_active) = ($1,$2,$3,$4) WHERE id=$5;`
+
+		_, err = dbc.Exec(sqlreq, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.Confirmed,
+			NewUserInfo.SecondFactor, NewUserInfo.GUID)
+
+		if err != nil {
+			return NewUserInfo, PostgreSQLRollbackIfError(err, false)
+		}
+
+		if UpdatePassword {
+			if len(Hash) > 0 {
+
+				sqlreq = `UPDATE secret.hashes SET value=$2 WHERE user_id=$1;`
+
+				_, err = dbc.Exec(sqlreq, NewUserInfo.GUID, Hash)
+
+				if err != nil {
+					return NewUserInfo, PostgreSQLRollbackIfError(err, false)
+				}
+			} else {
+				return NewUserInfo, PostgreSQLRollbackIfError(ErrEmptyPassword, false)
+			}
+		}
+	} else {
+		return NewUserInfo, ErrNoUserWithEmail
+	}
+
+	dbc.Exec("COMMIT")
+
+	return NewUserInfo, nil
 }

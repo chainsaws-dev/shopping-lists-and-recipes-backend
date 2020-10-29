@@ -499,6 +499,7 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 // 	тело запроса должно быть заполнено JSON объектом
 // 	идентичным по структуре UserDB при этом пароль
 //	пропущен через через encodeURIComponent и btoa
+//	и записан в заголовке NewPassword
 //
 // DELETE
 //
@@ -609,7 +610,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 							}
 						}
 
-						if User.Role != "guest_role_read_only" && User.Role != "admin_role_CRUD" {
+						if !setup.ServerSettings.CheckExistingRole(User.Role) {
 							shared.HandleOtherError(w, "Указана некорректная роль", ErrBadRole, http.StatusBadRequest)
 							return
 						}
@@ -896,7 +897,7 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// GetCurrentUser - обработчик для получения данных текущего пользователя
+// CurrentUser - обработчик для получения и сохранения данных текущего пользователя
 //
 // Аутентификация
 //
@@ -916,7 +917,14 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 // GET
 //
 // Ничего не требуется
-func GetCurrentUser(w http.ResponseWriter, req *http.Request) {
+//
+// POST
+//
+// 	тело запроса должно быть заполнено JSON объектом
+// 	идентичным по структуре UserDB при этом пароль
+//	пропущен через через encodeURIComponent и btoa
+//	и записан в заголовке NewPassword
+func CurrentUser(w http.ResponseWriter, req *http.Request) {
 	found, err := CheckAPIKey(w, req)
 
 	if err != nil {
@@ -934,31 +942,159 @@ func GetCurrentUser(w http.ResponseWriter, req *http.Request) {
 
 		if issued {
 			if sf {
-				// Получаем данные текущего пользователя
 
-				Email := GetCurrentUserEmail(w, req)
+				switch {
+				case req.Method == http.MethodGet:
 
-				err := setup.ServerSettings.SQL.Connect(role)
+					if setup.ServerSettings.CheckRoleForRead(role, "CurrentUser") {
+						// Получаем данные текущего пользователя
+						Email := GetCurrentUserEmail(w, req)
 
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-					return
-				}
-				defer setup.ServerSettings.SQL.Disconnect()
+						err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
 
-				FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+							return
+						}
+						defer setup.ServerSettings.SQL.Disconnect()
 
-				if err != nil {
-					if errors.Is(databases.ErrNoUserWithEmail, err) {
-						shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
-						return
+						FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+
+						if err != nil {
+							if errors.Is(databases.ErrNoUserWithEmail, err) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+								return
+							}
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						shared.WriteObjectToJSON(w, FoundUser)
+					} else {
+						shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 					}
-				}
+				case req.Method == http.MethodPost:
+					if setup.ServerSettings.CheckRoleForChange(role, "CurrentUser") {
+						// Создание и изменение пользователя
+						var User databases.User
 
-				if shared.HandleInternalServerError(w, err) {
-					return
-				}
+						err := json.NewDecoder(req.Body).Decode(&User)
 
-				shared.WriteObjectToJSON(w, FoundUser)
+						if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+							return
+						}
+
+						// Получаем данные текущего пользователя
+						User.Email = GetCurrentUserEmail(w, req)
+
+						// Подключаемся к базе данных
+						err = setup.ServerSettings.SQL.Connect(role)
+
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+							return
+						}
+						defer setup.ServerSettings.SQL.Disconnect()
+
+						FoundUser, err := databases.PostgreSQLGetUserByEmail(User.Email)
+
+						if err != nil {
+							if errors.Is(databases.ErrNoUserWithEmail, err) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+								return
+							}
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						User.GUID = FoundUser.GUID
+						User.IsAdmin = FoundUser.IsAdmin
+						User.Role = FoundUser.Role
+						User.Confirmed = FoundUser.Confirmed
+
+						remai := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+						if !remai.MatchString(User.Email) {
+							shared.HandleOtherError(w, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+							return
+						}
+
+						if len(User.Phone) > 0 {
+
+							repho := regexp.MustCompile(`^((8|\+7)[\- ]?)?(\(?\d{3,4}\)?[\- ]?)?[\d\- ]{5,10}$`)
+
+							if !repho.MatchString(User.Phone) {
+								shared.HandleOtherError(w, "Некорректный телефонный номер", ErrBadPhone, http.StatusBadRequest)
+								return
+							}
+						}
+
+						if !setup.ServerSettings.CheckExistingRole(User.Role) {
+							shared.HandleOtherError(w, "Указана некорректная роль", ErrBadRole, http.StatusBadRequest)
+							return
+						}
+
+						// Значение по умолчанию для хеша и пароля
+						Hash := ""
+						UpdatePassword := false
+
+						NewPassword := req.Header.Get("NewPassword")
+
+						if len(NewPassword) > 0 {
+
+							// Разбираем и декодируем зашифрованный base64 пароль
+							resbytepas, err := base64.StdEncoding.DecodeString(NewPassword)
+
+							if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+								return
+							}
+
+							NewPassword = string(resbytepas)
+							NewPassword, err = url.QueryUnescape(NewPassword)
+
+							if len(NewPassword) < 6 {
+								shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
+								return
+							}
+							Hash, err = authentication.Argon2GenerateHash(NewPassword, &authentication.HashParams)
+
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
+
+							UpdatePassword = true
+						}
+
+						if len(NewPassword) == 0 && uuid.Equal(uuid.Nil, User.GUID) {
+							shared.HandleOtherError(w, "Пароль нового пользователя должен быть задан", ErrPasswordTooShort, http.StatusBadRequest)
+							return
+						}
+
+						// Получаем обновлённого юзера
+						User, err = databases.PostgreSQLCurrentUserUpdate(User, Hash, UpdatePassword)
+
+						if err != nil {
+							if errors.Is(err, databases.ErrEmailIsOccupied) {
+								shared.HandleOtherError(w, "Указанный адрес электронной почты уже занят", err, http.StatusInternalServerError)
+								return
+							}
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						// Пишем в тело ответа
+						shared.WriteObjectToJSON(w, User)
+
+					} else {
+						shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+					}
+				default:
+					shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+				}
 			} else {
 				shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
 			}
