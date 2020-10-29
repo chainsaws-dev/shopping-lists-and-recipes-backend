@@ -286,7 +286,7 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 // POST
 //
 // 	ожидается заголовок ApiKey с API ключом
-//  TODO
+//	ожидается заголовок Passcode с ключом с токена
 func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 	found, err := signinupout.CheckAPIKey(w, req)
 
@@ -306,7 +306,48 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 			case req.Method == http.MethodPost:
 				if setup.ServerSettings.CheckRoleForRead(role, "CheckSecondFactor") {
 
-					// TODO
+					PassStr := req.Header.Get("Passcode")
+
+					if len(PassStr) > 0 {
+
+						// Получаем данные текущего пользователя
+						Email := signinupout.GetCurrentUserEmail(w, req)
+
+						err := setup.ServerSettings.SQL.Connect(role)
+
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+							return
+						}
+						defer setup.ServerSettings.SQL.Disconnect()
+
+						FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+
+						if err != nil {
+							if errors.Is(databases.ErrNoUserWithEmail, err) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+								return
+							}
+						}
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						Correct, err := Validate(PassStr, FoundUser)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						if Correct {
+							// TODO
+
+						}
+
+					} else {
+						shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest)
+						return
+					}
 
 				} else {
 					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)

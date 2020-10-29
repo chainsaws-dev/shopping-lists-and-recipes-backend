@@ -120,6 +120,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 		}
 
 		AuthResponse.SecondFactor.Enabled = FoundUser.SecondFactor
+		NewActiveToken.SecondFactor.Enabled = FoundUser.SecondFactor
 
 		shared.WriteObjectToJSON(w, AuthResponse)
 
@@ -303,6 +304,18 @@ func DeleteSessionByToken(Token string) error {
 	}
 
 	return nil
+}
+
+// SetSessionsByEmailSecondFactor - проставляет для всех сессий электронной почты прохождение двухфакторной авторизации
+func SetSessionsByEmailSecondFactor(Email string) int {
+
+	for idx, session := range TokenList {
+		if session.Email == Email && session.SecondFactor.CheckResult == false {
+			return idx
+		}
+	}
+
+	return -1
 }
 
 // FindSessionIdxByEmail - ищет сессию по электронному адресу и возвращает индекс
@@ -510,4 +523,70 @@ func GetEmailBasedOnToken(req *http.Request) (Email string) {
 	}
 
 	return ""
+}
+
+// GetCurrentSession - получаем текущую сессию пользователя
+func GetCurrentSession(w http.ResponseWriter, req *http.Request) (authentication.ActiveToken, error) {
+	// Освобождаем память от истекших токенов
+	CleanOldTokens()
+
+	result, err := GetTokenBasedOnCookies(w, req)
+
+	if err == nil {
+		return result, err
+	}
+
+	return GetTokenBasedOnToken(req)
+
+}
+
+// GetTokenBasedOnCookies - получает текущую сессию на основе куки
+func GetTokenBasedOnCookies(w http.ResponseWriter, req *http.Request) (authentication.ActiveToken, error) {
+
+	result := authentication.ActiveToken{}
+
+	mycookies, err := securecookies.GetCookies(w, req)
+
+	if err != nil {
+
+		if !errors.Is(http.ErrNoCookie, err) {
+			log.Println(err)
+			return result, err
+		}
+	}
+
+	if len(mycookies.Email) > 0 && len(mycookies.Session) > 0 {
+
+		// Ищем живые токены по сессии
+		result, found := SearchIssuedSessions(mycookies.Email, mycookies.Session)
+
+		if found {
+			return result, nil
+		}
+
+		return result, securecookies.ErrAuthCookiesNotFound
+	}
+
+	return result, securecookies.ErrAuthCookiesNotFound
+}
+
+// GetTokenBasedOnToken - получает текущую сессию по токену
+func GetTokenBasedOnToken(req *http.Request) (authentication.ActiveToken, error) {
+
+	result := authentication.ActiveToken{}
+
+	Token := req.Header.Get("Auth")
+
+	if len(Token) > 0 {
+		for _, t := range TokenList {
+
+			ct := time.Now()
+
+			if ct.Before(t.ExpDate) && t.Token == Token {
+				return t, nil
+			}
+		}
+	}
+
+	return result, ErrSessionNotFoundByToken
 }
