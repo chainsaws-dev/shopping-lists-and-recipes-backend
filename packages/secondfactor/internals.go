@@ -50,7 +50,11 @@ func (usf *UserSecondFactor) GenerateUserKey() error {
 		Confirmed: false,
 	}
 
-	databases.PostgreSQLChangeSecondFactorSecret(totps)
+	err = databases.PostgreSQLChangeSecondFactorSecret(totps)
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -58,10 +62,13 @@ func (usf *UserSecondFactor) GenerateUserKey() error {
 // GetQR - получает буфер из байтов содержащий данные QR кода для приложения аутентификатора
 func (usf *UserSecondFactor) GetQR(width int, height int) (bytes.Buffer, error) {
 
-	usf.GenerateUserKey()
-
-	// Convert TOTP key into a PNG
 	var b bytes.Buffer
+
+	err := usf.GenerateUserKey()
+
+	if err != nil {
+		return b, err
+	}
 
 	img, err := usf.key.Image(width, height)
 
@@ -69,7 +76,7 @@ func (usf *UserSecondFactor) GetQR(width int, height int) (bytes.Buffer, error) 
 		return b, err
 	}
 
-	png.Encode(&b, img)
+	err = png.Encode(&b, img)
 
 	return b, err
 }

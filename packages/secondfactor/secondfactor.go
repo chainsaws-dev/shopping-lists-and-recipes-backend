@@ -72,6 +72,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 						Email := signinupout.GetCurrentUserEmail(w, req)
 
+						// Подключение к базе данных
 						err := setup.ServerSettings.SQL.Connect(role)
 
 						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
@@ -124,6 +125,14 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 							if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
 								return
 							}
+
+							// Подключение к базе данных
+							err = setup.ServerSettings.SQL.Connect(role)
+
+							if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+								return
+							}
+							defer setup.ServerSettings.SQL.Disconnect()
 
 							err = EnableTOTP(PassStr, CurUser)
 
@@ -238,7 +247,7 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 		sf := signinupout.SecondFactorAuthenticationCheck(w, req)
 
 		if issued {
-			if !sf {
+			if sf {
 				switch {
 				case req.Method == http.MethodGet:
 					if setup.ServerSettings.CheckRoleForRead(role, "GetQRCode") {
@@ -274,8 +283,15 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 
 						b, err := usf.GetQR(200, 200)
 
-						if shared.HandleInternalServerError(w, err) {
-							return
+						if err != nil {
+							if errors.Is(databases.ErrTOTPConfirmed, err) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+								return
+							}
+
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
 						}
 
 						shared.WriteBufferToPNG(w, b)
@@ -288,7 +304,7 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 					shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 				}
 			} else {
-				shared.HandleOtherError(w, ErrAlreadySetSecondFactor.Error(), ErrAlreadySetSecondFactor, http.StatusBadRequest)
+				shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
 			}
 		} else {
 			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
@@ -315,75 +331,74 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 		// Проверка токена и получение роли
 		issued, role := signinupout.TwoWayAuthentication(w, req)
 
-		// Проверка прохождения двухфакторной авторизации
-		sf := signinupout.SecondFactorAuthenticationCheck(w, req)
-
 		if issued {
-			if sf {
-				switch {
-				case req.Method == http.MethodPost:
-					if setup.ServerSettings.CheckRoleForRead(role, "CheckSecondFactor") {
 
-						PassStr := req.Header.Get("Passcode")
+			switch {
+			case req.Method == http.MethodPost:
+				if setup.ServerSettings.CheckRoleForRead(role, "CheckSecondFactor") {
 
-						if len(PassStr) > 0 {
+					PassStr := req.Header.Get("Passcode")
 
-							// Получаем данные текущего пользователя
-							Email := signinupout.GetCurrentUserEmail(w, req)
+					if len(PassStr) > 0 {
 
-							err := setup.ServerSettings.SQL.Connect(role)
+						// Получаем данные текущего пользователя
+						Email := signinupout.GetCurrentUserEmail(w, req)
 
-							if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+						err := setup.ServerSettings.SQL.Connect(role)
+
+						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+							return
+						}
+						defer setup.ServerSettings.SQL.Disconnect()
+
+						FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+
+						if err != nil {
+							if errors.Is(databases.ErrNoUserWithEmail, err) {
+								shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
 								return
 							}
-							defer setup.ServerSettings.SQL.Disconnect()
+						}
 
-							FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
-
-							if err != nil {
-								if errors.Is(databases.ErrNoUserWithEmail, err) {
-									shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
-									return
-								}
-							}
-
-							if shared.HandleInternalServerError(w, err) {
-								return
-							}
-
-							Correct, err := Validate(PassStr, FoundUser)
-
-							if shared.HandleInternalServerError(w, err) {
-								return
-							}
-
-							if Correct {
-								at, err := signinupout.GetCurrentSession(w, req)
-
-								if shared.HandleInternalServerError(w, err) {
-									return
-								}
-
-								at.SecondFactor.CheckResult = Correct
-
-								signinupout.SetTokenStrict(at)
-							}
-
-						} else {
-							shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest)
+						if shared.HandleInternalServerError(w, err) {
 							return
 						}
 
+						Correct, err := Validate(PassStr, FoundUser)
+
+						if shared.HandleInternalServerError(w, err) {
+							return
+						}
+
+						if Correct {
+							at, err := signinupout.GetCurrentSession(w, req)
+
+							if shared.HandleInternalServerError(w, err) {
+								return
+							}
+
+							at.SecondFactor.CheckResult = Correct
+
+							signinupout.SetTokenStrict(at)
+
+							shared.HandleSuccessMessage(w, "Двухфакторная авторизация успешно пройдена")
+						} else {
+							shared.HandleOtherError(w, "Указан неверный ключ", shared.ErrNotAuthorized, http.StatusUnauthorized)
+						}
+
 					} else {
-						shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+						shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest)
+						return
 					}
 
-				default:
-					shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+				} else {
+					shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 				}
-			} else {
-				shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
+
+			default:
+				shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 			}
+
 		} else {
 			shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 		}

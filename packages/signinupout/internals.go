@@ -64,22 +64,40 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 			DeleteSessionByEmail(AuthRequest.Email)
 		}
 
-		var AuthResponse authentication.AuthResponseData
+		// Получаем текущего пользователя по электронной почте
+		FoundUser, err := databases.PostgreSQLGetUserByEmail(AuthRequest.Email)
 
+		if err != nil {
+			if errors.Is(databases.ErrNoUserWithEmail, err) {
+				shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+			}
+		}
+
+		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+		// Генерим случайные 32 байта
 		tokenb, err := authentication.GenerateRandomBytes(32)
 
 		if shared.HandleInternalServerError(w, err) {
 			return
 		}
 
-		AuthResponse = authentication.AuthResponseData{
+		// Формируем ответ
+		AuthResponse := authentication.AuthResponseData{
 			Token:      hex.EncodeToString(tokenb),
 			Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
 			ExpiresIn:  3600,
 			Registered: true,
 			Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
+			SecondFactor: authentication.TOTP{
+				Enabled:     FoundUser.SecondFactor,
+				CheckResult: false,
+			},
 		}
 
+		// Формируем и запоминаем сессию
 		tb := time.Now()
 		te := tb.Add(time.Hour)
 
@@ -92,6 +110,10 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 			Role:      strrole,
 			UserAgent: UserAgent,
 			IP:        ClientIP,
+			SecondFactor: authentication.TOTP{
+				Enabled:     FoundUser.SecondFactor,
+				CheckResult: false,
+			},
 		}
 
 		TokenList = append(TokenList, NewActiveToken)
@@ -106,21 +128,6 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 				return
 			}
 		}
-
-		FoundUser, err := databases.PostgreSQLGetUserByEmail(AuthRequest.Email)
-
-		if err != nil {
-			if errors.Is(databases.ErrNoUserWithEmail, err) {
-				shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
-			}
-		}
-
-		if shared.HandleInternalServerError(w, err) {
-			return
-		}
-
-		AuthResponse.SecondFactor.Enabled = FoundUser.SecondFactor
-		NewActiveToken.SecondFactor.Enabled = FoundUser.SecondFactor
 
 		shared.WriteObjectToJSON(w, AuthResponse)
 
@@ -178,7 +185,7 @@ func SecondFactorAuthenticationCheck(w http.ResponseWriter, req *http.Request) b
 		return true
 	}
 
-	if !result.SecondFactor.Enabled && !result.SecondFactor.CheckResult {
+	if !result.SecondFactor.Enabled {
 		return true
 	}
 
