@@ -16,8 +16,6 @@ import (
 	"strconv"
 
 	uuid "github.com/satori/go.uuid"
-
-	"encoding/base64"
 )
 
 // Список типовых ошибок
@@ -70,16 +68,6 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			// Разбираем зашифрованные base64 логин
-			resbytelog, err := base64.StdEncoding.DecodeString(AuthRequest.Email)
-
-			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-				return
-			}
-
-			// Проверяем против регулярного выражения, что это почта
-			AuthRequest.Email = string(resbytelog)
-
 			re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 			if !re.MatchString(AuthRequest.Email) {
@@ -87,14 +75,6 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			// Разбираем и декодируем зашифрованный base64 пароль
-			resbytepas, err := base64.StdEncoding.DecodeString(AuthRequest.Password)
-
-			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-				return
-			}
-
-			AuthRequest.Password = string(resbytepas)
 			AuthRequest.Password, err = url.QueryUnescape(AuthRequest.Password)
 
 			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
@@ -144,16 +124,6 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			// Разбираем зашифрованные base64 логин
-			resbytelog, err := base64.StdEncoding.DecodeString(SignUpRequest.Email)
-
-			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-				return
-			}
-
-			// Проверяем против регулярного выражения, что это почта
-			SignUpRequest.Email = string(resbytelog)
-
 			re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 			if !re.MatchString(SignUpRequest.Email) {
@@ -161,28 +131,12 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			// Разбираем и декодируем зашифрованный base64 пароль
-			resbytepas, err := base64.StdEncoding.DecodeString(SignUpRequest.Password)
-
-			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-				return
-			}
-
-			SignUpRequest.Password = string(resbytepas)
 			SignUpRequest.Password, err = url.QueryUnescape(SignUpRequest.Password)
 
 			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
 				return
 			}
 
-			// Разбираем и декодируем зашифрованный base64 имя пользователя
-			resbytenam, err := base64.StdEncoding.DecodeString(SignUpRequest.Name)
-
-			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-				return
-			}
-
-			SignUpRequest.Name = string(resbytenam)
 			SignUpRequest.Name, err = url.QueryUnescape(SignUpRequest.Name)
 
 			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
@@ -432,11 +386,6 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 
 			// Разбираем и декодируем зашифрованный base64 пароль
 			NewPassword := req.Header.Get("NewPassword")
-			resbytepas, err := base64.StdEncoding.DecodeString(NewPassword)
-			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-				return
-			}
-			NewPassword = string(resbytepas)
 			NewPassword, err = url.QueryUnescape(NewPassword)
 
 			// Авторизация под ролью пользователя
@@ -630,14 +579,6 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 						if len(NewPassword) > 0 {
 
-							// Разбираем и декодируем зашифрованный base64 пароль
-							resbytepas, err := base64.StdEncoding.DecodeString(NewPassword)
-
-							if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-								return
-							}
-
-							NewPassword = string(resbytepas)
 							NewPassword, err = url.QueryUnescape(NewPassword)
 
 							if len(NewPassword) < 6 {
@@ -687,14 +628,6 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 						if len(UserIDtoDelStr) > 0 {
 
-							// Разбираем и декодируем зашифрованный base64 идентификатор
-							resbytepas, err := base64.StdEncoding.DecodeString(UserIDtoDelStr)
-
-							if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-								return
-							}
-
-							UserIDtoDelStr = string(resbytepas)
 							UserIDtoDelStr, err = url.QueryUnescape(UserIDtoDelStr)
 
 							err = setup.ServerSettings.SQL.Connect(role)
@@ -1044,14 +977,6 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 
 						if len(NewPassword) > 0 {
 
-							// Разбираем и декодируем зашифрованный base64 пароль
-							resbytepas, err := base64.StdEncoding.DecodeString(NewPassword)
-
-							if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-								return
-							}
-
-							NewPassword = string(resbytepas)
 							NewPassword, err = url.QueryUnescape(NewPassword)
 
 							if len(NewPassword) < 6 {

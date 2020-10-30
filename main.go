@@ -75,6 +75,8 @@ func main() {
 	http.HandleFunc("/auth/", RedirectToIndex)
 	http.HandleFunc("/confirm-email/", RedirectToIndex)
 	http.HandleFunc("/reset-password/", RedirectToIndex)
+	http.HandleFunc("/profile/", RedirectToIndex)
+	http.HandleFunc("/totp/", RedirectToIndex)
 
 	// REST API
 

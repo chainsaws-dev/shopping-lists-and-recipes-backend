@@ -2,7 +2,6 @@ package signinupout
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"log"
@@ -87,10 +86,10 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 		// Формируем ответ
 		AuthResponse := authentication.AuthResponseData{
 			Token:      hex.EncodeToString(tokenb),
-			Email:      base64.StdEncoding.EncodeToString([]byte(AuthRequest.Email)),
+			Email:      AuthRequest.Email,
 			ExpiresIn:  3600,
 			Registered: true,
-			Role:       base64.StdEncoding.EncodeToString([]byte(strrole)),
+			Role:       strrole,
 			SecondFactor: authentication.TOTP{
 				Enabled:     FoundUser.SecondFactor,
 				CheckResult: false,
