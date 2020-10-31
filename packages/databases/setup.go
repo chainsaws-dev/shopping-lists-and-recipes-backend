@@ -11,6 +11,91 @@ import (
 	_ "github.com/lib/pq" // Драйвер PostgreSQL
 )
 
+// PostgreSQLDropDatabase - удаляет базу данных с заданным именем
+func PostgreSQLDropDatabase(dbName string) {
+
+	if dbc != nil {
+
+		log.Println("Идёт удаление базы данных...")
+
+		// Считаем количество баз данных с заданным именем
+		rows, err := dbc.Query(`SELECT COUNT(datname) FROM pg_catalog.pg_database WHERE datname = $1;`, dbName)
+
+		shared.WriteErrToLog(err)
+
+		var dbq int
+
+		for rows.Next() {
+			rows.Scan(&dbq)
+		}
+
+		// Если баз данных больше нуля, тогда ничего не делаем
+		if dbq <= 0 {
+			log.Printf("Не найдена база данных с именем %s\n", dbName)
+			return
+		}
+
+		_, err = dbc.Exec(`SELECT pg_terminate_backend(pg_stat_activity.pid)
+							FROM pg_stat_activity
+							WHERE pg_stat_activity.datname = $1
+							AND pid <> pg_backend_pid();`, dbName)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		sqlreq := fmt.Sprintf(`DROP DATABASE "%s";`, dbName)
+
+		_, err = dbc.Exec(sqlreq)
+
+		if err != nil {
+			log.Printf("Не удалось удалить базу данных с именем %s\n", dbName)
+			log.Println(err)
+			return
+		}
+
+	} else {
+		log.Println(ErrNoConnection)
+	}
+
+}
+
+// PostgreSQLDropRole - удаляет роль с заданным именем
+func PostgreSQLDropRole(rolename string) {
+
+	if dbc != nil {
+		var rq int
+		// Считаем количество ролей с заданным именем
+		rows, err := dbc.Query(`SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE	rolname = $1;`, rolename)
+
+		shared.WriteErrToLog(err)
+
+		for rows.Next() {
+			rows.Scan(&rq)
+		}
+
+		// Если ролей больше нуля, тогда ничего не делаем
+		if rq <= 0 {
+			log.Printf("Не найдена роль с именем %s\n", rolename)
+			return
+		}
+
+		sqlreq := fmt.Sprintf(`DROP ROLE "%s";`, rolename)
+
+		_, err = dbc.Exec(sqlreq)
+
+		if err != nil {
+			log.Printf("Не удалось удалить роль с именем %s\n", rolename)
+			log.Println(err)
+			return
+		}
+
+	} else {
+		log.Println(ErrNoConnection)
+	}
+}
+
 // PostgreSQLCreateDatabase - создаём базу данных для СУБД PostgreSQL
 func PostgreSQLCreateDatabase(dbName string) {
 
@@ -56,7 +141,7 @@ func PostgreSQLCreateDatabase(dbName string) {
 }
 
 // PostgreSQLCreateTables - Создаём таблицы в базе данных
-func PostgreSQLCreateTables() {
+func PostgreSQLCreateTables() error {
 
 	log.Println("Проверяем, что база пустая")
 
@@ -80,7 +165,7 @@ func PostgreSQLCreateTables() {
 
 	if tbq > 0 {
 		log.Println("В базе найдены таблицы, дубликаты не создаём")
-		return
+		return ErrTablesAlreadyExist
 	}
 
 	log.Println("Начинаем создание таблиц")
@@ -370,6 +455,8 @@ func PostgreSQLCreateTables() {
 	dbc.Exec("COMMIT")
 
 	log.Println("Таблицы созданы")
+
+	return nil
 
 }
 

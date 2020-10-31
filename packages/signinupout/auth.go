@@ -883,7 +883,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 						// Получаем данные текущего пользователя
 						Email := GetCurrentUserEmail(w, req)
 
-						err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
+						err := setup.ServerSettings.SQL.Connect(role)
 
 						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
 							return

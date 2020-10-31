@@ -3,6 +3,7 @@ package setup
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -16,6 +17,12 @@ import (
 	"strings"
 )
 
+// Список типовых ошибок
+var (
+	ErrDeleteInterrupted   = errors.New("Удаление базы данных, таблиц и ролей завершилось с ошибкой")
+	ErrCreationInterrupted = errors.New("Создание базы данных, таблиц и ролей завершилось с ошибкой")
+)
+
 // ServerSettings - общие настройки сервера
 var ServerSettings settings.WServerSettings
 
@@ -25,11 +32,11 @@ var APIkeys = []string{
 }
 
 // InitialSettings - интерактивно спрашивает у пользователя параметры настроек
-func InitialSettings(forcesetup bool, createdb bool) {
+func InitialSettings(initpar InitParams) {
 
-	if !СheckExists("settings.json") || forcesetup {
+	if !СheckExists("settings.json") || initpar.ForceSetup {
 
-		if !forcesetup {
+		if !initpar.ForceSetup {
 			log.Println("Не найден файл settings.json. Запущена процедура начальной настройки.")
 		} else {
 			log.Println("Принудительно запущена процедура начальной настройки.")
@@ -82,6 +89,7 @@ func InitialSettings(forcesetup bool, createdb bool) {
 		}
 
 		// SQL
+
 		AskString("Укажите тип сервера баз данных (поддерживается PostgreSQL): ", &ServerSettings.SQL.Type)
 
 		AskString("Укажите адрес сервера баз данных: ", &ServerSettings.SQL.Addr)
@@ -97,9 +105,15 @@ func InitialSettings(forcesetup bool, createdb bool) {
 		CreateDB = strings.ToLower(CreateDB)
 
 		if CreateDB == "да" || CreateDB == "д" {
-			ServerSettings.SQL.AutoFillRoles()
-			StartCreateDatabase()
-			SetDefaultAdmin()
+			if initpar.ResetRolesPass {
+				ServerSettings.SQL.AutoFillRoles()
+			}
+			err := StartCreateDatabase(initpar.CreateRoles)
+			if err == nil {
+				if initpar.CreateAdmin {
+					SetDefaultAdmin(initpar.AdminLogin, initpar.AdminPass, initpar.WebsiteURL)
+				}
+			}
 		}
 
 		WriteToJSON()
@@ -120,11 +134,24 @@ func InitialSettings(forcesetup bool, createdb bool) {
 
 		log.Println("Файл настроек settings.json успешно прочитан")
 
+		if initpar.DropDb {
+			err = StartDropDatabase()
+			if err != nil {
+				log.Println(err)
+			}
+		}
+
 		// Пересоздаём базу данных без перенастройки
-		if createdb {
-			ServerSettings.SQL.AutoFillRoles()
-			StartCreateDatabase()
-			SetDefaultAdmin()
+		if initpar.CreateDb {
+			if initpar.ResetRolesPass {
+				ServerSettings.SQL.AutoFillRoles()
+			}
+			err := StartCreateDatabase(initpar.CreateRoles)
+			if err == nil {
+				if initpar.CreateAdmin {
+					SetDefaultAdmin(initpar.AdminLogin, initpar.AdminPass, initpar.WebsiteURL)
+				}
+			}
 			WriteToJSON()
 		}
 
@@ -211,13 +238,22 @@ func WriteToJSON() {
 }
 
 // SetDefaultAdmin - позволяет настроить администратора по умолчанию
-func SetDefaultAdmin() string {
+func SetDefaultAdmin(login string, password string, websiteurl string) string {
 
+	re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 	var Email string
 	var LoginAdmin string
 	var PasswordAdmin string
+	var URI string
 
-	re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+	if len(login) > 1 && re.MatchString(login) {
+		Email = login
+		LoginAdmin = login
+	}
+
+	if len(password) >= 6 {
+		PasswordAdmin = password
+	}
 
 	for len(Email) < 1 || !re.MatchString(Email) {
 
@@ -228,7 +264,13 @@ func SetDefaultAdmin() string {
 		}
 	}
 
-	AskString("Укажите логин администратора вебсайта: ", &LoginAdmin)
+	for len(LoginAdmin) < 1 {
+		AskString("Укажите логин администратора вебсайта: ", &LoginAdmin)
+
+		if len(LoginAdmin) < 1 {
+			fmt.Println("Некорректный логин!")
+		}
+	}
 
 	for len(PasswordAdmin) < 6 {
 		AskString("Укажите пароль администратора вебсайта: ", &PasswordAdmin)
@@ -242,9 +284,13 @@ func SetDefaultAdmin() string {
 	shared.WriteErrToLog(err)
 
 	if ServerSettings.SMTP.Use {
-		var URI string
-
-		AskString("Укажите адрес вебсайта с портом (например: http://localhost:8080): ", &URI)
+		if len(websiteurl) < 1 {
+			for len(URI) < 1 {
+				AskString("Укажите адрес вебсайта с портом (например: http://localhost:8080): ", &URI)
+			}
+		} else {
+			URI = websiteurl
+		}
 
 		messages.SendEmailConfirmationLetter(&ServerSettings.SQL, Email, URI)
 	}
@@ -256,13 +302,31 @@ func SetDefaultAdmin() string {
 }
 
 // StartCreateDatabase - запускает в фоне процесс создания базы данных
-func StartCreateDatabase() {
+func StartCreateDatabase(CreateRoles bool) error {
 
 	donech := make(chan bool)
-	go ServerSettings.SQL.CreateDatabase(donech)
+	go ServerSettings.SQL.CreateDatabase(donech, CreateRoles)
 
 	if <-donech {
 		log.Println("Процедура создания базы данных завершена")
+		return nil
 	}
+
+	return ErrCreationInterrupted
+
+}
+
+// StartDropDatabase - запускает в фоне процесс удаления базы данных и ролей
+func StartDropDatabase() error {
+
+	donech := make(chan bool)
+	go ServerSettings.SQL.DropDatabase(donech)
+
+	if <-donech {
+		log.Println("Процедура удаления базы данных завершена")
+		return nil
+	}
+
+	return ErrDeleteInterrupted
 
 }

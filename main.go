@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -14,6 +15,12 @@ import (
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/shoppinglist"
 	"shopping-lists-and-recipes/packages/signinupout"
+	"strings"
+)
+
+// Список типовых ошибок
+var (
+	ErrWrongArgumentFormat = errors.New("Неверный формат данных для логина: ожидатся -admincred:example@example.ru@@password")
 )
 
 // main - главная точка входа в программу
@@ -35,32 +42,11 @@ func main() {
 
 	log.SetOutput(mw)
 
-	// Если первый аргумент -set - запускаем конфигуратор
-	// вне зависимости от наличия файла settings.json
-	runargs := os.Args
-	var forcesetup bool
-	var cleantokens bool
-	var createdb bool
-
-	if len(runargs) > 1 {
-		for _, runarg := range runargs {
-			if runarg == "-set" {
-				forcesetup = true
-			}
-
-			if runarg == "-clean" {
-				cleantokens = true
-			}
-
-			if runarg == "-makedb" {
-				createdb = true
-			}
-		}
-	}
+	initpar := GetRunArgs()
 
 	// Проверяем и запускаем мастер настройки если нужно
 	// Иначе просто читаем данные из файла settings.json
-	setup.InitialSettings(forcesetup, createdb)
+	setup.InitialSettings(initpar)
 
 	// Устанавливаем пути, по которым будут происходить http запросы
 
@@ -110,7 +96,7 @@ func main() {
 	http.HandleFunc("/api/PasswordReset", signinupout.ResetPassword)
 	http.HandleFunc("/api/PasswordReset/Send", signinupout.RequestResetEmail)
 
-	if cleantokens {
+	if initpar.CleanTokens {
 		go signinupout.RegularConfirmTokensCleanup()
 	}
 
@@ -131,4 +117,89 @@ func main() {
 // RedirectToIndex - перенаправляет на файл index.html
 func RedirectToIndex(w http.ResponseWriter, req *http.Request) {
 	http.ServeFile(w, req, "./public/frontend/index.html")
+}
+
+// GetRunArgs - читает параметры запуска программы
+func GetRunArgs() setup.InitParams {
+	// Если первый аргумент -set - запускаем конфигуратор
+	// вне зависимости от наличия файла settings.json
+	runargs := os.Args
+
+	// Инкапсулируем параметры установки в объекте
+	var initpar setup.InitParams
+	initpar.CreateRoles = true
+	initpar.CreateAdmin = true
+	initpar.ResetRolesPass = true
+
+	if len(runargs) > 1 {
+		for _, runarg := range runargs {
+			// Принудительно запускает мастер настройки
+			// если файл settings.json существует и перезаписывает его
+			if runarg == "-set" {
+				initpar.ForceSetup = true
+			}
+
+			// Запускает процесс автоочистки токенов и сессий
+			// с интервалом пять минут
+			if runarg == "-clean" {
+				initpar.CleanTokens = true
+			}
+
+			// Запускает удаление базы без запуска мастера настройки
+			// при существующем файле settings.json
+			if runarg == "-dropdb" {
+				initpar.DropDb = true
+			}
+
+			// Запускает создание базы без запуска мастера настройки
+			// при существующем файле settings.json
+			if runarg == "-makedb" {
+				initpar.CreateDb = true
+			}
+
+			// Работает при -makedb (только для отладки)
+			// Отключает создание администратора
+			// после завершения создания базы и ролей
+			if runarg == "-noadmin" {
+				initpar.CreateAdmin = false
+			}
+
+			// Работает при -makedb (только для отладки)
+			// Отключает создание ролей в базе
+			if runarg == "-noroles" {
+				initpar.CreateRoles = false
+			}
+
+			// Для пакетного режима
+			// Работает при -makedb
+			// Не выполняет перезаполнение ролей в объекте при выполнении начальной настройки
+			if runarg == "-noresetroles" {
+				initpar.ResetRolesPass = false
+			}
+
+			// Для пакетного режима
+			// Работает при -makedb
+			// Позволяет передать логин и пароль начального администратора через параметры командной строки
+			if strings.HasPrefix(runarg, "-admincred:") {
+				basestring := strings.ReplaceAll(runarg, "-admincred:", "")
+				lp := strings.Split(basestring, "@@")
+
+				if len(lp) == 2 {
+					initpar.AdminLogin = lp[0]
+					initpar.AdminPass = lp[1]
+				} else {
+					shared.WriteErrToLog(ErrWrongArgumentFormat)
+				}
+			}
+
+			// Для пакетного режима
+			// Работает при -makedb
+			// Позволяет передать адрес вебсайта для формирования ссылок в почте через параметры командной строки
+			if strings.HasPrefix(runarg, "-url:") {
+				initpar.WebsiteURL = strings.ReplaceAll(runarg, "-url:", "")
+			}
+		}
+	}
+
+	return initpar
 }

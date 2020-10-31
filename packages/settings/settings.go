@@ -17,6 +17,8 @@ var (
 // AutoFillRoles - автозаполняет список ролей для SQL сервера
 func (SQLsrv *SQLServer) AutoFillRoles() {
 
+	SQLsrv.Roles = SQLRoles{}
+
 	SQLsrv.Roles = append(SQLsrv.Roles, SQLRole{
 		Name:    "guest_role_read_only",
 		Desc:    "Гостевая роль",
@@ -93,7 +95,7 @@ func GetTRulesForGuest() SQLTRules {
 			TName:      "secret.\"hashes\"",
 			SELECT:     true,
 			INSERT:     false,
-			UPDATE:     false,
+			UPDATE:     true,
 			DELETE:     false,
 			REFERENCES: false,
 		},
@@ -210,8 +212,35 @@ func GetTRulesForAdmin() SQLTRules {
 	}
 }
 
+// DropDatabase - автоматизировано удаляет базу и роли
+func (SQLsrv *SQLServer) DropDatabase(donech chan bool) {
+	switch {
+	case SQLsrv.Type == "PostgreSQL":
+		// Удаляем базу данных
+
+		err := databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, "", true))
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		databases.PostgreSQLDropDatabase(SQLsrv.DbName)
+
+		for _, currole := range SQLsrv.Roles {
+
+			databases.PostgreSQLDropRole(currole.Login)
+		}
+
+		databases.PostgreSQLCloseConn()
+
+		donech <- true
+
+	default:
+		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)
+	}
+}
+
 // CreateDatabase - Создаёт базу данных если её нет
-func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
+func (SQLsrv *SQLServer) CreateDatabase(donech chan bool, CreateRoles bool) {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
 		// Создаём базу данных
@@ -227,7 +256,15 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		databases.PostgreSQLCreateTables()
+
+		err = databases.PostgreSQLCreateTables()
+
+		if err != nil {
+			if errors.Is(databases.ErrTablesAlreadyExist, err) {
+				donech <- false
+				return
+			}
+		}
 
 		placeholder := databases.File{
 			Filename: "placeholder.jpg",
@@ -237,15 +274,18 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 		}
 		databases.PostgreSQLFileChange(placeholder)
 
-		for _, currole := range SQLsrv.Roles {
+		if CreateRoles {
+			for _, currole := range SQLsrv.Roles {
 
-			databases.PostgreSQLCreateRole(currole.Login, currole.Pass, SQLsrv.DbName)
+				databases.PostgreSQLCreateRole(currole.Login, currole.Pass, SQLsrv.DbName)
 
-			for _, tablerule := range currole.TRules {
+				for _, tablerule := range currole.TRules {
 
-				databases.PostgreSQLGrantRightsToRole(currole.Login, tablerule.TName, formRightsArray(tablerule))
+					databases.PostgreSQLGrantRightsToRole(currole.Login, tablerule.TName, formRightsArray(tablerule))
+				}
 			}
 		}
+
 		databases.PostgreSQLCloseConn()
 
 		donech <- true
