@@ -134,6 +134,7 @@ func InitialSettings(initpar InitParams) {
 
 		log.Println("Файл настроек settings.json успешно прочитан")
 
+		// Удаляем базу данных и роли
 		if initpar.DropDb {
 			err = StartDropDatabase()
 			if err != nil {
