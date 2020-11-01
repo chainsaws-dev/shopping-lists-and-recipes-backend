@@ -33,7 +33,7 @@ var (
 	ErrLimitOffsetInvalid     = errors.New("Limit и Offset приняли недопустимое значение")
 	ErrSessionNotFoundByEmail = errors.New("Сессия не найдена для данной электронной почты")
 	ErrSessionNotFoundByToken = errors.New("Сессия не найдена для данного токена")
-	ErrUserDisabled           = errors.New("Пользователю закрыт доступ на ресурс")
+	ErrUserDisabled           = errors.New("Вам закрыт доступ на ресурс")
 )
 
 // secretauth - внутренняя функция для проверки пароля и авторизации
