@@ -43,6 +43,7 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 								users.name,
 								users.isadmin,
 								users.confirmed,
+								users.disabled,
 								users.totp_active
 							FROM 
 								secret.users
@@ -62,7 +63,7 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 
 	for rows.Next() {
 		var cur User
-		rows.Scan(&cur.GUID, &cur.Role, &cur.Email, &cur.Phone, &cur.Name, &cur.IsAdmin, &cur.Confirmed, &cur.SecondFactor)
+		rows.Scan(&cur.GUID, &cur.Role, &cur.Email, &cur.Phone, &cur.Name, &cur.IsAdmin, &cur.Confirmed, &cur.Disabled, &cur.SecondFactor)
 		result.Users = append(result.Users, cur)
 	}
 
@@ -118,10 +119,10 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 
 		// Обновляем существующего
 
-		sqlreq = `UPDATE secret.users SET (role, email, phone, name, isadmin, confirmed, totp_active) = ($1,$2,$3,$4,$5,$6,$7) WHERE id=$8;`
+		sqlreq = `UPDATE secret.users SET (role, email, phone, name, isadmin, confirmed, disabled, totp_active) = ($1,$2,$3,$4,$5,$6,$7,$8) WHERE id=$9;`
 
 		_, err = dbc.Exec(sqlreq, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name,
-			NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.SecondFactor, NewUserInfo.GUID)
+			NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.Disabled, NewUserInfo.SecondFactor, NewUserInfo.GUID)
 
 		if err != nil {
 			return NewUserInfo, PostgreSQLRollbackIfError(err, false)
@@ -149,10 +150,10 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 		// Генерируем новый уникальный идентификатор
 		NewUserInfo.GUID = uuid.NewV4()
 
-		sqlreq = `INSERT INTO secret.users (id, role, email, phone, name, isadmin, confirmed, totp_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8);`
+		sqlreq = `INSERT INTO secret.users (id, role, email, phone, name, isadmin, confirmed, disabled, totp_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);`
 
 		_, err = dbc.Exec(sqlreq, NewUserInfo.GUID, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone,
-			NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.SecondFactor)
+			NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.Disabled, NewUserInfo.SecondFactor)
 
 		if err != nil {
 			return NewUserInfo, PostgreSQLRollbackIfError(err, false)
@@ -210,8 +211,26 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 		return PostgreSQLRollbackIfError(err, false)
 	}
 
-	// Удаляем подтверждения если есть
+	// Удаляем подтверждения почты
 	sqlreq = `DELETE FROM secret.confirmations WHERE user_id=$1;`
+
+	_, err = dbc.Exec(sqlreq, UserID)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	// Удаляем сбросы паролей
+	sqlreq = `DELETE FROM secret.password_resets WHERE user_id=$1;`
+
+	_, err = dbc.Exec(sqlreq, UserID)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false)
+	}
+
+	// Удаляем привязки временных ключей
+	sqlreq = `DELETE FROM secret.totp WHERE user_id=$1;`
 
 	_, err = dbc.Exec(sqlreq, UserID)
 
@@ -289,6 +308,7 @@ func PostgreSQLGetUserByEmail(Email string) (User, error) {
 							users.name,
 							users.isadmin,
 							users.confirmed,
+							users.disabled,
 							users.totp_active
 						FROM 
 							secret.users
@@ -304,7 +324,8 @@ func PostgreSQLGetUserByEmail(Email string) (User, error) {
 
 			for rows.Next() {
 
-				err = rows.Scan(&result.GUID, &result.Role, &result.Email, &result.Phone, &result.Name, &result.IsAdmin, &result.Confirmed, &result.SecondFactor)
+				err = rows.Scan(&result.GUID, &result.Role, &result.Email, &result.Phone, &result.Name,
+					&result.IsAdmin, &result.Confirmed, &result.Disabled, &result.SecondFactor)
 
 				if err != nil {
 					return result, err

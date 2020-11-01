@@ -330,6 +330,7 @@ func PostgreSQLCreateTables() error {
 				name character varying(150),
 				isadmin boolean,
 				confirmed boolean,
+				disabled boolean,
 				totp_active boolean,
 				PRIMARY KEY (id)
 			);

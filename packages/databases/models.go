@@ -72,6 +72,7 @@ type User struct {
 	Name         string
 	IsAdmin      bool
 	Confirmed    bool
+	Disabled     bool
 	SecondFactor bool
 }
 
