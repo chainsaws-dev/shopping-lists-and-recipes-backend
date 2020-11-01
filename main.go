@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"shopping-lists-and-recipes/packages/files"
+	"shopping-lists-and-recipes/packages/gzipwrap"
 	"shopping-lists-and-recipes/packages/recipes"
 	"shopping-lists-and-recipes/packages/secondfactor"
 	"shopping-lists-and-recipes/packages/setup"
@@ -105,11 +106,11 @@ func main() {
 		//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
 		shared.CurrentPrefix = "https://"
 		log.Println("Запущен SSL веб сервер")
-		log.Fatalln(http.ListenAndServeTLS(fmt.Sprintf(":%v", setup.ServerSettings.HTTPS), "cert.pem", "key.pem", nil))
+		log.Fatalln(http.ListenAndServeTLS(fmt.Sprintf(":%v", setup.ServerSettings.HTTPS), "cert.pem", "key.pem", gzipwrap.MakeGzipHandler(http.DefaultServeMux)))
 	} else {
 		shared.CurrentPrefix = "http://"
 		log.Println("Запущен веб сервер без шифрования")
-		log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%v", setup.ServerSettings.HTTP), nil))
+		log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%v", setup.ServerSettings.HTTP), gzipwrap.MakeGzipHandler(http.DefaultServeMux)))
 	}
 
 }
