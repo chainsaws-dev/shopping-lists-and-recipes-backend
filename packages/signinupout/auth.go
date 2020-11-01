@@ -18,23 +18,6 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// Список типовых ошибок
-var (
-	ErrNotAllowedMethod       = errors.New("Запрошен недопустимый метод при авторизации")
-	ErrNoKeyInParams          = errors.New("API ключ не указан в параметрах")
-	ErrWrongKeyInParams       = errors.New("API ключ не зарегистрирован")
-	ErrPasswordTooShort       = errors.New("Выбран слишком короткий пароль")
-	ErrNotAuthorized          = errors.New("Неверный логин или пароль")
-	ErrForbidden              = errors.New("Доступ запрещён")
-	ErrBadEmail               = errors.New("Указана некорректная электронная почта")
-	ErrBadPhone               = errors.New("Указан некорректный телефонный номер")
-	ErrBadRole                = errors.New("Указана некорректная роль")
-	ErrHeadersNotFilled       = errors.New("Не заполнены обязательные параметры запроса")
-	ErrLimitOffsetInvalid     = errors.New("Limit и Offset приняли недопустимое значение")
-	ErrSessionNotFoundByEmail = errors.New("Сессия не найдена для данной электронной почты")
-	ErrSessionNotFoundByToken = errors.New("Сессия не найдена для данного токена")
-)
-
 // TokenList - список активных токенов
 var TokenList Sessions
 

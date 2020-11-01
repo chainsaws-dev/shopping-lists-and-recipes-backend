@@ -18,6 +18,24 @@ import (
 	"github.com/gorilla/securecookie"
 )
 
+// Список типовых ошибок
+var (
+	ErrNotAllowedMethod       = errors.New("Запрошен недопустимый метод при авторизации")
+	ErrNoKeyInParams          = errors.New("API ключ не указан в параметрах")
+	ErrWrongKeyInParams       = errors.New("API ключ не зарегистрирован")
+	ErrPasswordTooShort       = errors.New("Выбран слишком короткий пароль")
+	ErrNotAuthorized          = errors.New("Неверный логин или пароль")
+	ErrForbidden              = errors.New("Доступ запрещён")
+	ErrBadEmail               = errors.New("Указана некорректная электронная почта")
+	ErrBadPhone               = errors.New("Указан некорректный телефонный номер")
+	ErrBadRole                = errors.New("Указана некорректная роль")
+	ErrHeadersNotFilled       = errors.New("Не заполнены обязательные параметры запроса")
+	ErrLimitOffsetInvalid     = errors.New("Limit и Offset приняли недопустимое значение")
+	ErrSessionNotFoundByEmail = errors.New("Сессия не найдена для данной электронной почты")
+	ErrSessionNotFoundByToken = errors.New("Сессия не найдена для данного токена")
+	ErrUserDisabled           = errors.New("Пользователю закрыт доступ на ресурс")
+)
+
 // secretauth - внутренняя функция для проверки пароля и авторизации
 // (если ReturnToken=false - то куки)
 func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentication.AuthRequestData) {
@@ -73,6 +91,11 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 		}
 
 		if shared.HandleInternalServerError(w, err) {
+			return
+		}
+
+		if FoundUser.Disabled {
+			shared.HandleOtherError(w, ErrUserDisabled.Error(), ErrUserDisabled, http.StatusForbidden)
 			return
 		}
 
