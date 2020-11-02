@@ -41,174 +41,155 @@ var (
 // 	ожидается параметр key с API ключом
 // 	ожидается заголовок IngName с названием продукта из списка покупок
 func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
-	// Проверяем API ключ
-	found, err := signinupout.CheckAPIKey(w, req)
 
-	if err != nil {
-		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
-			return
-		}
+	role, auth := signinupout.AuthGeneral(w, req)
+
+	if !auth {
+		return
 	}
 
-	if found {
-		// Проверка токена и получение роли
-		issued, role := signinupout.TwoWayAuthentication(w, req)
+	var err error
 
-		// Проверка прохождения двухфакторной авторизации
-		sf := signinupout.SecondFactorAuthenticationCheck(w, req)
+	switch {
+	case req.Method == http.MethodGet:
 
-		if issued {
-			if sf {
-				switch {
-				case req.Method == http.MethodGet:
+		if setup.ServerSettings.CheckRoleForRead(role, "HandleShoppingList") {
 
-					if setup.ServerSettings.CheckRoleForRead(role, "HandleShoppingList") {
+			// Обработка получения списка покупок с поддержкой постраничных порций
 
-						// Обработка получения списка покупок с поддержкой постраничных порций
+			PageStr := req.Header.Get("Page")
+			LimitStr := req.Header.Get("Limit")
 
-						PageStr := req.Header.Get("Page")
-						LimitStr := req.Header.Get("Limit")
+			var resp databases.ShoppingListResponse
 
-						var resp databases.ShoppingListResponse
-						var err error
+			err = setup.ServerSettings.SQL.Connect(role)
 
-						err = setup.ServerSettings.SQL.Connect(role)
-
-						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-							return
-						}
-						defer setup.ServerSettings.SQL.Disconnect()
-
-						if len(PageStr) > 0 && len(LimitStr) > 0 {
-
-							Page, err := strconv.Atoi(PageStr)
-
-							if shared.HandleInternalServerError(w, err) {
-								return
-							}
-
-							Limit, err := strconv.Atoi(LimitStr)
-
-							if shared.HandleInternalServerError(w, err) {
-								return
-							}
-
-							resp, err = databases.PostgreSQLShoppingListSelect(Page, Limit)
-
-						} else {
-							resp, err = databases.PostgreSQLShoppingListSelect(0, 0)
-						}
-
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
-						shared.WriteObjectToJSON(w, resp)
-
-					} else {
-						shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
-					}
-
-				case req.Method == http.MethodPost:
-					// Обработка записи отдельного пункта списка покупок в базу данных
-
-					if setup.ServerSettings.CheckRoleForChange(role, "HandleShoppingList") {
-						var Ingredient databases.IngredientDB
-
-						err := json.NewDecoder(req.Body).Decode(&Ingredient)
-
-						if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
-							return
-						}
-
-						err = setup.ServerSettings.SQL.Connect(role)
-
-						if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-							return
-						}
-						defer setup.ServerSettings.SQL.Disconnect()
-
-						err = databases.PostgreSQLShoppingListInsertUpdate(Ingredient)
-
-						if shared.HandleInternalServerError(w, err) {
-							return
-						}
-
-						shared.HandleSuccessMessage(w, "Запись сохранена")
-
-					} else {
-						shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
-					}
-
-				case req.Method == http.MethodDelete:
-					// Обработка удаления отдельного пункта списка покупок из базы данных
-
-					if setup.ServerSettings.CheckRoleForDelete(role, "HandleShoppingList") {
-
-						IngName := req.Header.Get("IngName")
-
-						if IngName != "" {
-							IngName, err := url.QueryUnescape(IngName)
-
-							if shared.HandleInternalServerError(w, err) {
-								return
-							}
-
-							err = setup.ServerSettings.SQL.Connect(role)
-
-							if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-								return
-							}
-							defer setup.ServerSettings.SQL.Disconnect()
-
-							err = databases.PostgreSQLShoppingListDelete(IngName)
-
-							if err != nil {
-								if errors.Is(err, databases.ErrShoppingListNotFound) {
-									shared.HandleOtherError(w, "Не найдено ни одной записи в списке покупок с указанным названием", err, http.StatusBadRequest)
-									return
-								}
-							}
-
-							if shared.HandleInternalServerError(w, err) {
-								return
-							}
-
-							shared.HandleSuccessMessage(w, "Запись удалена")
-
-						} else {
-
-							err := setup.ServerSettings.SQL.Connect(role)
-
-							if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-								return
-							}
-							defer setup.ServerSettings.SQL.Disconnect()
-
-							err = databases.PostgreSQLShoppingListDeleteAll()
-
-							if shared.HandleInternalServerError(w, err) {
-								return
-							}
-
-							shared.HandleSuccessMessage(w, "Все записи удалены")
-						}
-
-					} else {
-						shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
-					}
-
-				default:
-					shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
-				}
-			} else {
-				shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
+			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				return
 			}
+			defer setup.ServerSettings.SQL.Disconnect()
+
+			if len(PageStr) > 0 && len(LimitStr) > 0 {
+
+				Page, err := strconv.Atoi(PageStr)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				Limit, err := strconv.Atoi(LimitStr)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				resp, err = databases.PostgreSQLShoppingListSelect(Page, Limit)
+
+			} else {
+				resp, err = databases.PostgreSQLShoppingListSelect(0, 0)
+			}
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+
+			shared.WriteObjectToJSON(w, resp)
+
 		} else {
-			shared.HandleOtherError(w, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
+			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 		}
-	} else {
-		shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
+
+	case req.Method == http.MethodPost:
+		// Обработка записи отдельного пункта списка покупок в базу данных
+
+		if setup.ServerSettings.CheckRoleForChange(role, "HandleShoppingList") {
+			var Ingredient databases.IngredientDB
+
+			err = json.NewDecoder(req.Body).Decode(&Ingredient)
+
+			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				return
+			}
+
+			err = setup.ServerSettings.SQL.Connect(role)
+
+			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				return
+			}
+			defer setup.ServerSettings.SQL.Disconnect()
+
+			err = databases.PostgreSQLShoppingListInsertUpdate(Ingredient)
+
+			if shared.HandleInternalServerError(w, err) {
+				return
+			}
+
+			shared.HandleSuccessMessage(w, "Запись сохранена")
+
+		} else {
+			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+		}
+
+	case req.Method == http.MethodDelete:
+		// Обработка удаления отдельного пункта списка покупок из базы данных
+
+		if setup.ServerSettings.CheckRoleForDelete(role, "HandleShoppingList") {
+
+			IngName := req.Header.Get("IngName")
+
+			if IngName != "" {
+				IngName, err := url.QueryUnescape(IngName)
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				err = setup.ServerSettings.SQL.Connect(role)
+
+				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+					return
+				}
+				defer setup.ServerSettings.SQL.Disconnect()
+
+				err = databases.PostgreSQLShoppingListDelete(IngName)
+
+				if err != nil {
+					if errors.Is(err, databases.ErrShoppingListNotFound) {
+						shared.HandleOtherError(w, "Не найдено ни одной записи в списке покупок с указанным названием", err, http.StatusBadRequest)
+						return
+					}
+				}
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				shared.HandleSuccessMessage(w, "Запись удалена")
+
+			} else {
+
+				err := setup.ServerSettings.SQL.Connect(role)
+
+				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+					return
+				}
+				defer setup.ServerSettings.SQL.Disconnect()
+
+				err = databases.PostgreSQLShoppingListDeleteAll()
+
+				if shared.HandleInternalServerError(w, err) {
+					return
+				}
+
+				shared.HandleSuccessMessage(w, "Все записи удалены")
+			}
+
+		} else {
+			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+		}
+
+	default:
+		shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

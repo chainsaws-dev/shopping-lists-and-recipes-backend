@@ -55,6 +55,24 @@ func AuthBasic(w http.ResponseWriter, req *http.Request) bool {
 	return false
 }
 
+// AuthNoSecondFactor - Полная аутентификация пользователя для админки без 2 фактора
+func AuthNoSecondFactor(w http.ResponseWriter, req *http.Request) (string, bool) {
+	if !AuthBasic(w, req) {
+		return "", false
+	}
+
+	// Проверка токена и получение роли
+	issued, role := TwoWayAuthentication(w, req)
+
+	if issued {
+		return role, true
+	}
+
+	shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
+	return "", false
+
+}
+
 // AuthGeneral - Полная аутентификация пользователя для админки
 func AuthGeneral(w http.ResponseWriter, req *http.Request) (string, bool) {
 	if !AuthBasic(w, req) {
