@@ -36,6 +36,51 @@ var (
 	ErrUserDisabled           = errors.New("Вам закрыт доступ на ресурс")
 )
 
+// AuthBasic - базовая аутентификация проверка API ключа
+func AuthBasic(w http.ResponseWriter, req *http.Request) bool {
+
+	found, err := CheckAPIKey(w, req)
+
+	if err != nil {
+		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+			return false
+		}
+	}
+
+	if found {
+		return true
+	}
+
+	shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
+	return false
+}
+
+// AuthGeneral - Полная аутентификация пользователя для админки
+func AuthGeneral(w http.ResponseWriter, req *http.Request) (string, bool) {
+	if !AuthBasic(w, req) {
+		return "", false
+	}
+
+	// Проверка токена и получение роли
+	issued, role := TwoWayAuthentication(w, req)
+
+	// Проверка прохождения двухфакторной авторизации
+	sf := SecondFactorAuthenticationCheck(w, req)
+
+	if issued {
+		if sf {
+			return role, true
+		}
+
+		shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
+		return "", false
+	}
+
+	shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
+	return "", false
+
+}
+
 // secretauth - внутренняя функция для проверки пароля и авторизации
 // (если ReturnToken=false - то куки)
 func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentication.AuthRequestData) {
