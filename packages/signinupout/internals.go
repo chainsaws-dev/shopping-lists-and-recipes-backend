@@ -55,7 +55,7 @@ func AuthBasic(w http.ResponseWriter, req *http.Request) bool {
 	return false
 }
 
-// AuthNoSecondFactor - Полная аутентификация пользователя для админки без 2 фактора
+// AuthNoSecondFactor - Полная аутентификация пользователя используется только для проверки 2 фактора
 func AuthNoSecondFactor(w http.ResponseWriter, req *http.Request) (string, bool) {
 	if !AuthBasic(w, req) {
 		return "", false
