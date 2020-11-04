@@ -29,12 +29,12 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 	}
 	defer f.Close()
 
-	err = setup.ServerSettings.SQL.Connect(role)
-
-	if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-		return NewFile, err
+	dbc := setup.ServerSettings.SQL.Connect(w, role)
+	if dbc == nil {
+		shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
+		return NewFile, databases.ErrNoConnection
 	}
-	defer setup.ServerSettings.SQL.Disconnect()
+	defer dbc.Close()
 
 	// Проверяем тип файла
 	buff := make([]byte, 512)
@@ -88,7 +88,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 		NewFile.Filetype = ext
 		NewFile.FileID = filename
 
-		NewFile.ID, err = databases.PostgreSQLFileChange(NewFile)
+		NewFile.ID, err = databases.PostgreSQLFileChange(NewFile, dbc)
 
 		if err != nil {
 			if errors.Is(databases.ErrFirstNotUpdate, err) {

@@ -102,13 +102,13 @@ func AuthGeneral(w http.ResponseWriter, req *http.Request) (string, bool) {
 // secretauth - внутренняя функция для проверки пароля и авторизации
 // (если ReturnToken=false - то куки)
 func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentication.AuthRequestData) {
-	// Авторизация под ограниченной ролью
-	err := setup.ServerSettings.SQL.Connect("guest_role_read_only")
 
-	if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+	// Подключаемся под ролью гостя
+	dbc := setup.ServerSettings.SQL.ConnectAsGuest()
+	if dbc == nil {
 		return
 	}
-	defer setup.ServerSettings.SQL.Disconnect()
+	defer dbc.Close()
 
 	if len(AuthRequest.Password) < 6 {
 		shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
@@ -119,7 +119,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 	ClientIP := GetIP(req)
 
 	// Получаем хеш из базы данных
-	strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email)
+	strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email, dbc)
 
 	if err != nil {
 		if shared.HandleOtherError(w, err.Error(), err, http.StatusTeapot) {
@@ -145,7 +145,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 		}
 
 		// Получаем текущего пользователя по электронной почте
-		FoundUser, err := databases.PostgreSQLGetUserByEmail(AuthRequest.Email)
+		FoundUser, err := databases.PostgreSQLGetUserByEmail(AuthRequest.Email, dbc)
 
 		if err != nil {
 			if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -557,15 +557,14 @@ func RegularConfirmTokensCleanup() {
 		// Освобождаем память от истекших токенов
 		CleanOldTokens()
 
-		err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
-
-		if err != nil {
-			log.Fatalln(err)
+		// Подключаемся под ролью админа
+		dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
+		if dbc == nil {
+			return
 		}
+		defer dbc.Close()
 
-		defer setup.ServerSettings.SQL.Disconnect()
-
-		databases.PostgreSQLCleanAccessTokens()
+		databases.PostgreSQLCleanAccessTokens(dbc)
 
 		log.Println("Таблица токенов очищена!")
 

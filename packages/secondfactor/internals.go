@@ -2,6 +2,7 @@ package secondfactor
 
 import (
 	"bytes"
+	"database/sql"
 	"errors"
 	"image/png"
 	"shopping-lists-and-recipes/packages/aesencryptor"
@@ -24,7 +25,7 @@ type UserSecondFactor struct {
 }
 
 // GenerateUserKey - создаёт новый ключ пользователя
-func (usf *UserSecondFactor) GenerateUserKey() error {
+func (usf *UserSecondFactor) GenerateUserKey(dbc *sql.DB) error {
 
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      usf.URL,
@@ -50,7 +51,7 @@ func (usf *UserSecondFactor) GenerateUserKey() error {
 		Confirmed: false,
 	}
 
-	err = databases.PostgreSQLChangeSecondFactorSecret(totps)
+	err = databases.PostgreSQLChangeSecondFactorSecret(totps, dbc)
 
 	if err != nil {
 		return err
@@ -60,11 +61,11 @@ func (usf *UserSecondFactor) GenerateUserKey() error {
 }
 
 // GetQR - получает буфер из байтов содержащий данные QR кода для приложения аутентификатора
-func (usf *UserSecondFactor) GetQR(width int, height int) (bytes.Buffer, error) {
+func (usf *UserSecondFactor) GetQR(width int, height int, dbc *sql.DB) (bytes.Buffer, error) {
 
 	var b bytes.Buffer
 
-	err := usf.GenerateUserKey()
+	err := usf.GenerateUserKey(dbc)
 
 	if err != nil {
 		return b, err
@@ -82,9 +83,9 @@ func (usf *UserSecondFactor) GetQR(width int, height int) (bytes.Buffer, error) 
 }
 
 // EnableTOTP - проверяет правильность кода и сохраняет секрет если он верный
-func EnableTOTP(Passcode string, u databases.User) error {
+func EnableTOTP(Passcode string, u databases.User, dbc *sql.DB) error {
 
-	result, err := databases.PostgreSQLGetSecretByUserID(u.GUID)
+	result, err := databases.PostgreSQLGetSecretByUserID(u.GUID, dbc)
 
 	if err != nil {
 		return err
@@ -105,7 +106,7 @@ func EnableTOTP(Passcode string, u databases.User) error {
 
 	if valid {
 
-		err = databases.PostgreSQLUpdateSecondFactorConfirmed(true, result.UserID)
+		err = databases.PostgreSQLUpdateSecondFactorConfirmed(true, result.UserID, dbc)
 
 		if err != nil {
 			return err
@@ -118,9 +119,9 @@ func EnableTOTP(Passcode string, u databases.User) error {
 }
 
 // Validate - проверяет код токена против секрета из базы
-func Validate(Passcode string, u databases.User) (bool, error) {
+func Validate(Passcode string, u databases.User, dbc *sql.DB) (bool, error) {
 
-	result, err := databases.PostgreSQLGetSecretByUserID(u.GUID)
+	result, err := databases.PostgreSQLGetSecretByUserID(u.GUID, dbc)
 
 	if err != nil {
 		return false, err

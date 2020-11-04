@@ -3,7 +3,6 @@ package shared
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -35,26 +34,6 @@ type RequestResult struct {
 type ErrorResponse struct {
 	Code    int
 	Message string
-}
-
-// SQLConnect - соединиться с базой данных и выполнить команду
-// Не забываем в точке вызова defer db.Close()
-func SQLConnect(DbType string, ConStr string) (*sql.DB, error) {
-
-	db, err := sql.Open(DbType, ConStr)
-
-	if err != nil {
-		return db, err
-	}
-
-	// Проверяем что база данных доступна
-	err = db.Ping()
-
-	if err != nil {
-		return db, err
-	}
-
-	return db, nil
 }
 
 // WriteErrToLog - пишем критическую ошибку в лог

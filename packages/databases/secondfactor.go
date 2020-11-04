@@ -1,11 +1,13 @@
 package databases
 
 import (
+	"database/sql"
+
 	uuid "github.com/satori/go.uuid"
 )
 
 // PostgreSQLGetSecretByUserID - получает секрет и расшифровывает его
-func PostgreSQLGetSecretByUserID(UserID uuid.UUID) (TOTPSecret, error) {
+func PostgreSQLGetSecretByUserID(UserID uuid.UUID, dbc *sql.DB) (TOTPSecret, error) {
 
 	var result TOTPSecret
 
@@ -64,7 +66,7 @@ func PostgreSQLGetSecretByUserID(UserID uuid.UUID) (TOTPSecret, error) {
 
 // PostgreSQLChangeSecondFactorSecret - принимает решение и обновляет
 //  или добавляет новую запись в список серкетов для двухфакторной авторизации
-func PostgreSQLChangeSecondFactorSecret(totps TOTPSecret) error {
+func PostgreSQLChangeSecondFactorSecret(totps TOTPSecret, dbc *sql.DB) error {
 
 	sqlreq := `SELECT 
 				COUNT(*)
@@ -85,7 +87,7 @@ func PostgreSQLChangeSecondFactorSecret(totps TOTPSecret) error {
 
 	if countRows > 0 {
 
-		result, err := PostgreSQLGetSecretByUserID(totps.UserID)
+		result, err := PostgreSQLGetSecretByUserID(totps.UserID, dbc)
 
 		if err != nil {
 			return err
@@ -95,16 +97,16 @@ func PostgreSQLChangeSecondFactorSecret(totps TOTPSecret) error {
 			return ErrTOTPConfirmed
 		}
 
-		return PostgreSQLUpdateSecondFactorSecret(totps)
+		return PostgreSQLUpdateSecondFactorSecret(totps, dbc)
 	}
 
-	return PostgreSQLInsertSecondFactorSecret(totps)
+	return PostgreSQLInsertSecondFactorSecret(totps, dbc)
 
 }
 
 // PostgreSQLInsertSecondFactorSecret - вставляет новую запись в
 // список серкетов для двухфакторной авторизации
-func PostgreSQLInsertSecondFactorSecret(totps TOTPSecret) error {
+func PostgreSQLInsertSecondFactorSecret(totps TOTPSecret, dbc *sql.DB) error {
 
 	dbc.Exec("BEGIN")
 
@@ -113,7 +115,7 @@ func PostgreSQLInsertSecondFactorSecret(totps TOTPSecret) error {
 	_, err := dbc.Exec(sqlreq, totps.UserID, totps.Secret, totps.EncKey, totps.Confirmed)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	dbc.Exec("COMMIT")
@@ -123,7 +125,7 @@ func PostgreSQLInsertSecondFactorSecret(totps TOTPSecret) error {
 
 // PostgreSQLUpdateSecondFactorSecret - обновляет существующую запись в
 // списке серкетов для двухфакторной авторизации
-func PostgreSQLUpdateSecondFactorSecret(totps TOTPSecret) error {
+func PostgreSQLUpdateSecondFactorSecret(totps TOTPSecret, dbc *sql.DB) error {
 
 	dbc.Exec("BEGIN")
 
@@ -132,7 +134,7 @@ func PostgreSQLUpdateSecondFactorSecret(totps TOTPSecret) error {
 	_, err := dbc.Exec(sqlreq, totps.Secret, totps.EncKey, totps.Confirmed, totps.UserID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	dbc.Exec("COMMIT")
@@ -141,7 +143,7 @@ func PostgreSQLUpdateSecondFactorSecret(totps TOTPSecret) error {
 }
 
 // PostgreSQLUpdateSecondFactorConfirmed - взводит флаг подтверждения для второго фактора
-func PostgreSQLUpdateSecondFactorConfirmed(Confirmed bool, UserID uuid.UUID) error {
+func PostgreSQLUpdateSecondFactorConfirmed(Confirmed bool, UserID uuid.UUID, dbc *sql.DB) error {
 
 	dbc.Exec("BEGIN")
 
@@ -150,13 +152,13 @@ func PostgreSQLUpdateSecondFactorConfirmed(Confirmed bool, UserID uuid.UUID) err
 	_, err := dbc.Exec(sqlreq, Confirmed, UserID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
-	err = PostgreSQLSetUserSecondFactorActive(true, UserID)
+	err = PostgreSQLSetUserSecondFactorActive(true, UserID, dbc)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	dbc.Exec("COMMIT")
@@ -165,7 +167,7 @@ func PostgreSQLUpdateSecondFactorConfirmed(Confirmed bool, UserID uuid.UUID) err
 }
 
 // PostgreSQLDeleteSecondFactorSecret - удаляет привязанные секреты для двухфакторной авторизации пользователя
-func PostgreSQLDeleteSecondFactorSecret(UserID uuid.UUID) error {
+func PostgreSQLDeleteSecondFactorSecret(UserID uuid.UUID, dbc *sql.DB) error {
 
 	dbc.Exec("BEGIN")
 
@@ -174,13 +176,13 @@ func PostgreSQLDeleteSecondFactorSecret(UserID uuid.UUID) error {
 	_, err := dbc.Exec(sqlreq, UserID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
-	err = PostgreSQLSetUserSecondFactorActive(false, UserID)
+	err = PostgreSQLSetUserSecondFactorActive(false, UserID, dbc)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	dbc.Exec("COMMIT")
@@ -189,7 +191,7 @@ func PostgreSQLDeleteSecondFactorSecret(UserID uuid.UUID) error {
 }
 
 // PostgreSQLSetUserSecondFactorActive - меняет статус флага двухфакторной авторизации в пользователе
-func PostgreSQLSetUserSecondFactorActive(Activate bool, UserID uuid.UUID) error {
+func PostgreSQLSetUserSecondFactorActive(Activate bool, UserID uuid.UUID, dbc *sql.DB) error {
 
 	sqlreq := `UPDATE secret.users SET totp_active = $1 WHERE id=$2;`
 

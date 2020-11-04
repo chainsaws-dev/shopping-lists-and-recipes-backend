@@ -2,6 +2,7 @@
 package admin
 
 import (
+	"database/sql"
 	"errors"
 	"shopping-lists-and-recipes/packages/authentication"
 	"shopping-lists-and-recipes/packages/databases"
@@ -14,19 +15,11 @@ var (
 )
 
 // CreateAdmin - создаём пользователя для администратора
-func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password string, ConfirmEnabled bool) error {
+func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password string, ConfirmEnabled bool, dbc *sql.DB) error {
 
 	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
 		return ErrBasicFieldsNotFilled
 	}
-
-	err := SQL.Connect("admin_role_CRUD")
-
-	if err != nil {
-		return err
-	}
-
-	defer SQL.Disconnect()
 
 	Hash, err := authentication.Argon2GenerateHash(Password, &authentication.HashParams)
 
@@ -43,7 +36,7 @@ func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password s
 		Confirmed: !ConfirmEnabled,
 	}
 
-	_, err = databases.PostgreSQLUsersInsertUpdate(UserInfo, Hash, true, false)
+	_, err = databases.PostgreSQLUsersInsertUpdate(UserInfo, Hash, true, false, dbc)
 
 	if err != nil {
 		return err
@@ -53,19 +46,11 @@ func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password s
 }
 
 // CreateUser - создаём пользователя для гостя
-func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password string, ConfirmEnabled bool) error {
+func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password string, ConfirmEnabled bool, dbc *sql.DB) error {
 
 	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
 		return ErrBasicFieldsNotFilled
 	}
-
-	err := SQL.Connect("admin_role_CRUD")
-
-	if err != nil {
-		return err
-	}
-
-	defer SQL.Disconnect()
 
 	Hash, err := authentication.Argon2GenerateHash(Password, &authentication.HashParams)
 
@@ -82,7 +67,7 @@ func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password st
 		Confirmed: !ConfirmEnabled,
 	}
 
-	_, err = databases.PostgreSQLUsersInsertUpdate(UserInfo, Hash, true, false)
+	_, err = databases.PostgreSQLUsersInsertUpdate(UserInfo, Hash, true, false, dbc)
 
 	if err != nil {
 		return err

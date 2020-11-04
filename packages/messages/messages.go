@@ -4,6 +4,7 @@ package messages
 import (
 	"bytes"
 	"crypto/sha1"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/url"
@@ -71,7 +72,7 @@ func GetStringTemplate(TemplateName string, ObjectToInsert string) string {
 }
 
 // SendEmailConfirmationLetter - отправляет письмо с ссылкой для подтверждения электронной почты
-func SendEmailConfirmationLetter(SQL *settings.SQLServer, Recepient string, ReqHost string) {
+func SendEmailConfirmationLetter(SQL *settings.SQLServer, Recepient string, ReqHost string, dbc *sql.DB) {
 
 	if SendCred.Use {
 
@@ -91,25 +92,17 @@ func SendEmailConfirmationLetter(SQL *settings.SQLServer, Recepient string, ReqH
 
 		go SendEmail([]string{Recepient}, GetStringTemplate("EmailConfirm.gohtml", prurl), "Подтвердите электронную почту")
 
-		go SaveTokenForUser(SQL, strtoken, "secret.confirmations", Recepient)
+		go SaveTokenForUser(SQL, strtoken, "secret.confirmations", Recepient, dbc)
 
 	}
 }
 
 // SaveTokenForUser - сохраняем токен доступа в базу данных в заданную таблицу
-func SaveTokenForUser(SQL *settings.SQLServer, strtoken string, TableName string, Recepient string) {
+func SaveTokenForUser(SQL *settings.SQLServer, strtoken string, TableName string, Recepient string, dbc *sql.DB) {
 
 	log.Printf("Сохраняем токен для пользователя %v...", Recepient)
 
-	err := SQL.Connect("admin_role_CRUD")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer SQL.Disconnect()
-
-	err = databases.PostgreSQLSaveAccessToken(strtoken, Recepient, TableName)
+	err := databases.PostgreSQLSaveAccessToken(strtoken, Recepient, TableName, dbc)
 
 	if err != nil {
 		log.Fatal(err)
@@ -120,7 +113,7 @@ func SaveTokenForUser(SQL *settings.SQLServer, strtoken string, TableName string
 }
 
 // SendEmailPasswordReset - отправляет письмо с ссылкой для сброса пароля
-func SendEmailPasswordReset(SQL *settings.SQLServer, Recepient string, ReqHost string) {
+func SendEmailPasswordReset(SQL *settings.SQLServer, Recepient string, ReqHost string, dbc *sql.DB) {
 
 	if SendCred.Use {
 
@@ -140,7 +133,7 @@ func SendEmailPasswordReset(SQL *settings.SQLServer, Recepient string, ReqHost s
 
 		go SendEmail([]string{Recepient}, GetStringTemplate("EmailPasswordReset.gohtml", prurl), "Сброс пароля")
 
-		go SaveTokenForUser(SQL, strtoken, "secret.password_resets", Recepient)
+		go SaveTokenForUser(SQL, strtoken, "secret.password_resets", Recepient, dbc)
 
 	}
 }

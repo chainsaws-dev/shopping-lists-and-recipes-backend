@@ -280,7 +280,10 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 		}
 	}
 
-	err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use)
+	dbc := ServerSettings.SQL.ConnectAsAdmin()
+	defer dbc.Close()
+
+	err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use, dbc)
 
 	shared.WriteErrToLog(err)
 
@@ -293,7 +296,7 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 			URI = websiteurl
 		}
 
-		messages.SendEmailConfirmationLetter(&ServerSettings.SQL, Email, URI)
+		messages.SendEmailConfirmationLetter(&ServerSettings.SQL, Email, URI, dbc)
 	}
 
 	log.Println("Администратор сайта создан")

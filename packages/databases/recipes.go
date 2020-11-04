@@ -1,6 +1,7 @@
 package databases
 
 import (
+	"database/sql"
 	"fmt"
 	"math"
 	"shopping-lists-and-recipes/packages/shared"
@@ -9,7 +10,7 @@ import (
 )
 
 // PostgreSQLRecipesSelect - получает информацию о рецептах и связанном файле обложки
-func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
+func PostgreSQLRecipesSelect(page int, limit int, dbc *sql.DB) (RecipesResponse, error) {
 
 	var result RecipesResponse
 	result.Recipes = RecipesDB{}
@@ -107,7 +108,7 @@ func PostgreSQLRecipesSelect(page int, limit int) (RecipesResponse, error) {
 }
 
 // PostgreSQLRecipesSelectSearch - получает информацию о рецептах и связанном файле обложки для поискового запроса
-func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesResponse, error) {
+func PostgreSQLRecipesSelectSearch(page int, limit int, search string, dbc *sql.DB) (RecipesResponse, error) {
 
 	var result RecipesResponse
 	result.Recipes = RecipesDB{}
@@ -213,7 +214,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string) (RecipesR
 }
 
 // PostgreSQLRecipesInsertUpdate - обновляет существующий рецепт или вставляет новый рецепт в базу данных
-func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
+func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, error) {
 
 	if RecipeUpd.ImageDbID == 0 {
 		RecipeUpd.ImageDbID = 1
@@ -259,7 +260,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 	}
 
 	if err != nil {
-		return RecipeUpd, PostgreSQLRollbackIfError(err, false)
+		return RecipeUpd, PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	sqlreq = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
@@ -267,7 +268,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 	_, err = dbc.Exec(sqlreq, RecipeUpd.ID)
 
 	if err != nil {
-		return RecipeUpd, PostgreSQLRollbackIfError(err, false)
+		return RecipeUpd, PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	for _, OneRecipe := range RecipeUpd.Ingredients {
@@ -286,7 +287,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 		err := row.Scan(&count)
 
 		if err != nil {
-			return RecipeUpd, PostgreSQLRollbackIfError(err, false)
+			return RecipeUpd, PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 		var curid int
@@ -306,7 +307,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 			err := row.Scan(&curid)
 
 			if err != nil {
-				return RecipeUpd, PostgreSQLRollbackIfError(err, false)
+				return RecipeUpd, PostgreSQLRollbackIfError(err, false, dbc)
 			}
 
 		} else {
@@ -317,7 +318,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 			err := row.Scan(&curid)
 
 			if err != nil {
-				return RecipeUpd, PostgreSQLRollbackIfError(err, false)
+				return RecipeUpd, PostgreSQLRollbackIfError(err, false, dbc)
 			}
 		}
 
@@ -326,7 +327,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 		_, err = dbc.Exec(sqlreq, RecipeUpd.ID, curid, OneRecipe.Amount)
 
 		if err != nil {
-			return RecipeUpd, PostgreSQLRollbackIfError(err, false)
+			return RecipeUpd, PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 	}
@@ -338,7 +339,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB) (RecipeDB, error) {
 }
 
 // PostgreSQLRecipesDelete - удаляет рецепт и связанные с ним ингредиенты по индексу рецепта
-func PostgreSQLRecipesDelete(ID int) error {
+func PostgreSQLRecipesDelete(ID int, dbc *sql.DB) error {
 
 	sqlreq := `SELECT 
 				COUNT(*)
@@ -365,7 +366,7 @@ func PostgreSQLRecipesDelete(ID int) error {
 	_, err = dbc.Exec(sqlreq, ID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	sqlreq = `DELETE FROM public."Recipes" WHERE id=$1;`
@@ -373,7 +374,7 @@ func PostgreSQLRecipesDelete(ID int) error {
 	_, err = dbc.Exec(sqlreq, ID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	sqlreq = `select setval('"public"."Recipes_id_seq"',(select COALESCE(max("id"),1) from "public"."Recipes")::bigint);`
@@ -381,7 +382,7 @@ func PostgreSQLRecipesDelete(ID int) error {
 	_, err = dbc.Exec(sqlreq)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	dbc.Exec("COMMIT")

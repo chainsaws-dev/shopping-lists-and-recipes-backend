@@ -2,6 +2,7 @@
 package databases
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"math"
@@ -13,7 +14,7 @@ import (
 
 // PostgreSQLFileChange - определяет существует ли такой же файл в базе
 // и изменяет или создаёт новый в зависимости от результата проверки
-func PostgreSQLFileChange(f File) (int, error) {
+func PostgreSQLFileChange(f File, dbc *sql.DB) (int, error) {
 
 	sqlreq := `SELECT 
 					COUNT(*)
@@ -32,10 +33,10 @@ func PostgreSQLFileChange(f File) (int, error) {
 	}
 
 	if CountRows > 0 {
-		return PostgreSQLFileUpdate(f)
+		return PostgreSQLFileUpdate(f, dbc)
 	}
 
-	return PostgreSQLFileInsert(f)
+	return PostgreSQLFileInsert(f, dbc)
 }
 
 // PostgreSQLFileInsert - создаёт записи в базе данных для хранения информации о загруженном файле
@@ -44,7 +45,7 @@ func PostgreSQLFileChange(f File) (int, error) {
 //
 // f - тип файл, содержащий данные о файле (имя, размер, тип, имя на сервере)
 //
-func PostgreSQLFileInsert(f File) (int, error) {
+func PostgreSQLFileInsert(f File, dbc *sql.DB) (int, error) {
 
 	dbc.Exec("BEGIN")
 
@@ -60,7 +61,7 @@ func PostgreSQLFileInsert(f File) (int, error) {
 	err := row.Scan(&curid)
 
 	if err != nil {
-		return curid, PostgreSQLRollbackIfError(err, true)
+		return curid, PostgreSQLRollbackIfError(err, true, dbc)
 	}
 
 	log.Printf("Данные о файле сохранены в базу данных под индексом %v", curid)
@@ -76,7 +77,7 @@ func PostgreSQLFileInsert(f File) (int, error) {
 //
 // f - тип файл, содержащий данные о файле (имя, размер, тип, имя на сервере)
 //
-func PostgreSQLFileUpdate(f File) (int, error) {
+func PostgreSQLFileUpdate(f File, dbc *sql.DB) (int, error) {
 
 	sqlreq := `SELECT 
 					id
@@ -107,7 +108,7 @@ func PostgreSQLFileUpdate(f File) (int, error) {
 	_, err = dbc.Exec(sqlreq, f.Filename, f.Filesize, f.Filetype, f.FileID)
 
 	if err != nil {
-		return f.ID, PostgreSQLRollbackIfError(err, false)
+		return f.ID, PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	dbc.Exec("COMMIT")
@@ -116,7 +117,7 @@ func PostgreSQLFileUpdate(f File) (int, error) {
 }
 
 // PostgreSQLFileDelete - удаляет запись в базе данных о загруженном файле
-func PostgreSQLFileDelete(fileid int) error {
+func PostgreSQLFileDelete(fileid int, dbc *sql.DB) error {
 
 	if fileid == 1 {
 		return ErrFirstNotDelete
@@ -146,7 +147,7 @@ func PostgreSQLFileDelete(fileid int) error {
 	_, err = dbc.Exec(sqlreq, fileid)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	path := strings.Join([]string{".", "public", "uploads", filename}, "/")
@@ -164,7 +165,7 @@ func PostgreSQLFileDelete(fileid int) error {
 	_, err = dbc.Exec(sqlreq)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	dbc.Exec("COMMIT")
@@ -179,7 +180,7 @@ func PostgreSQLFileDelete(fileid int) error {
 // page - номер страницы результата для вывода
 // limit - количество строк на странице
 //
-func PostgreSQLFilesSelect(page int, limit int) (FilesResponse, error) {
+func PostgreSQLFilesSelect(page int, limit int, dbc *sql.DB) (FilesResponse, error) {
 
 	var result FilesResponse
 	result.Files = FilesList{}

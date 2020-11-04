@@ -70,12 +70,11 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 			var recipesresp databases.RecipesResponse
 
-			err = setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
 			if len(PageStr) > 0 && len(LimitStr) > 0 {
 
@@ -91,7 +90,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				recipesresp, err = databases.PostgreSQLRecipesSelect(Page, Limit)
+				recipesresp, err = databases.PostgreSQLRecipesSelect(Page, Limit, dbc)
 
 				if shared.HandleInternalServerError(w, err) {
 					return
@@ -121,14 +120,13 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			err = setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
-			recipesresp, err := databases.PostgreSQLRecipesInsertUpdate(Recipe)
+			recipesresp, err := databases.PostgreSQLRecipesInsertUpdate(Recipe, dbc)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
@@ -155,14 +153,13 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				err = setup.ServerSettings.SQL.Connect(role)
-
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				dbc := setup.ServerSettings.SQL.Connect(w, role)
+				if dbc == nil {
 					return
 				}
-				defer setup.ServerSettings.SQL.Disconnect()
+				defer dbc.Close()
 
-				err = databases.PostgreSQLRecipesDelete(RecipeID)
+				err = databases.PostgreSQLRecipesDelete(RecipeID, dbc)
 
 				if err != nil {
 					if errors.Is(err, databases.ErrRecipeNotFound) {
@@ -235,12 +232,11 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 
 			var recipesresp databases.RecipesResponse
 
-			err = setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
 			if len(PageStr) > 0 && len(LimitStr) > 0 && len(SearchStr) > 0 {
 
@@ -262,7 +258,7 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr)
+				recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr, dbc)
 
 			} else {
 				shared.HandleOtherError(w, ErrHeadersSearchNotFilled.Error(), ErrHeadersSearchNotFilled, http.StatusBadRequest)

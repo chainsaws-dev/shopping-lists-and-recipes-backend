@@ -1,6 +1,7 @@
 package databases
 
 import (
+	"database/sql"
 	"fmt"
 	"math"
 	"shopping-lists-and-recipes/packages/shared"
@@ -11,7 +12,7 @@ import (
 )
 
 // PostgreSQLUsersSelect - получает список пользователей в админке
-func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
+func PostgreSQLUsersSelect(page int, limit int, dbc *sql.DB) (UsersResponse, error) {
 
 	var result UsersResponse
 	result.Users = Users{}
@@ -75,7 +76,7 @@ func PostgreSQLUsersSelect(page int, limit int) (UsersResponse, error) {
 }
 
 // PostgreSQLUsersInsertUpdate - создаёт или обновляет существующего пользователя
-func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword bool, OverWrite bool) (User, error) {
+func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword bool, OverWrite bool, dbc *sql.DB) (User, error) {
 
 	if NewUserInfo.Role == "admin_role_CRUD" {
 		NewUserInfo.IsAdmin = true
@@ -125,7 +126,7 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 			NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.Disabled, NewUserInfo.SecondFactor, NewUserInfo.GUID)
 
 		if err != nil {
-			return NewUserInfo, PostgreSQLRollbackIfError(err, false)
+			return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 		if UpdatePassword {
@@ -136,10 +137,10 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 				_, err = dbc.Exec(sqlreq, NewUserInfo.GUID, Hash)
 
 				if err != nil {
-					return NewUserInfo, PostgreSQLRollbackIfError(err, false)
+					return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)
 				}
 			} else {
-				return NewUserInfo, PostgreSQLRollbackIfError(ErrEmptyPassword, false)
+				return NewUserInfo, PostgreSQLRollbackIfError(ErrEmptyPassword, false, dbc)
 			}
 		}
 
@@ -156,7 +157,7 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 			NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.Disabled, NewUserInfo.SecondFactor)
 
 		if err != nil {
-			return NewUserInfo, PostgreSQLRollbackIfError(err, false)
+			return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 		if len(Hash) > 0 {
@@ -166,10 +167,10 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 			_, err = dbc.Exec(sqlreq, NewUserInfo.GUID, Hash)
 
 			if err != nil {
-				return NewUserInfo, PostgreSQLRollbackIfError(err, false)
+				return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)
 			}
 		} else {
-			return NewUserInfo, PostgreSQLRollbackIfError(ErrEmptyPassword, false)
+			return NewUserInfo, PostgreSQLRollbackIfError(ErrEmptyPassword, false, dbc)
 		}
 
 	}
@@ -180,7 +181,7 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 }
 
 // PostgreSQLUsersDelete - удаляет пользователя с указанным GUID
-func PostgreSQLUsersDelete(UserID uuid.UUID) error {
+func PostgreSQLUsersDelete(UserID uuid.UUID, dbc *sql.DB) error {
 
 	sqlreq := `SELECT 
 				COUNT(*)
@@ -208,7 +209,7 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 	_, err = dbc.Exec(sqlreq, UserID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	// Удаляем подтверждения почты
@@ -217,7 +218,7 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 	_, err = dbc.Exec(sqlreq, UserID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	// Удаляем сбросы паролей
@@ -226,7 +227,7 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 	_, err = dbc.Exec(sqlreq, UserID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	// Удаляем привязки временных ключей
@@ -235,7 +236,7 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 	_, err = dbc.Exec(sqlreq, UserID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	// Удаляем пользователя
@@ -244,7 +245,7 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 	_, err = dbc.Exec(sqlreq, UserID)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	dbc.Exec("COMMIT")
@@ -253,7 +254,7 @@ func PostgreSQLUsersDelete(UserID uuid.UUID) error {
 }
 
 // PostgreSQLCheckUserMailExists - проверяет что почтовый ящик живого пользователя
-func PostgreSQLCheckUserMailExists(Email string) (bool, error) {
+func PostgreSQLCheckUserMailExists(Email string, dbc *sql.DB) (bool, error) {
 
 	sqlreq := `SELECT COUNT(*) FROM secret.users WHERE email=$1;`
 
@@ -275,7 +276,7 @@ func PostgreSQLCheckUserMailExists(Email string) (bool, error) {
 }
 
 // PostgreSQLGetUserByEmail - получает данные о пользователе по электронной почте
-func PostgreSQLGetUserByEmail(Email string) (User, error) {
+func PostgreSQLGetUserByEmail(Email string, dbc *sql.DB) (User, error) {
 
 	var result User
 
@@ -345,7 +346,7 @@ func PostgreSQLGetUserByEmail(Email string) (User, error) {
 }
 
 // PostgreSQLCurrentUserUpdate - функция позволяющая менять поля, которые пользователь может менять
-func PostgreSQLCurrentUserUpdate(NewUserInfo User, Hash string, UpdatePassword bool) (User, error) {
+func PostgreSQLCurrentUserUpdate(NewUserInfo User, Hash string, UpdatePassword bool, dbc *sql.DB) (User, error) {
 
 	// Проверяем что пользователь с ID существует
 	var UserCount int
@@ -370,7 +371,7 @@ func PostgreSQLCurrentUserUpdate(NewUserInfo User, Hash string, UpdatePassword b
 			NewUserInfo.SecondFactor, NewUserInfo.GUID)
 
 		if err != nil {
-			return NewUserInfo, PostgreSQLRollbackIfError(err, false)
+			return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 		if UpdatePassword {
@@ -381,10 +382,10 @@ func PostgreSQLCurrentUserUpdate(NewUserInfo User, Hash string, UpdatePassword b
 				_, err = dbc.Exec(sqlreq, NewUserInfo.GUID, Hash)
 
 				if err != nil {
-					return NewUserInfo, PostgreSQLRollbackIfError(err, false)
+					return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)
 				}
 			} else {
-				return NewUserInfo, PostgreSQLRollbackIfError(ErrEmptyPassword, false)
+				return NewUserInfo, PostgreSQLRollbackIfError(ErrEmptyPassword, false, dbc)
 			}
 		}
 	} else {

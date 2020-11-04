@@ -1,6 +1,7 @@
 package databases
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -10,32 +11,32 @@ import (
 )
 
 // PostgreSQLCleanAccessToken - Удаляет заданный токен доступа
-func PostgreSQLCleanAccessToken(Token string, TokenStorageTableName string) error {
+func PostgreSQLCleanAccessToken(Token string, TokenStorageTableName string, dbc *sql.DB) error {
 
 	_, err := dbc.Exec(fmt.Sprintf(`DELETE FROM %v WHERE token=$1;`, TokenStorageTableName), Token)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	return nil
 }
 
 // PostgreSQLCleanAccessTokens - Удаляет все истекшие токены доступа
-func PostgreSQLCleanAccessTokens() error {
+func PostgreSQLCleanAccessTokens(dbc *sql.DB) error {
 
 	dbc.Exec("BEGIN")
 
 	_, err := dbc.Exec(`DELETE FROM secret.confirmations WHERE "Expires" < now();`)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	_, err = dbc.Exec(`DELETE FROM secret.password_resets WHERE "Expires" < now();`)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	dbc.Exec("COMMIT")
@@ -44,7 +45,7 @@ func PostgreSQLCleanAccessTokens() error {
 }
 
 // PostgreSQLGetTokenConfirmEmail - Ищем токен из запроса и устанавливаем у пользователя подтверждение если он существует
-func PostgreSQLGetTokenConfirmEmail(Token string) error {
+func PostgreSQLGetTokenConfirmEmail(Token string, dbc *sql.DB) error {
 
 	sqlreq := `SELECT 
 				COUNT(*) 
@@ -93,13 +94,13 @@ func PostgreSQLGetTokenConfirmEmail(Token string) error {
 		_, err = dbc.Exec(sqlreq, UID)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
-		err = PostgreSQLCleanAccessToken(Token, "secret.confirmations")
+		err = PostgreSQLCleanAccessToken(Token, "secret.confirmations", dbc)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 		dbc.Exec("COMMIT")
@@ -113,7 +114,7 @@ func PostgreSQLGetTokenConfirmEmail(Token string) error {
 }
 
 // PostgreSQLGetTokenResetPassword - ищем токен среди выданных и не протухших и обновляем хеш пароля для пользователя
-func PostgreSQLGetTokenResetPassword(Token string, Hash string) error {
+func PostgreSQLGetTokenResetPassword(Token string, Hash string, dbc *sql.DB) error {
 
 	sqlreq := `SELECT 
 				COUNT(*) 
@@ -164,16 +165,16 @@ func PostgreSQLGetTokenResetPassword(Token string, Hash string) error {
 			_, err = dbc.Exec(sqlreq, UID, Hash)
 
 			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
+				return PostgreSQLRollbackIfError(err, false, dbc)
 			}
 		} else {
-			return PostgreSQLRollbackIfError(ErrEmptyPassword, false)
+			return PostgreSQLRollbackIfError(ErrEmptyPassword, false, dbc)
 		}
 
-		err = PostgreSQLCleanAccessToken(Token, "secret.password_resets")
+		err = PostgreSQLCleanAccessToken(Token, "secret.password_resets", dbc)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 		dbc.Exec("COMMIT")
@@ -187,7 +188,7 @@ func PostgreSQLGetTokenResetPassword(Token string, Hash string) error {
 }
 
 // PostgreSQLSaveAccessToken - сохраняем токен для подтверждения почты
-func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string) error {
+func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string, dbc *sql.DB) error {
 
 	if len(Token) > 0 && len(Email) > 0 {
 
@@ -224,7 +225,7 @@ func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string
 			_, err = dbc.Exec(sqlreq, CurUID)
 
 			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
+				return PostgreSQLRollbackIfError(err, false, dbc)
 			}
 
 			sqlreq = fmt.Sprintf(`INSERT INTO %v (user_id, token, "Created", "Expires") VALUES ($1,$2,$3,$4);`, TokenTableName)
@@ -234,7 +235,7 @@ func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string
 			_, err = dbc.Exec(sqlreq, CurUID, Token, cd, cd.Add(time.Minute*10))
 
 			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
+				return PostgreSQLRollbackIfError(err, false, dbc)
 			}
 
 			dbc.Exec("COMMIT")
@@ -245,7 +246,7 @@ func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string
 }
 
 // PostgreSQLGetTokenForUser - получает токен для проверки при авторизации
-func PostgreSQLGetTokenForUser(email string) (string, string, error) {
+func PostgreSQLGetTokenForUser(email string, dbc *sql.DB) (string, string, error) {
 
 	var UserCount int
 	var UserID uuid.UUID

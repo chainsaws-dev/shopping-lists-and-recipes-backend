@@ -68,14 +68,13 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 			Email := signinupout.GetCurrentUserEmail(w, req)
 
 			// Подключение к базе данных
-			err := setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
-			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, dbc)
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -88,7 +87,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			Totp, err := databases.PostgreSQLGetSecretByUserID(FoundUser.GUID)
+			Totp, err := databases.PostgreSQLGetSecretByUserID(FoundUser.GUID, dbc)
 
 			if err != nil {
 				if errors.Is(databases.ErrUserTOTPNotFound, err) {
@@ -128,14 +127,13 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 				}
 
 				// Подключение к базе данных
-				err = setup.ServerSettings.SQL.Connect(role)
-
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				dbc := setup.ServerSettings.SQL.Connect(w, role)
+				if dbc == nil {
 					return
 				}
-				defer setup.ServerSettings.SQL.Disconnect()
+				defer dbc.Close()
 
-				err = EnableTOTP(PassStr, CurUser)
+				err = EnableTOTP(PassStr, CurUser, dbc)
 
 				if err != nil {
 					if errors.Is(ErrSecretNotSaved, err) {
@@ -172,14 +170,13 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 			// Получаем данные текущего пользователя
 			Email := signinupout.GetCurrentUserEmail(w, req)
 
-			err := setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
-			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, dbc)
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -192,7 +189,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			err = databases.PostgreSQLDeleteSecondFactorSecret(FoundUser.GUID)
+			err = databases.PostgreSQLDeleteSecondFactorSecret(FoundUser.GUID, dbc)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
@@ -241,8 +238,6 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var err error
-
 	switch {
 	case req.Method == http.MethodGet:
 		if setup.ServerSettings.CheckRoleForRead(role, "GetQRCode") {
@@ -251,14 +246,13 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 
 			Email := signinupout.GetCurrentUserEmail(w, req)
 
-			err = setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
-			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, dbc)
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -276,7 +270,7 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 			usf.User = FoundUser
 			usf.URL = shared.CurrentPrefix + req.Host
 
-			b, err := usf.GetQR(200, 200)
+			b, err := usf.GetQR(200, 200, dbc)
 
 			if err != nil {
 				if errors.Is(databases.ErrTOTPConfirmed, err) {
@@ -328,14 +322,13 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 				// Получаем данные текущего пользователя
 				Email := signinupout.GetCurrentUserEmail(w, req)
 
-				err := setup.ServerSettings.SQL.Connect(role)
-
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				dbc := setup.ServerSettings.SQL.Connect(w, role)
+				if dbc == nil {
 					return
 				}
-				defer setup.ServerSettings.SQL.Disconnect()
+				defer dbc.Close()
 
-				FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+				FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, dbc)
 
 				if err != nil {
 					if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -353,7 +346,7 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				Correct, err := Validate(PassStr, FoundUser)
+				Correct, err := Validate(PassStr, FoundUser, dbc)
 
 				if shared.HandleInternalServerError(w, err) {
 					return

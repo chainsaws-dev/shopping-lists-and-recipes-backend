@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"shopping-lists-and-recipes/packages/shared"
 )
 
 // Список типовых ошибок
@@ -32,8 +31,6 @@ var (
 	ErrTablesAlreadyExist    = errors.New("База данных содержит таблицы")
 )
 
-var dbc *sql.DB
-
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
 // При начальной настройке строка возвращается без базы данных (она создаётся в процессе)
 // При начальной настройке указывается пароль суперпользователя при штатной работе пароль соответствуещей роли
@@ -48,7 +45,7 @@ func PostgreSQLGetConnString(Login string, Password string, Addr string, DbName 
 }
 
 // PostgreSQLRollbackIfError - откатываем изменения транзакции если происходит ошибка и пишем её в лог и выходим
-func PostgreSQLRollbackIfError(err error, critical bool) error {
+func PostgreSQLRollbackIfError(err error, critical bool, dbc *sql.DB) error {
 	if err != nil {
 		dbc.Exec("ROLLBACK")
 
@@ -64,20 +61,29 @@ func PostgreSQLRollbackIfError(err error, critical bool) error {
 	return nil
 }
 
-// PostgreSQLCloseConn - закрываем соединение с базой данных
-func PostgreSQLCloseConn() {
-	dbc.Close()
+// PostgreSQLConnect - подключаемся к базе данных
+func PostgreSQLConnect(ConnectionString string) (dbc *sql.DB, err error) {
+	return SQLConnect("postgres", ConnectionString)
 }
 
-// PostgreSQLConnect - подключаемся к базе данных
-func PostgreSQLConnect(ConnString string) error {
+// SQLConnect - соединиться с базой данных и выполнить команду
+// Не забываем в точке вызова defer db.Close()
+func SQLConnect(DbType string, ConStr string) (*sql.DB, error) {
 
-	var err error
+	db, err := sql.Open(DbType, ConStr)
 
-	dbc, err = shared.SQLConnect("postgres", ConnString)
+	if err != nil {
+		return db, err
+	}
 
-	return err
+	// Проверяем что база данных доступна
+	err = db.Ping()
 
+	if err != nil {
+		return db, err
+	}
+
+	return db, nil
 }
 
 // PostgreSQLCheckLimitOffset - проверяем значение лимита и сдвига

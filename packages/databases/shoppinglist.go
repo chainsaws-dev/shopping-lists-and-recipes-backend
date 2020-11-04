@@ -1,6 +1,7 @@
 package databases
 
 import (
+	"database/sql"
 	"fmt"
 	"math"
 
@@ -8,7 +9,7 @@ import (
 )
 
 // PostgreSQLShoppingListSelect - получает информацию о списке покупок
-func PostgreSQLShoppingListSelect(page int, limit int) (ShoppingListResponse, error) {
+func PostgreSQLShoppingListSelect(page int, limit int, dbc *sql.DB) (ShoppingListResponse, error) {
 
 	var result ShoppingListResponse
 
@@ -69,7 +70,7 @@ func PostgreSQLShoppingListSelect(page int, limit int) (ShoppingListResponse, er
 }
 
 // PostgreSQLShoppingListInsertUpdate - обновляет существующую запись в списке покупок или вставляет новую в базу данных
-func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
+func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) error {
 
 	sqlreq := `SELECT 
 				COUNT(*)
@@ -108,7 +109,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 		err = ingrow.Scan(&ingID)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 		sqlreq = `SELECT 
@@ -132,7 +133,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 			_, err = dbc.Exec(sqlreq, ingID, ShoppingItem.Amount)
 
 			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
+				return PostgreSQLRollbackIfError(err, false, dbc)
 			}
 		} else {
 			// Обновляем существующую
@@ -141,7 +142,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 			_, err = dbc.Exec(sqlreq, ShoppingItem.Amount, ingID)
 
 			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
+				return PostgreSQLRollbackIfError(err, false, dbc)
 			}
 		}
 	} else {
@@ -153,7 +154,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 		err := ingrow.Scan(&ingID)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 		sqlreq = `SELECT 
@@ -177,7 +178,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 			_, err = dbc.Exec(sqlreq, ingID, ShoppingItem.Amount)
 
 			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
+				return PostgreSQLRollbackIfError(err, false, dbc)
 			}
 		} else {
 			// Обновляем существующую
@@ -186,7 +187,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 			_, err = dbc.Exec(sqlreq, ShoppingItem.Amount, ingID)
 
 			if err != nil {
-				return PostgreSQLRollbackIfError(err, false)
+				return PostgreSQLRollbackIfError(err, false, dbc)
 			}
 		}
 	}
@@ -197,7 +198,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB) error {
 }
 
 // PostgreSQLShoppingListDelete - удаляет запись из списка покупок по имени
-func PostgreSQLShoppingListDelete(IngName string) error {
+func PostgreSQLShoppingListDelete(IngName string, dbc *sql.DB) error {
 
 	sqlreq := `SELECT 
 				COUNT(*)
@@ -261,7 +262,7 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 		_, err = dbc.Exec(sqlreq, ingID)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 		sqlreq = `select setval('"public"."ShoppingList_id_seq"',(select COALESCE(max("id"),1) from "public"."ShoppingList")::bigint);`
@@ -269,7 +270,7 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 		_, err = dbc.Exec(sqlreq)
 
 		if err != nil {
-			return PostgreSQLRollbackIfError(err, false)
+			return PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
 		dbc.Exec("COMMIT")
@@ -283,7 +284,7 @@ func PostgreSQLShoppingListDelete(IngName string) error {
 }
 
 // PostgreSQLShoppingListDeleteAll - удаляет все записи из списка покупок
-func PostgreSQLShoppingListDeleteAll() error {
+func PostgreSQLShoppingListDeleteAll(dbc *sql.DB) error {
 
 	dbc.Exec("BEGIN")
 
@@ -292,7 +293,7 @@ func PostgreSQLShoppingListDeleteAll() error {
 	_, err := dbc.Exec(sqlreq)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	sqlreq = `select setval('"public"."ShoppingList_id_seq"',(select COALESCE(max("id"),1) from "public"."ShoppingList")::bigint);`
@@ -300,7 +301,7 @@ func PostgreSQLShoppingListDeleteAll() error {
 	_, err = dbc.Exec(sqlreq)
 
 	if err != nil {
-		return PostgreSQLRollbackIfError(err, false)
+		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
 	dbc.Exec("COMMIT")

@@ -62,12 +62,11 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 			var resp databases.ShoppingListResponse
 
-			err = setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
 			if len(PageStr) > 0 && len(LimitStr) > 0 {
 
@@ -83,10 +82,10 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				resp, err = databases.PostgreSQLShoppingListSelect(Page, Limit)
+				resp, err = databases.PostgreSQLShoppingListSelect(Page, Limit, dbc)
 
 			} else {
-				resp, err = databases.PostgreSQLShoppingListSelect(0, 0)
+				resp, err = databases.PostgreSQLShoppingListSelect(0, 0, dbc)
 			}
 
 			if shared.HandleInternalServerError(w, err) {
@@ -111,14 +110,13 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			err = setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
-			err = databases.PostgreSQLShoppingListInsertUpdate(Ingredient)
+			err = databases.PostgreSQLShoppingListInsertUpdate(Ingredient, dbc)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
@@ -144,14 +142,13 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				err = setup.ServerSettings.SQL.Connect(role)
-
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				dbc := setup.ServerSettings.SQL.Connect(w, role)
+				if dbc == nil {
 					return
 				}
-				defer setup.ServerSettings.SQL.Disconnect()
+				defer dbc.Close()
 
-				err = databases.PostgreSQLShoppingListDelete(IngName)
+				err = databases.PostgreSQLShoppingListDelete(IngName, dbc)
 
 				if err != nil {
 					if errors.Is(err, databases.ErrShoppingListNotFound) {
@@ -168,14 +165,10 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 			} else {
 
-				err := setup.ServerSettings.SQL.Connect(role)
+				dbc := setup.ServerSettings.SQL.Connect(w, role)
+				defer dbc.Close()
 
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-					return
-				}
-				defer setup.ServerSettings.SQL.Disconnect()
-
-				err = databases.PostgreSQLShoppingListDeleteAll()
+				err = databases.PostgreSQLShoppingListDeleteAll(dbc)
 
 				if shared.HandleInternalServerError(w, err) {
 					return

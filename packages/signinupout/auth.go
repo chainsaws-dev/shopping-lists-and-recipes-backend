@@ -113,8 +113,15 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		// Подключаемся под ролью админа
+		dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
+		if dbc == nil {
+			return
+		}
+		defer dbc.Close()
+
 		// Создаём пользователя
-		err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password, setup.ServerSettings.SMTP.Use)
+		err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password, setup.ServerSettings.SMTP.Use, dbc)
 
 		if err != nil {
 
@@ -132,7 +139,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 		secretauth(w, req, ConvertToSignInRequest(SignUpRequest))
 
 		// Отправляем письмо-подтверждение
-		messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, SignUpRequest.Email, shared.CurrentPrefix+req.Host)
+		messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, SignUpRequest.Email, shared.CurrentPrefix+req.Host, dbc)
 
 	default:
 		shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
@@ -166,22 +173,21 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			// Авторизация под ролью пользователя
-			err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			// Подключаемся под ролью админа
+			dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
-			mailexist, err := databases.PostgreSQLCheckUserMailExists(Email)
+			mailexist, err := databases.PostgreSQLCheckUserMailExists(Email, dbc)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
 			}
 
 			if mailexist {
-				messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host)
+				messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host, dbc)
 
 				shared.HandleSuccessMessage(w, "Письмо отправлено")
 
@@ -222,16 +228,15 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		// Авторизация под ролью пользователя
-		err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
-
-		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+		// Подключаемся под ролью админа
+		dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
+		if dbc == nil {
 			return
 		}
-		defer setup.ServerSettings.SQL.Disconnect()
+		defer dbc.Close()
 
 		// Если токен не протух и существует в базе записали подтверждение пользователя
-		err = databases.PostgreSQLGetTokenConfirmEmail(Token)
+		err = databases.PostgreSQLGetTokenConfirmEmail(Token, dbc)
 
 		if err != nil {
 			if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
@@ -273,22 +278,21 @@ func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			// Авторизация под ролью пользователя
-			err := setup.ServerSettings.SQL.Connect("admin_role_CRUD")
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			// Подключаемся под ролью админа
+			dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
-			mailexist, err := databases.PostgreSQLCheckUserMailExists(Email)
+			mailexist, err := databases.PostgreSQLCheckUserMailExists(Email, dbc)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
 			}
 
 			if mailexist {
-				messages.SendEmailPasswordReset(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host)
+				messages.SendEmailPasswordReset(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host, dbc)
 
 				shared.HandleSuccessMessage(w, "Письмо отправлено")
 			} else {
@@ -333,13 +337,12 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 		NewPassword := req.Header.Get("NewPassword")
 		NewPassword, err = url.QueryUnescape(NewPassword)
 
-		// Авторизация под ролью пользователя
-		err = setup.ServerSettings.SQL.Connect("admin_role_CRUD")
-
-		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+		// Подключаемся под ролью админа
+		dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
+		if dbc == nil {
 			return
 		}
-		defer setup.ServerSettings.SQL.Disconnect()
+		defer dbc.Close()
 
 		Hash, err := authentication.Argon2GenerateHash(NewPassword, &authentication.HashParams)
 
@@ -348,7 +351,7 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// Если токен не протух и существует в базе обновляем пароль пользователя
-		err = databases.PostgreSQLGetTokenResetPassword(Token, Hash)
+		err = databases.PostgreSQLGetTokenResetPassword(Token, Hash, dbc)
 
 		if err != nil {
 			if shared.HandleOtherError(w, err.Error(), err, http.StatusUnauthorized) {
@@ -404,8 +407,6 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var err error
-
 	switch {
 	case req.Method == http.MethodGet:
 
@@ -417,12 +418,11 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 			var usersresp databases.UsersResponse
 
 			// Авторизация под ролью пользователя
-			err = setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
 			if PageStr != "" && LimitStr != "" {
 
@@ -438,7 +438,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				usersresp, err = databases.PostgreSQLUsersSelect(Page, Limit)
+				usersresp, err = databases.PostgreSQLUsersSelect(Page, Limit, dbc)
 
 				if err != nil {
 					if errors.Is(err, databases.ErrLimitOffsetInvalid) {
@@ -496,12 +496,11 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			err = setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
 			// Значение по умолчанию для хеша и пароля
 			Hash := ""
@@ -532,7 +531,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 			}
 
 			// Получаем обновлённого юзера (если новый с GUID)
-			User, err = databases.PostgreSQLUsersInsertUpdate(User, Hash, UpdatePassword, true)
+			User, err = databases.PostgreSQLUsersInsertUpdate(User, Hash, UpdatePassword, true, dbc)
 
 			if err != nil {
 				if errors.Is(err, databases.ErrEmailIsOccupied) {
@@ -560,14 +559,13 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 			if len(UserIDtoDelStr) > 0 {
 
-				UserIDtoDelStr, err = url.QueryUnescape(UserIDtoDelStr)
+				UserIDtoDelStr, err := url.QueryUnescape(UserIDtoDelStr)
 
-				err = setup.ServerSettings.SQL.Connect(role)
-
-				if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+				dbc := setup.ServerSettings.SQL.Connect(w, role)
+				if dbc == nil {
 					return
 				}
-				defer setup.ServerSettings.SQL.Disconnect()
+				defer dbc.Close()
 
 				UserID, err := uuid.FromString(UserIDtoDelStr)
 
@@ -575,7 +573,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				err = databases.PostgreSQLUsersDelete(UserID)
+				err = databases.PostgreSQLUsersDelete(UserID, dbc)
 
 				if err != nil {
 					if errors.Is(err, databases.ErrUserNotFound) {
@@ -784,14 +782,13 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 			// Получаем данные текущего пользователя
 			Email := GetCurrentUserEmail(w, req)
 
-			err = setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
-			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email)
+			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, dbc)
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -823,14 +820,13 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 			User.Email = GetCurrentUserEmail(w, req)
 
 			// Подключаемся к базе данных
-			err = setup.ServerSettings.SQL.Connect(role)
-
-			if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
+			dbc := setup.ServerSettings.SQL.Connect(w, role)
+			if dbc == nil {
 				return
 			}
-			defer setup.ServerSettings.SQL.Disconnect()
+			defer dbc.Close()
 
-			FoundUser, err := databases.PostgreSQLGetUserByEmail(User.Email)
+			FoundUser, err := databases.PostgreSQLGetUserByEmail(User.Email, dbc)
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -899,7 +895,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 			}
 
 			// Получаем обновлённого юзера
-			User, err = databases.PostgreSQLCurrentUserUpdate(User, Hash, UpdatePassword)
+			User, err = databases.PostgreSQLCurrentUserUpdate(User, Hash, UpdatePassword, dbc)
 
 			if err != nil {
 				if errors.Is(err, databases.ErrEmailIsOccupied) {

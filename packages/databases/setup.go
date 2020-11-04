@@ -2,6 +2,7 @@ package databases
 
 import (
 	"crypto/md5"
+	"database/sql"
 	"fmt"
 	"io"
 	"log"
@@ -12,7 +13,7 @@ import (
 )
 
 // PostgreSQLDropDatabase - удаляет базу данных с заданным именем
-func PostgreSQLDropDatabase(dbName string) {
+func PostgreSQLDropDatabase(dbName string, dbc *sql.DB) {
 
 	if dbc != nil {
 
@@ -62,7 +63,7 @@ func PostgreSQLDropDatabase(dbName string) {
 }
 
 // PostgreSQLDropRole - удаляет роль с заданным именем
-func PostgreSQLDropRole(rolename string) {
+func PostgreSQLDropRole(rolename string, dbc *sql.DB) {
 
 	if dbc != nil {
 		var rq int
@@ -97,7 +98,7 @@ func PostgreSQLDropRole(rolename string) {
 }
 
 // PostgreSQLCreateDatabase - создаём базу данных для СУБД PostgreSQL
-func PostgreSQLCreateDatabase(dbName string) {
+func PostgreSQLCreateDatabase(dbName string, dbc *sql.DB) {
 
 	if dbc != nil {
 		log.Println("Идёт создание базы данных...")
@@ -141,7 +142,7 @@ func PostgreSQLCreateDatabase(dbName string) {
 }
 
 // PostgreSQLCreateTables - Создаём таблицы в базе данных
-func PostgreSQLCreateTables() error {
+func PostgreSQLCreateTables(dbc *sql.DB) error {
 
 	log.Println("Проверяем, что база пустая")
 
@@ -189,7 +190,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	log.Println("Создали таблицу Files")
 
@@ -209,7 +210,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	log.Println("Создали таблицу Recipes")
 
@@ -223,7 +224,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	sqlreq = `CREATE TABLE public."RecipesIngredients"
 			(
@@ -239,7 +240,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	log.Println("Создали таблицу RecipesIngredients")
 
@@ -257,7 +258,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	log.Println("Создали таблицу Ingredients")
 
@@ -269,7 +270,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	sqlreq = `ALTER TABLE public."RecipesIngredients"
 			ADD CONSTRAINT "RecipesIngredients_ingredient_id_fkey" FOREIGN KEY (ingredient_id)
@@ -281,7 +282,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	sqlreq = `CREATE TABLE public."ShoppingList"
 			(
@@ -298,7 +299,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	log.Println("Создали таблицу ShoppingList")
 
@@ -312,14 +313,14 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	sqlreq = `CREATE SCHEMA secret
 			AUTHORIZATION postgres;`
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	sqlreq = `CREATE TABLE secret.users
 			(
@@ -340,7 +341,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	log.Println("Создали таблицу users")
 
@@ -357,7 +358,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	log.Println("Создали таблицу hashes")
 
@@ -371,7 +372,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	sqlreq = `CREATE TABLE secret.confirmations
 			(
@@ -393,7 +394,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	log.Println("Создали таблицу confirmations")
 
@@ -421,7 +422,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	log.Println("Создали таблицу password_resets")
 
@@ -449,7 +450,7 @@ func PostgreSQLCreateTables() error {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	log.Println("Создали таблицу totp")
 
@@ -462,7 +463,7 @@ func PostgreSQLCreateTables() error {
 }
 
 // PostgreSQLCreateRole - создание отдельной роли для базы данных
-func PostgreSQLCreateRole(roleName string, password string, dbName string) {
+func PostgreSQLCreateRole(roleName string, password string, dbName string, dbc *sql.DB) {
 
 	rows, err := dbc.Query(`SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE  rolname = $1`, roleName)
 
@@ -491,31 +492,31 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	sqlreq = fmt.Sprintf(`GRANT CONNECT ON DATABASE "%s" TO %s;`, dbName, roleName)
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	sqlreq = fmt.Sprintf(`GRANT USAGE ON SCHEMA %s TO %s;`, "public, secret", roleName)
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	sqlreq = fmt.Sprintf(`GRANT UPDATE, USAGE ON ALL SEQUENCES IN SCHEMA %s TO %s;`, "public, secret", roleName)
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	sqlreq = fmt.Sprintf(`REVOKE CREATE ON SCHEMA %s FROM %s;`, "public, secret", roleName)
 
 	_, err = dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	dbc.Exec("COMMIT")
 
@@ -524,7 +525,7 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string) {
 }
 
 // PostgreSQLGrantRightsToRole - предоставляем права заданной роли для заданной таблицы
-func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []string) {
+func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []string, dbc *sql.DB) {
 
 	dbc.Exec("BEGIN")
 
@@ -536,7 +537,7 @@ func PostgreSQLGrantRightsToRole(roleName string, tableName string, rights []str
 
 	_, err := dbc.Exec(sqlreq)
 
-	PostgreSQLRollbackIfError(err, true)
+	PostgreSQLRollbackIfError(err, true, dbc)
 
 	dbc.Exec("COMMIT")
 
