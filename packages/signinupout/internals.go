@@ -562,9 +562,10 @@ func RegularConfirmTokensCleanup() {
 		if dbc == nil {
 			return
 		}
-		defer dbc.Close()
 
 		databases.PostgreSQLCleanAccessTokens(dbc)
+
+		dbc.Close()
 
 		log.Println("Таблица токенов очищена!")
 
