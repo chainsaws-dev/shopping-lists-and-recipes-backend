@@ -118,7 +118,6 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 		if dbc == nil {
 			return
 		}
-		defer dbc.Close()
 
 		// Создаём пользователя
 		err = admin.CreateUser(&setup.ServerSettings.SQL, SignUpRequest.Name, SignUpRequest.Email, SignUpRequest.Password, setup.ServerSettings.SMTP.Use, dbc)
