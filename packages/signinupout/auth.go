@@ -178,7 +178,6 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 			if dbc == nil {
 				return
 			}
-			defer dbc.Close()
 
 			mailexist, err := databases.PostgreSQLCheckUserMailExists(Email, dbc)
 
@@ -283,7 +282,6 @@ func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 			if dbc == nil {
 				return
 			}
-			defer dbc.Close()
 
 			mailexist, err := databases.PostgreSQLCheckUserMailExists(Email, dbc)
 
