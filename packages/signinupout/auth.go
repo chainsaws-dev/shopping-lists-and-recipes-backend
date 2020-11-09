@@ -840,6 +840,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 			User.IsAdmin = FoundUser.IsAdmin
 			User.Role = FoundUser.Role
 			User.Confirmed = FoundUser.Confirmed
+			User.SecondFactor = FoundUser.SecondFactor
 
 			remai := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 

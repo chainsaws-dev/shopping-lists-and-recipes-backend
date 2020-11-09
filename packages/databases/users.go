@@ -365,10 +365,9 @@ func PostgreSQLCurrentUserUpdate(NewUserInfo User, Hash string, UpdatePassword b
 
 	if UserCount > 0 {
 		// Обновляем существующего
-		sqlreq = `UPDATE secret.users SET (phone, name, confirmed, totp_active) = ($1,$2,$3,$4) WHERE id=$5;`
+		sqlreq = `UPDATE secret.users SET (phone, name) = ($1,$2) WHERE id=$3;`
 
-		_, err = dbc.Exec(sqlreq, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.Confirmed,
-			NewUserInfo.SecondFactor, NewUserInfo.GUID)
+		_, err = dbc.Exec(sqlreq, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.GUID)
 
 		if err != nil {
 			return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)
