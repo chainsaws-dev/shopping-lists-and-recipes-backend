@@ -137,7 +137,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 				if err != nil {
 					if errors.Is(ErrSecretNotSaved, err) {
-						shared.HandleOtherError(w, err.Error(), err, http.StatusUnauthorized)
+						shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
 						return
 					}
 
