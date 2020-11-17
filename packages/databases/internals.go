@@ -26,7 +26,7 @@ var (
 	ErrLimitOffsetInvalid    = errors.New("Limit и Offset приняли недопустимое значение")
 	ErrDatabaseDoesntExist   = errors.New("Базы данных с указанным именем не найдено")
 	ErrRoleDoesntExist       = errors.New("Роли с указанным именем не найдено")
-	ErrNoConnection          = errors.New("Соединение не установлено")
+	ErrNoConnection          = errors.New("База данных недоступна")
 	ErrDatabaseAlreadyExists = errors.New("База данных с указанным именем уже существует")
 	ErrTablesAlreadyExist    = errors.New("База данных содержит таблицы")
 )

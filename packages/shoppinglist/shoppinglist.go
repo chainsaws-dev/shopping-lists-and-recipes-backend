@@ -64,6 +64,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
@@ -112,6 +113,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
@@ -144,6 +146,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 				dbc := setup.ServerSettings.SQL.Connect(w, role)
 				if dbc == nil {
+					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 					return
 				}
 				defer dbc.Close()
@@ -166,6 +169,11 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 			} else {
 
 				dbc := setup.ServerSettings.SQL.Connect(w, role)
+				if dbc == nil {
+					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
+					return
+				}
+
 				defer dbc.Close()
 
 				err = databases.PostgreSQLShoppingListDeleteAll(dbc)

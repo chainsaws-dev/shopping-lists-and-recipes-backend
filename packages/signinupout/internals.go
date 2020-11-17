@@ -106,6 +106,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 	// Подключаемся под ролью гостя
 	dbc := setup.ServerSettings.SQL.ConnectAsGuest()
 	if dbc == nil {
+		shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 		return
 	}
 	defer dbc.Close()

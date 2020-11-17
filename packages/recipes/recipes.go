@@ -72,6 +72,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
@@ -122,6 +123,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
@@ -155,6 +157,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 				dbc := setup.ServerSettings.SQL.Connect(w, role)
 				if dbc == nil {
+					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 					return
 				}
 				defer dbc.Close()
@@ -234,6 +237,7 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()

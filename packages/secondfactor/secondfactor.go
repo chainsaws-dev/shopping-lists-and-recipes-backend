@@ -70,6 +70,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 			// Подключение к базе данных
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
@@ -129,6 +130,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 				// Подключение к базе данных
 				dbc := setup.ServerSettings.SQL.Connect(w, role)
 				if dbc == nil {
+					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 					return
 				}
 				defer dbc.Close()
@@ -172,6 +174,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
@@ -248,6 +251,7 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
@@ -324,6 +328,7 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 
 				dbc := setup.ServerSettings.SQL.Connect(w, role)
 				if dbc == nil {
+					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 					return
 				}
 				defer dbc.Close()

@@ -116,6 +116,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 		// Подключаемся под ролью админа
 		dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
 		if dbc == nil {
+			shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 			return
 		}
 
@@ -175,6 +176,7 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 			// Подключаемся под ролью админа
 			dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 
@@ -229,6 +231,7 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 		// Подключаемся под ролью админа
 		dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
 		if dbc == nil {
+			shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 			return
 		}
 		defer dbc.Close()
@@ -279,6 +282,7 @@ func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 			// Подключаемся под ролью админа
 			dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 
@@ -337,6 +341,7 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 		// Подключаемся под ролью админа
 		dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
 		if dbc == nil {
+			shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 			return
 		}
 		defer dbc.Close()
@@ -417,6 +422,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 			// Авторизация под ролью пользователя
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
@@ -495,6 +501,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
@@ -560,6 +567,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 				dbc := setup.ServerSettings.SQL.Connect(w, role)
 				if dbc == nil {
+					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 					return
 				}
 				defer dbc.Close()
@@ -781,6 +789,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
@@ -819,6 +828,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 			// Подключаемся к базе данных
 			dbc := setup.ServerSettings.SQL.Connect(w, role)
 			if dbc == nil {
+				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
 				return
 			}
 			defer dbc.Close()
