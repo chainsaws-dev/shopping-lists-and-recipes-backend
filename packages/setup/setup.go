@@ -281,7 +281,6 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 	}
 
 	dbc := ServerSettings.SQL.ConnectAsAdmin()
-	defer dbc.Close()
 
 	err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use, dbc)
 
@@ -297,6 +296,8 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 		}
 
 		messages.SendEmailConfirmationLetter(&ServerSettings.SQL, Email, URI, dbc)
+	} else {
+		defer dbc.Close()
 	}
 
 	log.Println("Администратор сайта создан")
