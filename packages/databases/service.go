@@ -1,3 +1,4 @@
+// Package databases - реализует весь функционал необходимый для взаимодействия с базами данных
 package databases
 
 import (
@@ -27,13 +28,13 @@ func PostgreSQLCleanAccessTokens(dbc *sql.DB) error {
 
 	dbc.Exec("BEGIN")
 
-	_, err := dbc.Exec(`DELETE FROM secret.confirmations WHERE "Expires" < now();`)
+	_, err := dbc.Exec(`DELETE FROM secret.confirmations WHERE expires < now();`)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
-	_, err = dbc.Exec(`DELETE FROM secret.password_resets WHERE "Expires" < now();`)
+	_, err = dbc.Exec(`DELETE FROM secret.password_resets WHERE expires < now();`)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false, dbc)
@@ -53,7 +54,7 @@ func PostgreSQLGetTokenConfirmEmail(Token string, dbc *sql.DB) error {
 				secret.confirmations 
 			WHERE 
 				token=$1 
-				AND "Expires" >= now()
+				AND expires >= now()
 			LIMIT 1;`
 
 	row := dbc.QueryRow(sqlreq, Token)
@@ -74,7 +75,7 @@ func PostgreSQLGetTokenConfirmEmail(Token string, dbc *sql.DB) error {
 					secret.confirmations
 				WHERE
 					token=$1 
-					AND "Expires" >= now()
+					AND expires >= now()
 				LIMIT 1;`
 
 		row := dbc.QueryRow(sqlreq, Token)
@@ -122,7 +123,7 @@ func PostgreSQLGetTokenResetPassword(Token string, Hash string, dbc *sql.DB) err
 				secret.password_resets 
 			WHERE 
 				token=$1 
-				AND "Expires" >= now()
+				AND expires >= now()
 			LIMIT 1;`
 
 	row := dbc.QueryRow(sqlreq, Token)
@@ -143,7 +144,7 @@ func PostgreSQLGetTokenResetPassword(Token string, Hash string, dbc *sql.DB) err
 					secret.password_resets
 				WHERE
 					token=$1 
-					AND "Expires" >= now()
+					AND expires >= now()
 				LIMIT 1;`
 
 		row := dbc.QueryRow(sqlreq, Token)
@@ -228,7 +229,7 @@ func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string
 				return PostgreSQLRollbackIfError(err, false, dbc)
 			}
 
-			sqlreq = fmt.Sprintf(`INSERT INTO %v (user_id, token, "Created", "Expires") VALUES ($1,$2,$3,$4);`, TokenTableName)
+			sqlreq = fmt.Sprintf(`INSERT INTO %v (user_id, token, created, expires) VALUES ($1,$2,$3,$4);`, TokenTableName)
 
 			cd := time.Now()
 

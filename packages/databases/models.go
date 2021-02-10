@@ -1,3 +1,4 @@
+// Package databases - реализует весь функционал необходимый для взаимодействия с базами данных
 package databases
 
 import uuid "github.com/satori/go.uuid"
@@ -101,3 +102,16 @@ type TOTPResponse struct {
 	UserID    uuid.UUID
 	Confirmed bool
 }
+
+//
+// Типы для упрощения создания таблиц
+//
+
+// NamedCreateStatement - тип для хранения имени таблицы и кода для её создания в базе
+type NamedCreateStatement struct {
+	TableName       string
+	CreateStatement string
+}
+
+// NamedCreateStatements - массив объектов с названием таблицы и кодом для её создания
+type NamedCreateStatements []NamedCreateStatement
