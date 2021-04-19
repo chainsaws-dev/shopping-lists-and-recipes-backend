@@ -134,6 +134,8 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 			jpeg.Encode(nfp, thumb, &jpeg.Options{Quality: jpeg.DefaultQuality})
 		}
 
+		log.Printf("Превью файла сохранено под именем %s", previewname)
+
 		NewFile.PreviewID = previewname
 
 		NewFile.ID, err = databases.PostgreSQLFileChange(NewFile, dbc)
