@@ -3,6 +3,7 @@ module shopping-lists-and-recipes
 go 1.14
 
 require (
+	github.com/bakape/thumbnailer/v2 v2.6.7
 	github.com/go-mail/mail v2.3.1+incompatible
 	github.com/gorilla/securecookie v1.1.1
 	github.com/lib/pq v1.8.0

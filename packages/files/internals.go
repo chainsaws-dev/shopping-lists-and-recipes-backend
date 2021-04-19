@@ -4,6 +4,8 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"log"
 	"net/http"
@@ -13,6 +15,8 @@ import (
 	"shopping-lists-and-recipes/packages/setup"
 	"shopping-lists-and-recipes/packages/shared"
 	"strings"
+
+	"github.com/bakape/thumbnailer/v2"
 )
 
 // fileUpload - выполняет загрузку файла на сервер и сохранение в файловой системе и информации в базе данных
@@ -21,7 +25,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 	log.Println("Начинаем получение файла...")
 
 	var NewFile databases.File
-
+	// Читаем из формы двоичные данные
 	f, fh, err := req.FormFile("file")
 
 	if shared.HandleInternalServerError(w, err) {
@@ -29,6 +33,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 	}
 	defer f.Close()
 
+	// Подключаемся к базе данных
 	dbc := setup.ServerSettings.SQL.Connect(w, role)
 	if dbc == nil {
 		shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
@@ -49,19 +54,22 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 	if filetype == "image/jpeg" || filetype == "image/jpg" || filetype == "image/gif" ||
 		filetype == "image/png" || filetype == "application/pdf" {
 
+		// На всякий случай сохраняем расширение
 		ext := strings.Split(fh.Filename, ".")[1]
 
 		fn := sha1.New()
 
 		io.Copy(fn, f)
 
-		filename := fmt.Sprintf("%x", fn.Sum(nil)) + "." + ext
+		basename := fmt.Sprintf("%x", fn.Sum(nil))
+
+		filename := basename + "." + ext
 
 		linktofile := strings.Join([]string{"uploads", filename}, "/")
 
-		path := filepath.Join(".", "public", "uploads", filename)
+		pathtofile := filepath.Join(".", "public", "uploads", filename)
 
-		nf, err := os.Create(path)
+		nf, err := os.Create(pathtofile)
 
 		if shared.HandleInternalServerError(w, err) {
 			return NewFile, err
@@ -88,6 +96,46 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 		NewFile.Filetype = ext
 		NewFile.FileID = filename
 
+		// Создаем превьюшку
+		_, thumb, err := thumbnailer.Process(f, thumbnailer.Options{
+			ThumbDims: thumbnailer.Dims{
+				Width:  440,
+				Height: 248,
+			},
+		})
+
+		var previewname string
+
+		if shared.HandleInternalServerError(w, err) {
+			return NewFile, err
+		}
+
+		if strings.ToLower(ext) == "png" {
+			previewname = basename + "pv.png"
+		} else {
+			previewname = basename + "pv.jpg"
+		}
+
+		linktopreview := strings.Join([]string{"uploads", previewname}, "/")
+
+		pathtopreview := filepath.Join(".", "public", "uploads", previewname)
+
+		nfp, err := os.Create(pathtopreview)
+
+		if shared.HandleInternalServerError(w, err) {
+			return NewFile, err
+		}
+
+		defer nfp.Close()
+
+		if strings.ToLower(ext) == "png" {
+			png.Encode(nfp, thumb)
+		} else {
+			jpeg.Encode(nfp, thumb, &jpeg.Options{Quality: jpeg.DefaultQuality})
+		}
+
+		NewFile.PreviewID = previewname
+
 		NewFile.ID, err = databases.PostgreSQLFileChange(NewFile, dbc)
 
 		if err != nil {
@@ -102,6 +150,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 		}
 
 		NewFile.FileID = linktofile
+		NewFile.PreviewID = linktopreview
 
 	} else {
 

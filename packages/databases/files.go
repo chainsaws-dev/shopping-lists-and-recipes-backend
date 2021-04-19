@@ -51,11 +51,11 @@ func PostgreSQLFileInsert(f File, dbc *sql.DB) (int, error) {
 
 	sqlreq := `INSERT INTO 
 			public."Files"
-			(filename, filesize, filetype, file_id) 
+			(filename, filesize, filetype, file_id, preview_id) 
 		  VALUES 
-			($1, $2, $3, $4) RETURNING id;`
+			($1, $2, $3, $4, $5) RETURNING id;`
 
-	row := dbc.QueryRow(sqlreq, f.Filename, f.Filesize, f.Filetype, f.FileID)
+	row := dbc.QueryRow(sqlreq, f.Filename, f.Filesize, f.Filetype, f.FileID, f.PreviewID)
 
 	var curid int
 	err := row.Scan(&curid)
@@ -101,11 +101,11 @@ func PostgreSQLFileUpdate(f File, dbc *sql.DB) (int, error) {
 
 	sqlreq = `UPDATE 
 				public."Files"
-				SET (filename, filesize, filetype, file_id) = ($1, $2, $3, $4)
+				SET (filename, filesize, filetype, file_id, preview_id) = ($1, $2, $3, $4, $5)
 				WHERE
 					file_id=$4;`
 
-	_, err = dbc.Exec(sqlreq, f.Filename, f.Filesize, f.Filetype, f.FileID)
+	_, err = dbc.Exec(sqlreq, f.Filename, f.Filesize, f.Filetype, f.FileID, f.PreviewID)
 
 	if err != nil {
 		return f.ID, PostgreSQLRollbackIfError(err, false, dbc)
@@ -214,7 +214,8 @@ func PostgreSQLFilesSelect(page int, limit int, dbc *sql.DB) (FilesResponse, err
 							files.filename,
 							files.filesize,
 							files.filetype,
-							files.file_id
+							files.file_id,
+							files.preview_id
 						FROM 
 							public."Files" AS files
 						WHERE
@@ -233,12 +234,13 @@ func PostgreSQLFilesSelect(page int, limit int, dbc *sql.DB) (FilesResponse, err
 
 	for rows.Next() {
 		var cur File
-		err = rows.Scan(&cur.ID, &cur.Filename, &cur.Filesize, &cur.Filetype, &cur.FileID)
+		err = rows.Scan(&cur.ID, &cur.Filename, &cur.Filesize, &cur.Filetype, &cur.FileID, &cur.PreviewID)
 		if err != nil {
 			return result, err
 		}
 
 		cur.FileID = strings.Join([]string{"", "uploads", cur.FileID}, "/")
+		cur.PreviewID = strings.Join([]string{"", "uploads", cur.PreviewID}, "/")
 		result.Files = append(result.Files, cur)
 	}
 

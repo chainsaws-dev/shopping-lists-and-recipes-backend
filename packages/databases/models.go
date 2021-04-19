@@ -36,11 +36,12 @@ type RecipesResponse struct {
 
 // File - тип для хранения информации о файле в базе данных
 type File struct {
-	ID       int
-	Filename string
-	Filesize int
-	Filetype string
-	FileID   string
+	ID        int
+	Filename  string
+	Filesize  int
+	Filetype  string
+	FileID    string
+	PreviewID string
 }
 
 // FilesList - тип для хранения списка файлов

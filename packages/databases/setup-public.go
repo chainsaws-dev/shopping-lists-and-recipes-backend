@@ -18,6 +18,7 @@ func PostgreSQLCreateTablesPublic(dbc *sql.DB) {
 				filesize bigint,
 				filetype character varying(50) COLLATE pg_catalog."default",
 				file_id character varying(50) COLLATE pg_catalog."default",
+				preview_id character varying(50) COLLATE pg_catalog."default",
 				CONSTRAINT "Files_pkey" PRIMARY KEY (id)
 			)
 			
