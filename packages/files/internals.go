@@ -51,8 +51,8 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 
 	filetype := http.DetectContentType(buff)
 
-	if filetype == "image/jpeg" || filetype == "image/jpg" || filetype == "image/gif" ||
-		filetype == "image/png" || filetype == "application/pdf" {
+	if filetype == "image/jpeg" || filetype == "image/jpg" ||
+		filetype == "image/gif" || filetype == "image/png" {
 
 		// На всякий случай сохраняем расширение
 		ext := strings.Split(fh.Filename, ".")[1]

@@ -126,7 +126,8 @@ func PostgreSQLFileDelete(fileid int, dbc *sql.DB) error {
 	dbc.Exec("BEGIN")
 
 	sqlreq := `SELECT 
-				file_id
+				file_id,
+				preview_id
 			FROM 
 				public."Files"
 			WHERE id=$1;`
@@ -134,7 +135,8 @@ func PostgreSQLFileDelete(fileid int, dbc *sql.DB) error {
 	row := dbc.QueryRow(sqlreq, fileid)
 
 	var filename string
-	err := row.Scan(&filename)
+	var previewname string
+	err := row.Scan(&filename, &previewname)
 
 	if err != nil {
 		return err
@@ -150,6 +152,35 @@ func PostgreSQLFileDelete(fileid int, dbc *sql.DB) error {
 		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
+	sqlreq = `select setval('"public"."Files_id_seq"',(select COALESCE(max("id"),1) from "public"."Files")::bigint);`
+
+	_, err = dbc.Exec(sqlreq)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false, dbc)
+	}
+
+	// Удаляем сами файлы с диска
+	err = DeleteFileFromDisk(filename)
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false, dbc)
+	}
+
+	err = DeleteFileFromDisk(previewname)
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false, dbc)
+	}
+
+	dbc.Exec("COMMIT")
+
+	return nil
+}
+
+// DeleteFileFromDisk - удаляет файл с жесткого диска сервера
+func DeleteFileFromDisk(filename string) error {
+
+	var err error
+
 	path := strings.Join([]string{".", "public", "uploads", filename}, "/")
 
 	if СheckExists(path) {
@@ -159,16 +190,6 @@ func PostgreSQLFileDelete(fileid int, dbc *sql.DB) error {
 	if err != nil {
 		return err
 	}
-
-	sqlreq = `select setval('"public"."Files_id_seq"',(select COALESCE(max("id"),1) from "public"."Files")::bigint);`
-
-	_, err = dbc.Exec(sqlreq)
-
-	if err != nil {
-		return PostgreSQLRollbackIfError(err, false, dbc)
-	}
-
-	dbc.Exec("COMMIT")
 
 	return nil
 }
