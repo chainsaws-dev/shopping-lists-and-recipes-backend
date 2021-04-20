@@ -4,3 +4,4 @@ key.pem
 public/uploads/*
 logs/*
 shopping-lists-and-recipes
+__debug_bin
