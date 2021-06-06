@@ -22,7 +22,7 @@ PostgreSQL server installed and configured reqired:
 2. Install PostgreSQL
 `sudo apt-get update`
 `sudo apt -y install postgresql-13 postgresql-client-13`
-`sudo service postgresql start` or `pg_ctlcluster 12 main start`
+`sudo service postgresql start` or `pg_ctlcluster 13 main start`
 
 3. Change default password for postgres 
 `sudo su - postgres`
