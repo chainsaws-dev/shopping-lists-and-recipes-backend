@@ -19,8 +19,8 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrDeleteInterrupted   = errors.New("Удаление базы данных, таблиц и ролей завершилось с ошибкой")
-	ErrCreationInterrupted = errors.New("Создание базы данных, таблиц и ролей завершилось с ошибкой")
+	ErrDeleteInterrupted   = errors.New("удаление базы данных, таблиц и ролей завершилось с ошибкой")
+	ErrCreationInterrupted = errors.New("создание базы данных, таблиц и ролей завершилось с ошибкой")
 )
 
 // ServerSettings - общие настройки сервера
@@ -132,6 +132,12 @@ func InitialSettings(initpar InitParams) {
 
 		messages.SetCredentials(ServerSettings.SMTP)
 
+		DbHost := os.Getenv("DATABASE_HOST")
+
+		if len(DbHost) > 0 {
+			ServerSettings.SQL.Addr = DbHost
+		}
+
 		log.Println("Файл настроек settings.json успешно прочитан")
 
 		// Удаляем базу данных и роли
@@ -227,7 +233,6 @@ func WriteToJSON() {
 	shared.WriteErrToLog(err)
 
 	setfile, err := os.Create("settings.json")
-	defer setfile.Close()
 
 	shared.WriteErrToLog(err)
 

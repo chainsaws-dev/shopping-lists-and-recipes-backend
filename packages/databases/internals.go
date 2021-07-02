@@ -11,25 +11,25 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrFirstNotDelete        = errors.New("Первая запись в списке файлов техническая и не подлежит удалению")
-	ErrFirstNotUpdate        = errors.New("Первая запись в списке файлов техническая и не подлежит изменению")
-	ErrRecipeNotFound        = errors.New("В таблице рецептов не найден указанный id")
-	ErrShoppingListNotFound  = errors.New("Не найдено ни одной записи в списке покупок с указанным названием")
-	ErrEmptyPassword         = errors.New("Не допустимо использование паролей с длинной менее шести символов")
-	ErrNoUserWithEmail       = errors.New("Электронная почта не найдена")
-	ErrNoHashForUser         = errors.New("Хеш пароля не найден")
-	ErrEmailIsOccupied       = errors.New("Указанный адрес электронной почты уже занят")
-	ErrUserNotFound          = errors.New("В таблице пользователей не найден указанный id")
-	ErrUserTOTPNotFound      = errors.New("В таблице секретов для двухфакторной авторизации не найден указанный id")
-	ErrTOTPConfirmed         = errors.New("В таблице секретов для двухфакторной авторизации указанный id уже привязан")
-	ErrEmailNotConfirmed     = errors.New("Подтвердите адрес электронной почты")
-	ErrTokenExpired          = errors.New("Токен истёк или не существует")
-	ErrLimitOffsetInvalid    = errors.New("Limit и Offset приняли недопустимое значение")
-	ErrDatabaseDoesntExist   = errors.New("Базы данных с указанным именем не найдено")
-	ErrRoleDoesntExist       = errors.New("Роли с указанным именем не найдено")
-	ErrNoConnection          = errors.New("База данных недоступна")
-	ErrDatabaseAlreadyExists = errors.New("База данных с указанным именем уже существует")
-	ErrTablesAlreadyExist    = errors.New("База данных содержит таблицы")
+	ErrFirstNotDelete        = errors.New("первая запись в списке файлов техническая и не подлежит удалению")
+	ErrFirstNotUpdate        = errors.New("первая запись в списке файлов техническая и не подлежит изменению")
+	ErrRecipeNotFound        = errors.New("в таблице рецептов не найден указанный id")
+	ErrShoppingListNotFound  = errors.New("не найдено ни одной записи в списке покупок с указанным названием")
+	ErrEmptyPassword         = errors.New("не допустимо использование паролей с длинной менее шести символов")
+	ErrNoUserWithEmail       = errors.New("электронная почта не найдена")
+	ErrNoHashForUser         = errors.New("хеш пароля не найден")
+	ErrEmailIsOccupied       = errors.New("указанный адрес электронной почты уже занят")
+	ErrUserNotFound          = errors.New("в таблице пользователей не найден указанный id")
+	ErrUserTOTPNotFound      = errors.New("в таблице секретов для двухфакторной авторизации не найден указанный id")
+	ErrTOTPConfirmed         = errors.New("в таблице секретов для двухфакторной авторизации указанный id уже привязан")
+	ErrEmailNotConfirmed     = errors.New("подтвердите адрес электронной почты")
+	ErrTokenExpired          = errors.New("токен истёк или не существует")
+	ErrLimitOffsetInvalid    = errors.New("limit и offset приняли недопустимое значение")
+	ErrDatabaseDoesntExist   = errors.New("базы данных с указанным именем не найдено")
+	ErrRoleDoesntExist       = errors.New("роли с указанным именем не найдено")
+	ErrNoConnection          = errors.New("база данных недоступна")
+	ErrDatabaseAlreadyExists = errors.New("база данных с указанным именем уже существует")
+	ErrTablesAlreadyExist    = errors.New("база данных содержит таблицы")
 )
 
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
@@ -38,10 +38,10 @@ var (
 func PostgreSQLGetConnString(Login string, Password string, Addr string, DbName string, initialsetup bool) string {
 
 	if initialsetup {
-		return fmt.Sprintf("postgres://%v:%v@%v/", Login, Password, Addr)
+		return fmt.Sprintf("postgres://%v:%v@%v/?sslmode=disable", Login, Password, Addr)
 	}
 
-	return fmt.Sprintf("postgres://%v:%v@%v/%v", Login, Password, Addr, DbName)
+	return fmt.Sprintf("postgres://%v:%v@%v/%v?sslmode=disable", Login, Password, Addr, DbName)
 
 }
 

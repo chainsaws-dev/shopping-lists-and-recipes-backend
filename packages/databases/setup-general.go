@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/lib/pq"
-	_ "github.com/lib/pq" // Драйвер PostgreSQL
 )
 
 // Schemas - список схем, которые должны быть созданы перед созданием таблиц базы
@@ -86,7 +85,8 @@ func PostgreSQLCreateDatabase(dbName string, dbc *sql.DB) {
 									LC_COLLATE = 'C.UTF-8'
 									LC_CTYPE = 'C.UTF-8'
 									TABLESPACE = pg_default
-									CONNECTION LIMIT = -1;`, dbName)
+									CONNECTION LIMIT = -1
+									TEMPLATE = template0;`, dbName)
 
 		_, err = dbc.Exec(sqlreq)
 

@@ -21,7 +21,7 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrWrongArgumentFormat = errors.New("Неверный формат данных для логина: ожидатся -admincred:example@example.ru@@password")
+	ErrWrongArgumentFormat = errors.New("неверный формат данных для логина: ожидатся -admincred:example@example.ru@@password")
 )
 
 // main - главная точка входа в программу
@@ -189,8 +189,15 @@ func GetRunArgs() setup.InitParams {
 					initpar.AdminLogin = lp[0]
 					initpar.AdminPass = lp[1]
 				} else {
+					log.Println(lp)
 					shared.WriteErrToLog(ErrWrongArgumentFormat)
 				}
+			}
+
+			admincred := os.Getenv("ADMIN_CRED")
+
+			if len(admincred) > 0 {
+				log.Println(admincred)
 			}
 
 			// Для пакетного режима
