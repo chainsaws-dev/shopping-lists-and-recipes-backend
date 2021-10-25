@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"shopping-lists-and-recipes/internal/databases"
+	"shopping-lists-and-recipes/internal/setup"
 	"shopping-lists-and-recipes/packages/admin"
 	"shopping-lists-and-recipes/packages/authentication"
-	"shopping-lists-and-recipes/packages/databases"
 	"shopping-lists-and-recipes/packages/messages"
-	"shopping-lists-and-recipes/packages/setup"
 	"shopping-lists-and-recipes/packages/shared"
 	"strconv"
 

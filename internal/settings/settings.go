@@ -6,7 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"shopping-lists-and-recipes/packages/databases"
+	"shopping-lists-and-recipes/internal/databases"
 	"shopping-lists-and-recipes/packages/randompassword"
 	"shopping-lists-and-recipes/packages/shared"
 )

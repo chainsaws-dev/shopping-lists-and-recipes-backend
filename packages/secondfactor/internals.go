@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"image/png"
+	"shopping-lists-and-recipes/internal/databases"
 	"shopping-lists-and-recipes/packages/aesencryptor"
-	"shopping-lists-and-recipes/packages/databases"
 
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"

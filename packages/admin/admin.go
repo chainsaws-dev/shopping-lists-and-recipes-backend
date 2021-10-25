@@ -4,14 +4,14 @@ package admin
 import (
 	"database/sql"
 	"errors"
+	"shopping-lists-and-recipes/internal/databases"
+	"shopping-lists-and-recipes/internal/settings"
 	"shopping-lists-and-recipes/packages/authentication"
-	"shopping-lists-and-recipes/packages/databases"
-	"shopping-lists-and-recipes/packages/settings"
 )
 
 // Список типовых ошибок
 var (
-	ErrBasicFieldsNotFilled = errors.New("Не заполнены обязательные поля, невозможно создать пользователя")
+	ErrBasicFieldsNotFilled = errors.New("не заполнены обязательные поля, невозможно создать пользователя")
 )
 
 // CreateAdmin - создаём пользователя для администратора

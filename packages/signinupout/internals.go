@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"time"
 
+	"shopping-lists-and-recipes/internal/databases"
+	"shopping-lists-and-recipes/internal/setup"
 	"shopping-lists-and-recipes/packages/authentication"
-	"shopping-lists-and-recipes/packages/databases"
 	"shopping-lists-and-recipes/packages/securecookies"
-	"shopping-lists-and-recipes/packages/setup"
 	"shopping-lists-and-recipes/packages/shared"
 
 	"github.com/gorilla/securecookie"
@@ -561,6 +561,7 @@ func RegularConfirmTokensCleanup() {
 		// Подключаемся под ролью админа
 		dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
 		if dbc == nil {
+			log.Println(databases.ErrNoConnection)
 			return
 		}
 

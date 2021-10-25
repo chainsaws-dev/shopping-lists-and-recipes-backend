@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"shopping-lists-and-recipes/packages/databases"
-	"shopping-lists-and-recipes/packages/setup"
+	"shopping-lists-and-recipes/internal/databases"
+	"shopping-lists-and-recipes/internal/setup"
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/signinupout"
 )

@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"shopping-lists-and-recipes/internal/databases"
+	"shopping-lists-and-recipes/internal/settings"
 	"shopping-lists-and-recipes/packages/authentication"
-	"shopping-lists-and-recipes/packages/databases"
-	"shopping-lists-and-recipes/packages/settings"
 	"text/template"
 
 	send "github.com/go-mail/mail"
