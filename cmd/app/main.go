@@ -182,22 +182,7 @@ func GetRunArgs() setup.InitParams {
 			// Работает при -makedb
 			// Позволяет передать логин и пароль начального администратора через параметры командной строки
 			if strings.HasPrefix(runarg, "-admincred:") {
-				basestring := strings.ReplaceAll(runarg, "-admincred:", "")
-				lp := strings.Split(basestring, "@@")
-
-				if len(lp) == 2 {
-					initpar.AdminLogin = lp[0]
-					initpar.AdminPass = lp[1]
-				} else {
-					log.Println(lp)
-					shared.WriteErrToLog(ErrWrongArgumentFormat)
-				}
-			}
-
-			admincred := os.Getenv("ADMIN_CRED")
-
-			if len(admincred) > 0 {
-				log.Println(admincred)
+				SetAdminCredentials(runarg, &initpar)
 			}
 
 			// Для пакетного режима
@@ -206,8 +191,33 @@ func GetRunArgs() setup.InitParams {
 			if strings.HasPrefix(runarg, "-url:") {
 				initpar.WebsiteURL = strings.ReplaceAll(runarg, "-url:", "")
 			}
+
 		}
 	}
 
+	// Для работы через докер
+	admincred := os.Getenv("ADMIN_CRED")
+	if len(admincred) > 0 {
+		SetAdminCredentials(admincred, &initpar)
+	}
+
+	WebUrl := os.Getenv("URL")
+	if len(WebUrl) > 0 {
+		initpar.WebsiteURL = WebUrl
+	}
+
 	return initpar
+}
+
+func SetAdminCredentials(runarg string, initpar *setup.InitParams) {
+	basestring := strings.ReplaceAll(runarg, "-admincred:", "")
+	lp := strings.Split(basestring, "@@")
+
+	if len(lp) == 2 {
+		initpar.AdminLogin = lp[0]
+		initpar.AdminPass = lp[1]
+	} else {
+		log.Println(lp)
+		shared.WriteErrToLog(ErrWrongArgumentFormat)
+	}
 }

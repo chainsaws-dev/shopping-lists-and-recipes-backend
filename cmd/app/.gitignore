@@ -6,7 +6,3 @@ logs/*
 shopping-lists-and-recipes
 __debug_bin
 postgres-data
-.env
-.dockerignore
-##docker-compose.yml
-##Dockerfile

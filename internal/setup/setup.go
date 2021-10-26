@@ -136,6 +136,8 @@ func InitialSettings(initpar InitParams) {
 
 		if len(DbHost) > 0 {
 			ServerSettings.SQL.Addr = DbHost
+		} else {
+			ServerSettings.SQL.Addr = "localhost"
 		}
 
 		log.Println("Файл настроек settings.json успешно прочитан")

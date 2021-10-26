@@ -68,52 +68,19 @@ To build in project root directory run the following:
 `go tool cover -html=c.out`
 
 
-## Dockerfile
+## Docker-compose
 
-    FROM golang:1.16-alpine
-    WORKDIR /go/src/shopping-lists-and-recipes
-    ENV DATABASE_HOST db
-    COPY . . 
-    RUN go get -d -v ./...
-    RUN apk update
-    RUN apk add ffmpeg-dev build-base
-    RUN go install 
-    RUN rm -rf /go/src/*
-    WORKDIR /go/bin
-    COPY ./public ./public
-    COPY ./logs ./logs
-    COPY ./settings.json ./settings.json
-    EXPOSE 10443
-    EXPOSE 8080
-    CMD ["./shopping-lists-and-recipes", "-clean", "-makedb", "-noresetroles", "-admincred:example@example.com@@password", "-url:http://localhost:8080"]
+1. Create .env file with folowing contents:
+`DATABASE_USERNAME=ExampleDBUsername
+DATABASE_PASSWORD=ExamplePassword
+WEB_ADMIN_CRED=example@example.com@@examplepassword
+WEB_URL=http://localhost:8080`
 
-## Docker-compose.yml
+2. In project root folder run:
+`sudo docker-compose up -d` - to start database and webservice containers
+`sudo docker-compose up --build -d` - to rebuild docker images and run database and webservice containers
 
-version: "3.7"
-services:
-    db:
-        image: postgres:13
-        environment: 
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: password
-            LC_COLLATE: 'C.UTF-8'
-        restart: unless-stopped
-        volumes:
-        - ./postgres-data:/var/lib/postgresql/data
-        ports:
-        - '5432:5432'
-    web:
-        image: shopping-lists-and-recipes_web:latest
-        build:
-            context: .
-            dockerfile: Dockerfile      
-        depends_on:
-        - db        
-        restart: unless-stopped         
-        volumes:
-        - ./logs:/go/bin/logs
-        - ./public:/go/bin/public
-        - ./settings.json:/go/bin/settings.json
-        ports:
-        - 8080:8080
-        - 10443:10443
+`sudo docker-compose down --volumes` - to stop database and webservice containers
+
+
+

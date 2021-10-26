@@ -1,0 +1,35 @@
+version: "3.7"
+services:
+    db:
+        image: postgres:13
+        environment: 
+            POSTGRES_USER: ${DATABASE_USERNAME}
+            POSTGRES_PASSWORD: ${DATABASE_PASSWORD} 
+            LC_COLLATE: 'C.UTF-8'
+            #LANG: 'ru_RU.UTF-8'
+            #LANGUAGE: 'ru_RU.UTF-8'            
+            #LC_CTYPE: 'ru_RU.UTF-8' 
+        restart: unless-stopped
+        volumes:
+        - ./cmd/app/postgres-data:/var/lib/postgresql/data
+        ports:
+        - '5432:5432'
+    web:
+        image: shopping-lists-and-recipes_web:latest
+        environment: 
+            ADMIN_CRED: ${WEB_ADMIN_CRED}
+            URL: ${WEB_URL}
+        build:
+            context: .
+            dockerfile: Dockerfile     
+        depends_on:
+        - db        
+        restart: unless-stopped         
+        volumes:
+        - ./cmd/app/logs:/go/bin/logs
+        - ./cmd/app/public:/go/bin/public
+        - ./cmd/app/settings.json:/go/bin/settings.json
+        ports:
+        - 8080:8080
+        - 10443:10443
+
