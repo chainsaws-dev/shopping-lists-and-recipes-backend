@@ -1,4 +1,4 @@
-FROM golang:1.17-alpine
+FROM golang:1.18-alpine
 WORKDIR /go/src/shopping-lists-and-recipes
 ENV DATABASE_HOST db
 COPY . . 
