@@ -1,10 +1,9 @@
 FROM golang:1.18-alpine
 WORKDIR /go/src/shopping-lists-and-recipes
 ENV DATABASE_HOST db
+RUN apk add --no-cache ffmpeg-dev build-base git
 COPY . . 
 RUN go get -d -v ./...
-RUN apk update
-RUN apk add ffmpeg-dev build-base
 WORKDIR /go/src/shopping-lists-and-recipes/cmd/app
 RUN go build -o $GOPATH/bin/shopping-lists-and-recipes
 RUN rm -rf /go/src/*
