@@ -63,7 +63,6 @@ func main() {
 	if setup.ServerSettings.SQL.Connected == false {
 		setup.ServerSettings.SQL.Connect(false)
 	}
-	defer setup.ServerSettings.SQL.Disconnect()
 
 	ServerSetup()
 }
@@ -95,6 +94,7 @@ func ServerSetup() {
 			err := srv.ListenAndServeTLS("cert.pem", "key.pem")
 
 			if !errors.Is(err, http.ErrServerClosed) {
+				setup.ServerSettings.SQL.Disconnect()
 				log.Fatalln(err)
 			}
 
@@ -105,6 +105,7 @@ func ServerSetup() {
 			err := srv.ListenAndServe()
 
 			if !errors.Is(err, http.ErrServerClosed) {
+				setup.ServerSettings.SQL.Disconnect()
 				log.Fatalln(err)
 			}
 		}
@@ -127,6 +128,8 @@ func ServerSetup() {
 	if err != nil {
 		log.Println(err)
 	}
+
+	setup.ServerSettings.SQL.Disconnect()
 
 	log.Println("Завершение работы сервера...")
 
