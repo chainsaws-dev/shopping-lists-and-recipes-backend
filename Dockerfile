@@ -1,4 +1,6 @@
 FROM golang:1.18-alpine
+EXPOSE 10443
+EXPOSE 8080
 WORKDIR /go/src/shopping-lists-and-recipes
 ENV DATABASE_HOST db
 RUN apk add --no-cache ffmpeg-dev build-base git
@@ -11,6 +13,4 @@ WORKDIR $GOPATH/bin
 COPY ./cmd/app/public ./public
 COPY ./cmd/app/logs ./logs
 COPY ./cmd/app/settings.json ./settings.json
-EXPOSE 10443
-EXPOSE 8080
-CMD ["./shopping-lists-and-recipes", "-clean", "-makedb", "-noresetroles"]
+CMD ["./shopping-lists-and-recipes", "-clean", "-makedb"]
