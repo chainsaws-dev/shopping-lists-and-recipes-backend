@@ -2,12 +2,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"shopping-lists-and-recipes/internal/recipes"
 	"shopping-lists-and-recipes/internal/setup"
 	"shopping-lists-and-recipes/internal/shoppinglist"
@@ -17,6 +19,10 @@ import (
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/signinupout"
 	"strings"
+	"syscall"
+	"time"
+
+	"github.com/gorilla/mux"
 )
 
 // Список типовых ошибок
@@ -49,6 +55,85 @@ func main() {
 	// Иначе просто читаем данные из файла settings.json
 	setup.InitialSettings(initpar)
 
+	if initpar.CleanTokens {
+		go signinupout.RegularConfirmTokensCleanup()
+	}
+
+	// Создаём пул соединений c СУБД
+	if setup.ServerSettings.SQL.Connected == false {
+		setup.ServerSettings.SQL.Connect(false)
+	}
+	defer setup.ServerSettings.SQL.Disconnect()
+
+	ServerSetup()
+}
+
+func ServerSetup() {
+
+	http.Handle("/api/v1/", InitHandlers())
+
+	srv := &http.Server{
+		Addr: "0.0.0.0:8080",
+		// Хорошая практика устанавливать таймауты для избежания атак Slowloris
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+		Handler:      gzipwrap.MakeGzipHandler(http.DefaultServeMux),
+	}
+
+	// Запускаем сервер в отдельной горутине, чтобы он не блокировал исполнение
+	go func() {
+		// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
+		if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
+			//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
+			shared.CurrentPrefix = "https://"
+			log.Println("Запущен SSL веб сервер")
+			srv.Addr = fmt.Sprintf(":%v", setup.ServerSettings.HTTPS)
+
+			err := srv.ListenAndServeTLS("cert.pem", "key.pem")
+
+			if !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalln(err)
+			}
+
+		} else {
+			shared.CurrentPrefix = "http://"
+			log.Println("Запущен веб сервер без шифрования")
+			srv.Addr = fmt.Sprintf(":%v", setup.ServerSettings.HTTP)
+			err := srv.ListenAndServe()
+
+			if !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalln(err)
+			}
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	// Завершение работы сервера вызывается только по сигналу SIGINT (Ctrl+C)
+	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) не будут обработаны.
+	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	// Блокируем выполнение до получения сигнала
+	<-c
+
+	// Создаём срок ожидания завершения
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	err := srv.Shutdown(ctx)
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	log.Println("Завершение работы сервера...")
+
+	os.Exit(0)
+}
+
+// InitFrontendHandlers - инициализирует сервер по умолчанию для раздачи фронтенда и файлов
+func InitFrontendHandlers() {
+
 	// Устанавливаем пути, по которым будут происходить http запросы
 
 	// Раздаём файл сервером фронтенд и загрузки
@@ -64,61 +149,48 @@ func main() {
 	http.HandleFunc("/reset-password/", RedirectToIndex)
 	http.HandleFunc("/profile/", RedirectToIndex)
 	http.HandleFunc("/totp/", RedirectToIndex)
+}
+
+// InitHandlers - инициализирует guerilla mux handler
+func InitHandlers() http.Handler {
+
+	r := mux.NewRouter()
+
+	// Устанавливаем пути, по которым будут происходить http запросы
 
 	// REST API
 
 	// Рецепты
-	http.HandleFunc("/api/Recipes", recipes.HandleRecipes)
-	http.HandleFunc("/api/Recipes/Search", recipes.HandleRecipesSearch)
+	r.HandleFunc("/api/v1/Recipes", recipes.HandleRecipes).Methods("GET", "POST", "DELETE")
+	r.HandleFunc("/api/v1/Recipes/Search", recipes.HandleRecipesSearch).Methods("GET")
 
 	// Файлы
-	http.HandleFunc("/api/Files", files.HandleFiles)
+	r.HandleFunc("/api/v1/Files", files.HandleFiles).Methods("GET", "POST", "DELETE")
 
 	// Список покупок
-	http.HandleFunc("/api/ShoppingList", shoppinglist.HandleShoppingList)
+	r.HandleFunc("/api/v1/ShoppingList", shoppinglist.HandleShoppingList).Methods("GET", "POST", "DELETE")
 
 	// Авторизация и регистрация
-	http.HandleFunc("/api/Accounts/SignUp", signinupout.SignUp)
-	http.HandleFunc("/api/Accounts/SignIn", signinupout.SignIn)
+	r.HandleFunc("/api/v1/Accounts/SignUp", signinupout.SignUp).Methods("POST")
+	r.HandleFunc("/api/v1/Accounts/SignIn", signinupout.SignIn).Methods("POST")
 
 	// Второй фактор
-	http.HandleFunc("/api/TOTP/Check", secondfactor.CheckSecondFactor)
-	http.HandleFunc("/api/TOTP/Settings", secondfactor.SecondFactor)
-	http.HandleFunc("/api/TOTP/Qr.png", secondfactor.GetQRCode)
+	r.HandleFunc("/api/v1/TOTP/Check", secondfactor.CheckSecondFactor).Methods("POST")
+	r.HandleFunc("/api/v1/TOTP/Settings", secondfactor.SecondFactor).Methods("GET", "POST", "DELETE")
+	r.HandleFunc("/api/v1/TOTP/Qr.png", secondfactor.GetQRCode).Methods("GET")
 
 	// Админка
-	http.HandleFunc("/api/Users", signinupout.HandleUsers)
-	http.HandleFunc("/api/Users/Current", signinupout.CurrentUser)
-	http.HandleFunc("/api/Sessions", signinupout.HandleSessions)
+	r.HandleFunc("/api/v1/Users", signinupout.HandleUsers).Methods("GET", "POST", "DELETE")
+	r.HandleFunc("/api/v1/Users/Current", signinupout.CurrentUser).Methods("GET", "POST")
+	r.HandleFunc("/api/v1/Sessions", signinupout.HandleSessions).Methods("GET", "DELETE")
 
 	// Сервис
-	http.HandleFunc("/api/ConfirmEmail", signinupout.ConfirmEmail)
-	http.HandleFunc("/api/ConfirmEmail/Send", signinupout.ResendEmail)
-	http.HandleFunc("/api/PasswordReset", signinupout.ResetPassword)
-	http.HandleFunc("/api/PasswordReset/Send", signinupout.RequestResetEmail)
+	r.HandleFunc("/api/v1/ConfirmEmail", signinupout.ConfirmEmail).Methods("POST")
+	r.HandleFunc("/api/v1/ConfirmEmail/Send", signinupout.ResendEmail).Methods("POST")
+	r.HandleFunc("/api/v1/PasswordReset", signinupout.ResetPassword).Methods("POST")
+	r.HandleFunc("/api/v1/PasswordReset/Send", signinupout.RequestResetEmail).Methods("POST")
 
-	if initpar.CleanTokens {
-		go signinupout.RegularConfirmTokensCleanup()
-	}
-
-	// Создаём пул соединений
-	if setup.ServerSettings.SQL.Connected == false {
-		setup.ServerSettings.SQL.Connect(false)
-	}
-	defer setup.ServerSettings.SQL.Disconnect()
-
-	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
-	if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
-		//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
-		shared.CurrentPrefix = "https://"
-		log.Println("Запущен SSL веб сервер")
-		log.Fatalln(http.ListenAndServeTLS(fmt.Sprintf(":%v", setup.ServerSettings.HTTPS), "cert.pem", "key.pem", gzipwrap.MakeGzipHandler(http.DefaultServeMux)))
-	} else {
-		shared.CurrentPrefix = "http://"
-		log.Println("Запущен веб сервер без шифрования")
-		log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%v", setup.ServerSettings.HTTP), gzipwrap.MakeGzipHandler(http.DefaultServeMux)))
-	}
-
+	return r
 }
 
 // RedirectToIndex - перенаправляет на файл index.html
