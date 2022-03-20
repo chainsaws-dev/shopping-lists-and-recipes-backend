@@ -70,7 +70,9 @@ func main() {
 
 func ServerSetup() {
 
-	http.Handle("/api/v1/", InitHandlers())
+	InitFrontendHandlers()
+
+	http.Handle("/api/v1/", InitAPIHandlersV1())
 
 	srv := &http.Server{
 		Addr: "0.0.0.0:8080",
@@ -152,7 +154,7 @@ func InitFrontendHandlers() {
 }
 
 // InitHandlers - инициализирует guerilla mux handler
-func InitHandlers() http.Handler {
+func InitAPIHandlersV1() http.Handler {
 
 	r := mux.NewRouter()
 
