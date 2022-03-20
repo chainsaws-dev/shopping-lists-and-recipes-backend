@@ -68,13 +68,6 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 
 		var FilesResponse databases.FilesResponse
 
-		dbc := setup.ServerSettings.SQL.Connect(w, role)
-		if dbc == nil {
-			shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-			return
-		}
-		defer dbc.Close()
-
 		if PageStr != "" && LimitStr != "" {
 			Page, err := strconv.Atoi(PageStr)
 
@@ -88,7 +81,7 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			FilesResponse, err = databases.PostgreSQLFilesSelect(Page, Limit, dbc)
+			FilesResponse, err = databases.PostgreSQLFilesSelect(Page, Limit, setup.ServerSettings.SQL.ConnPool)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
@@ -125,13 +118,6 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 
 		FileID := req.Header.Get("FileID")
 
-		dbc := setup.ServerSettings.SQL.Connect(w, role)
-		if dbc == nil {
-			shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-			return
-		}
-		defer dbc.Close()
-
 		if len(FileID) > 0 {
 
 			ID, err := strconv.Atoi(FileID)
@@ -141,7 +127,7 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 			}
 
 			if ID > 1 {
-				err = databases.PostgreSQLFileDelete(ID, dbc)
+				err = databases.PostgreSQLFileDelete(ID, setup.ServerSettings.SQL.ConnPool)
 			}
 
 			if err != nil {

@@ -64,9 +64,19 @@ func PostgreSQLRollbackIfError(err error, critical bool, dbc *pgxpool.Pool) erro
 	return nil
 }
 
-// PostgreSQLConnect - подключаемся к базе данных
-func PostgreSQLConnect(ConnectionString string) (dbc *pgxpool.Pool, err error) {
-	return pgxpool.Connect(context.Background(), ConnectionString)
+// PostgreSQLConnect - подключаемся к базе данных (создаём пул соединений)
+func PostgreSQLConnect(ConnectionString string) (dbc *pgxpool.Pool) {
+	dbc, err := pgxpool.Connect(context.Background(), ConnectionString)
+	if err != nil {
+		log.Fatalln(err)
+		return nil
+	}
+	return dbc
+}
+
+// PostgreSQLDisconnect - отключаемся от базы данных (убиваем пул соединений)
+func PostgreSQLDisconnect(dbc *pgxpool.Pool) {
+	dbc.Close()
 }
 
 // PostgreSQLCheckLimitOffset - проверяем значение лимита и сдвига

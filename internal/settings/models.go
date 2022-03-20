@@ -1,5 +1,7 @@
 package settings
 
+import "github.com/jackc/pgx/v4/pgxpool"
+
 // WServerSettings - настройки веб сервера
 type WServerSettings struct {
 	HTTP  int
@@ -20,12 +22,13 @@ type CredSMTP struct {
 
 // SQLServer - данные для подключения к SQL серверу
 type SQLServer struct {
-	Type   string
-	DbName string
-	Addr   string
-	Login  string
-	Pass   string
-	Roles  SQLRoles
+	Type     string
+	DbName   string
+	Addr     string
+	Login    string
+	Pass     string
+	Roles    SQLRoles
+	ConnPool *pgxpool.Pool
 }
 
 // SQLRoles - список ролей которые должны быть созданы на сервере
@@ -35,22 +38,6 @@ type SQLRoles []SQLRole
 type SQLRole struct {
 	Name    string
 	Desc    string
-	Login   string
-	Pass    string
-	TRules  SQLTRules
 	Default bool
 	Admin   bool
-}
-
-// SQLTRules - список прав на отдельные таблицы
-type SQLTRules []TRule
-
-// TRule - права для конкретной таблицы
-type TRule struct {
-	TName      string
-	SELECT     bool
-	INSERT     bool
-	UPDATE     bool
-	DELETE     bool
-	REFERENCES bool
 }

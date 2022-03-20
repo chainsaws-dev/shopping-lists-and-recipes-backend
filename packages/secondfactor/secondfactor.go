@@ -67,15 +67,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 			Email := signinupout.GetCurrentUserEmail(w, req)
 
-			// Подключение к базе данных
-			dbc := setup.ServerSettings.SQL.Connect(w, role)
-			if dbc == nil {
-				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-				return
-			}
-			defer dbc.Close()
-
-			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, dbc)
+			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, setup.ServerSettings.SQL.ConnPool)
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -88,7 +80,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			Totp, err := databases.PostgreSQLGetSecretByUserID(FoundUser.GUID, dbc)
+			Totp, err := databases.PostgreSQLGetSecretByUserID(FoundUser.GUID, setup.ServerSettings.SQL.ConnPool)
 
 			if err != nil {
 				if errors.Is(databases.ErrUserTOTPNotFound, err) {
@@ -127,15 +119,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				// Подключение к базе данных
-				dbc := setup.ServerSettings.SQL.Connect(w, role)
-				if dbc == nil {
-					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-					return
-				}
-				defer dbc.Close()
-
-				err = EnableTOTP(PassStr, CurUser, dbc)
+				err = EnableTOTP(PassStr, CurUser, setup.ServerSettings.SQL.ConnPool)
 
 				if err != nil {
 					if errors.Is(ErrSecretNotSaved, err) {
@@ -172,14 +156,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 			// Получаем данные текущего пользователя
 			Email := signinupout.GetCurrentUserEmail(w, req)
 
-			dbc := setup.ServerSettings.SQL.Connect(w, role)
-			if dbc == nil {
-				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-				return
-			}
-			defer dbc.Close()
-
-			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, dbc)
+			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, setup.ServerSettings.SQL.ConnPool)
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -192,7 +169,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			err = databases.PostgreSQLDeleteSecondFactorSecret(FoundUser.GUID, dbc)
+			err = databases.PostgreSQLDeleteSecondFactorSecret(FoundUser.GUID, setup.ServerSettings.SQL.ConnPool)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
@@ -249,14 +226,7 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 
 			Email := signinupout.GetCurrentUserEmail(w, req)
 
-			dbc := setup.ServerSettings.SQL.Connect(w, role)
-			if dbc == nil {
-				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-				return
-			}
-			defer dbc.Close()
-
-			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, dbc)
+			FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, setup.ServerSettings.SQL.ConnPool)
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -274,7 +244,7 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 			usf.User = FoundUser
 			usf.URL = shared.CurrentPrefix + req.Host
 
-			b, err := usf.GetQR(200, 200, dbc)
+			b, err := usf.GetQR(200, 200, setup.ServerSettings.SQL.ConnPool)
 
 			if err != nil {
 				if errors.Is(databases.ErrTOTPConfirmed, err) {
@@ -326,14 +296,7 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 				// Получаем данные текущего пользователя
 				Email := signinupout.GetCurrentUserEmail(w, req)
 
-				dbc := setup.ServerSettings.SQL.Connect(w, role)
-				if dbc == nil {
-					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-					return
-				}
-				defer dbc.Close()
-
-				FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, dbc)
+				FoundUser, err := databases.PostgreSQLGetUserByEmail(Email, setup.ServerSettings.SQL.ConnPool)
 
 				if err != nil {
 					if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -351,7 +314,7 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				Correct, err := Validate(PassStr, FoundUser, dbc)
+				Correct, err := Validate(PassStr, FoundUser, setup.ServerSettings.SQL.ConnPool)
 
 				if shared.HandleInternalServerError(w, err) {
 					return

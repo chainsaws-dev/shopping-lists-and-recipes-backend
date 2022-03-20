@@ -103,14 +103,6 @@ func AuthGeneral(w http.ResponseWriter, req *http.Request) (string, bool) {
 // (если ReturnToken=false - то куки)
 func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentication.AuthRequestData) {
 
-	// Подключаемся под ролью гостя
-	dbc := setup.ServerSettings.SQL.ConnectAsGuest()
-	if dbc == nil {
-		shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-		return
-	}
-	defer dbc.Close()
-
 	if len(AuthRequest.Password) < 6 {
 		shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
 		return
@@ -120,7 +112,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 	ClientIP := GetIP(req)
 
 	// Получаем хеш из базы данных
-	strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email, dbc)
+	strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email, setup.ServerSettings.SQL.ConnPool)
 
 	if err != nil {
 		if shared.HandleOtherError(w, err.Error(), err, http.StatusTeapot) {
@@ -146,7 +138,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 		}
 
 		// Получаем текущего пользователя по электронной почте
-		FoundUser, err := databases.PostgreSQLGetUserByEmail(AuthRequest.Email, dbc)
+		FoundUser, err := databases.PostgreSQLGetUserByEmail(AuthRequest.Email, setup.ServerSettings.SQL.ConnPool)
 
 		if err != nil {
 			if errors.Is(databases.ErrNoUserWithEmail, err) {
@@ -558,16 +550,7 @@ func RegularConfirmTokensCleanup() {
 		// Освобождаем память от истекших токенов
 		CleanOldTokens()
 
-		// Подключаемся под ролью админа
-		dbc := setup.ServerSettings.SQL.ConnectAsAdmin()
-		if dbc == nil {
-			log.Println(databases.ErrNoConnection)
-			return
-		}
-
-		databases.PostgreSQLCleanAccessTokens(dbc)
-
-		dbc.Close()
+		databases.PostgreSQLCleanAccessTokens(setup.ServerSettings.SQL.ConnPool)
 
 		log.Println("Таблица токенов очищена!")
 

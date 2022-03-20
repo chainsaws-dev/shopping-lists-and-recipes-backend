@@ -70,13 +70,6 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 			var recipesresp databases.RecipesResponse
 
-			dbc := setup.ServerSettings.SQL.Connect(w, role)
-			if dbc == nil {
-				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-				return
-			}
-			defer dbc.Close()
-
 			if len(PageStr) > 0 && len(LimitStr) > 0 {
 
 				Page, err := strconv.Atoi(PageStr)
@@ -91,7 +84,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				recipesresp, err = databases.PostgreSQLRecipesSelect(Page, Limit, dbc)
+				recipesresp, err = databases.PostgreSQLRecipesSelect(Page, Limit, setup.ServerSettings.SQL.ConnPool)
 
 				if shared.HandleInternalServerError(w, err) {
 					return
@@ -121,14 +114,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			dbc := setup.ServerSettings.SQL.Connect(w, role)
-			if dbc == nil {
-				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-				return
-			}
-			defer dbc.Close()
-
-			recipesresp, err := databases.PostgreSQLRecipesInsertUpdate(Recipe, dbc)
+			recipesresp, err := databases.PostgreSQLRecipesInsertUpdate(Recipe, setup.ServerSettings.SQL.ConnPool)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
@@ -155,14 +141,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				dbc := setup.ServerSettings.SQL.Connect(w, role)
-				if dbc == nil {
-					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-					return
-				}
-				defer dbc.Close()
-
-				err = databases.PostgreSQLRecipesDelete(RecipeID, dbc)
+				err = databases.PostgreSQLRecipesDelete(RecipeID, setup.ServerSettings.SQL.ConnPool)
 
 				if err != nil {
 					if errors.Is(err, databases.ErrRecipeNotFound) {
@@ -235,13 +214,6 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 
 			var recipesresp databases.RecipesResponse
 
-			dbc := setup.ServerSettings.SQL.Connect(w, role)
-			if dbc == nil {
-				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-				return
-			}
-			defer dbc.Close()
-
 			if len(PageStr) > 0 && len(LimitStr) > 0 && len(SearchStr) > 0 {
 
 				Page, err := strconv.Atoi(PageStr)
@@ -262,7 +234,7 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr, dbc)
+				recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr, setup.ServerSettings.SQL.ConnPool)
 
 			} else {
 				shared.HandleOtherError(w, ErrHeadersSearchNotFilled.Error(), ErrHeadersSearchNotFilled, http.StatusBadRequest)

@@ -62,13 +62,6 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 			var resp databases.ShoppingListResponse
 
-			dbc := setup.ServerSettings.SQL.Connect(w, role)
-			if dbc == nil {
-				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-				return
-			}
-			defer dbc.Close()
-
 			if len(PageStr) > 0 && len(LimitStr) > 0 {
 
 				Page, err := strconv.Atoi(PageStr)
@@ -83,10 +76,10 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				resp, err = databases.PostgreSQLShoppingListSelect(Page, Limit, dbc)
+				resp, err = databases.PostgreSQLShoppingListSelect(Page, Limit, setup.ServerSettings.SQL.ConnPool)
 
 			} else {
-				resp, err = databases.PostgreSQLShoppingListSelect(0, 0, dbc)
+				resp, err = databases.PostgreSQLShoppingListSelect(0, 0, setup.ServerSettings.SQL.ConnPool)
 			}
 
 			if shared.HandleInternalServerError(w, err) {
@@ -111,14 +104,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			dbc := setup.ServerSettings.SQL.Connect(w, role)
-			if dbc == nil {
-				shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-				return
-			}
-			defer dbc.Close()
-
-			err = databases.PostgreSQLShoppingListInsertUpdate(Ingredient, dbc)
+			err = databases.PostgreSQLShoppingListInsertUpdate(Ingredient, setup.ServerSettings.SQL.ConnPool)
 
 			if shared.HandleInternalServerError(w, err) {
 				return
@@ -144,14 +130,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				dbc := setup.ServerSettings.SQL.Connect(w, role)
-				if dbc == nil {
-					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-					return
-				}
-				defer dbc.Close()
-
-				err = databases.PostgreSQLShoppingListDelete(IngName, dbc)
+				err = databases.PostgreSQLShoppingListDelete(IngName, setup.ServerSettings.SQL.ConnPool)
 
 				if err != nil {
 					if errors.Is(err, databases.ErrShoppingListNotFound) {
@@ -168,15 +147,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 			} else {
 
-				dbc := setup.ServerSettings.SQL.Connect(w, role)
-				if dbc == nil {
-					shared.HandleOtherError(w, databases.ErrNoConnection.Error(), databases.ErrNoConnection, http.StatusServiceUnavailable)
-					return
-				}
-
-				defer dbc.Close()
-
-				err = databases.PostgreSQLShoppingListDeleteAll(dbc)
+				err = databases.PostgreSQLShoppingListDeleteAll(setup.ServerSettings.SQL.ConnPool)
 
 				if shared.HandleInternalServerError(w, err) {
 					return

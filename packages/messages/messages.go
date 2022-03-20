@@ -108,8 +108,6 @@ func SaveTokenForUser(SQL *settings.SQLServer, strtoken string, TableName string
 		log.Fatal(err)
 	}
 
-	defer dbc.Close()
-
 	log.Printf("Сохранили токен для пользователя %v", Recepient)
 
 }

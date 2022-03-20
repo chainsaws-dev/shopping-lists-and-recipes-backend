@@ -101,6 +101,10 @@ func main() {
 		go signinupout.RegularConfirmTokensCleanup()
 	}
 
+	if setup.ServerSettings.SQL.ConnPool != nil {
+		defer setup.ServerSettings.SQL.Disconnect()
+	}
+
 	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
 	if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
 		//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
@@ -128,9 +132,7 @@ func GetRunArgs() setup.InitParams {
 
 	// Инкапсулируем параметры установки в объекте
 	var initpar setup.InitParams
-	initpar.CreateRoles = true
 	initpar.CreateAdmin = true
-	initpar.ResetRolesPass = true
 
 	if len(runargs) > 1 {
 		for _, runarg := range runargs {
@@ -163,19 +165,6 @@ func GetRunArgs() setup.InitParams {
 			// после завершения создания базы и ролей
 			if runarg == "-noadmin" {
 				initpar.CreateAdmin = false
-			}
-
-			// Работает при -makedb (только для отладки)
-			// Отключает создание ролей в базе
-			if runarg == "-noroles" {
-				initpar.CreateRoles = false
-			}
-
-			// Для пакетного режима
-			// Работает при -makedb
-			// Не выполняет перезаполнение ролей в объекте при выполнении начальной настройки
-			if runarg == "-noresetroles" {
-				initpar.ResetRolesPass = false
 			}
 
 			// Для пакетного режима

@@ -4,12 +4,7 @@ package settings
 import (
 	"errors"
 	"log"
-	"net/http"
 	"shopping-lists-and-recipes/internal/databases"
-	"shopping-lists-and-recipes/packages/randompassword"
-	"shopping-lists-and-recipes/packages/shared"
-
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // Список типовых ошибок
@@ -28,9 +23,6 @@ func (SQLsrv *SQLServer) AutoFillRoles() {
 	SQLsrv.Roles = append(SQLsrv.Roles, SQLRole{
 		Name:    "guest_role_read_only",
 		Desc:    "Гостевая роль",
-		Login:   "recipes_guest",
-		Pass:    randompassword.NewRandomPassword(20),
-		TRules:  GetTRulesForGuest(),
 		Default: true,
 		Admin:   false,
 	})
@@ -38,206 +30,18 @@ func (SQLsrv *SQLServer) AutoFillRoles() {
 	SQLsrv.Roles = append(SQLsrv.Roles, SQLRole{
 		Name:    "admin_role_CRUD",
 		Desc:    "Администратор",
-		Login:   "recipes_admin",
-		Pass:    randompassword.NewRandomPassword(20),
-		TRules:  GetTRulesForAdmin(),
 		Default: false,
 		Admin:   true,
 	})
-}
-
-// GetTRulesForGuest - Возвращает заполненный список ролей по всем таблицам будущей базы данных для гостя
-func GetTRulesForGuest() SQLTRules {
-	return SQLTRules{
-		TRule{
-			TName:      "public.\"Files\"",
-			SELECT:     true,
-			INSERT:     false,
-			UPDATE:     false,
-			DELETE:     false,
-			REFERENCES: false,
-		},
-		TRule{
-			TName:      "public.\"Recipes\"",
-			SELECT:     true,
-			INSERT:     false,
-			UPDATE:     false,
-			DELETE:     false,
-			REFERENCES: false,
-		},
-		TRule{
-			TName:      "public.\"RecipesIngredients\"",
-			SELECT:     true,
-			INSERT:     false,
-			UPDATE:     false,
-			DELETE:     false,
-			REFERENCES: false,
-		},
-		TRule{
-			TName:      "public.\"Ingredients\"",
-			SELECT:     true,
-			INSERT:     false,
-			UPDATE:     false,
-			DELETE:     false,
-			REFERENCES: false,
-		},
-		TRule{
-			TName:      "public.\"ShoppingList\"",
-			SELECT:     true,
-			INSERT:     false,
-			UPDATE:     false,
-			DELETE:     false,
-			REFERENCES: false,
-		},
-		TRule{
-			TName:      "secret.\"users\"",
-			SELECT:     true,
-			INSERT:     false,
-			UPDATE:     true,
-			DELETE:     false,
-			REFERENCES: false,
-		},
-		TRule{
-			TName:      "secret.\"hashes\"",
-			SELECT:     true,
-			INSERT:     false,
-			UPDATE:     true,
-			DELETE:     false,
-			REFERENCES: false,
-		},
-		TRule{
-			TName:      "secret.\"confirmations\"",
-			SELECT:     true,
-			INSERT:     false,
-			UPDATE:     false,
-			DELETE:     false,
-			REFERENCES: false,
-		},
-		TRule{
-			TName:      "secret.\"password_resets\"",
-			SELECT:     true,
-			INSERT:     false,
-			UPDATE:     false,
-			DELETE:     false,
-			REFERENCES: false,
-		},
-		TRule{
-			TName:      "secret.\"totp\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-	}
-}
-
-// GetTRulesForAdmin - Возвращает заполненный список ролей по всем таблицам будущей базы данных для админа
-func GetTRulesForAdmin() SQLTRules {
-	return SQLTRules{
-		TRule{
-			TName:      "public.\"Files\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-		TRule{
-			TName:      "public.\"Recipes\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-		TRule{
-			TName:      "public.\"RecipesIngredients\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-		TRule{
-			TName:      "public.\"Ingredients\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-		TRule{
-			TName:      "public.\"ShoppingList\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-		TRule{
-			TName:      "secret.\"users\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-		TRule{
-			TName:      "secret.\"hashes\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-		TRule{
-			TName:      "secret.\"confirmations\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-		TRule{
-			TName:      "secret.\"password_resets\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-		TRule{
-			TName:      "secret.\"totp\"",
-			SELECT:     true,
-			INSERT:     true,
-			UPDATE:     true,
-			DELETE:     true,
-			REFERENCES: true,
-		},
-	}
 }
 
 // DropDatabase - автоматизировано удаляет базу и роли
 func (SQLsrv *SQLServer) DropDatabase(donech chan bool) {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
+
 		// Удаляем базу данных
-
-		dbc, err := databases.PostgreSQLConnect(databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, "", true))
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		databases.PostgreSQLDropDatabase(SQLsrv.DbName, dbc)
-
-		for _, currole := range SQLsrv.Roles {
-
-			databases.PostgreSQLDropRole(currole.Login, dbc)
-		}
-
-		dbc.Close()
-
+		databases.PostgreSQLDropDatabase(SQLsrv.DbName, SQLsrv.ConnPool)
 		donech <- true
 
 	default:
@@ -246,26 +50,17 @@ func (SQLsrv *SQLServer) DropDatabase(donech chan bool) {
 }
 
 // CreateDatabase - Создаёт базу данных если её нет
-func (SQLsrv *SQLServer) CreateDatabase(donech chan bool, CreateRoles bool) {
+func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
+		// Подключаемся к СУБД без указания базы данных
+		SQLsrv.Connect(true)
+
 		// Создаём базу данных
-		cs := databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, "", true)
-		dbc, err := databases.PostgreSQLConnect(cs)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		databases.PostgreSQLCreateDatabase(SQLsrv.DbName, dbc)
-		dbc.Close()
+		databases.PostgreSQLCreateDatabase(SQLsrv.DbName, SQLsrv.ConnPool)
 
 		// Заполняем базу данных
-		cs = databases.PostgreSQLGetConnString(SQLsrv.Login, SQLsrv.Pass, SQLsrv.Addr, SQLsrv.DbName, false)
-		dbc, err = databases.PostgreSQLConnect(cs)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		err = databases.PostgreSQLCreateTables(dbc)
+		err := databases.PostgreSQLCreateTables(SQLsrv.ConnPool)
 
 		if err != nil {
 			if errors.Is(databases.ErrTablesAlreadyExist, err) {
@@ -280,21 +75,7 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool, CreateRoles bool) {
 			Filetype: "jpg",
 			FileID:   "",
 		}
-		databases.PostgreSQLFileChange(placeholder, dbc)
-
-		if CreateRoles {
-			for _, currole := range SQLsrv.Roles {
-
-				databases.PostgreSQLCreateRole(currole.Login, currole.Pass, SQLsrv.DbName, dbc)
-
-				for _, tablerule := range currole.TRules {
-
-					databases.PostgreSQLGrantRightsToRole(currole.Login, tablerule.TName, formRightsArray(tablerule), dbc)
-				}
-			}
-		}
-
-		dbc.Close()
+		databases.PostgreSQLFileChange(placeholder, SQLsrv.ConnPool)
 
 		donech <- true
 
@@ -314,127 +95,43 @@ func FindRoleInRoles(RoleName string, Roles SQLRoles) (SQLRole, error) {
 }
 
 // GetConnectionString - Формируем строку соединения
-func GetConnectionString(SQLsrv *SQLServer, Role string) (string, error) {
-
-	ActiveRole, err := FindRoleInRoles(Role, SQLsrv.Roles)
-
-	if err != nil {
-		return "", err
-	}
+func GetConnectionString(SQLsrv *SQLServer, Init bool) string {
 
 	return databases.PostgreSQLGetConnString(
-		ActiveRole.Login,
-		ActiveRole.Pass,
+		SQLsrv.Login,
+		SQLsrv.Pass,
 		SQLsrv.Addr,
 		SQLsrv.DbName,
-		false), nil
+		Init)
 }
 
-// Connect - открывает соединение с базой данных Postgresql
-func (SQLsrv *SQLServer) Connect(w http.ResponseWriter, role string) *pgxpool.Pool {
+// Connect - открывает соединение с базой данных
+func (SQLsrv *SQLServer) Connect(Init bool) {
 
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
-		cs, err := GetConnectionString(SQLsrv, role)
 
-		if shared.HandleOtherError(w, "Роль не найдена", err, http.StatusServiceUnavailable) {
-			return nil
-		}
+		SQLsrv.ConnPool = databases.PostgreSQLConnect(GetConnectionString(SQLsrv, Init))
 
-		dbc, err := databases.PostgreSQLConnect(cs)
+	default:
+		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)
+		SQLsrv.ConnPool = nil
+	}
 
-		if shared.HandleOtherError(w, "База данных недоступна", err, http.StatusServiceUnavailable) {
-			return nil
-		}
+}
 
-		return dbc
+// Disconnect - разрывает соединение с базой данных
+func (SQLsrv *SQLServer) Disconnect() {
+	switch {
+	case SQLsrv.Type == "PostgreSQL":
+
+		databases.PostgreSQLDisconnect(SQLsrv.ConnPool)
 
 	default:
 		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)
 	}
 
-	return nil
-}
-
-// ConnectAsAdmin - подключаемся к базе с ролью администратора
-func (SQLsrv *SQLServer) ConnectAsAdmin() *pgxpool.Pool {
-	switch {
-	case SQLsrv.Type == "PostgreSQL":
-		cs, err := GetConnectionString(SQLsrv, "admin_role_CRUD")
-
-		if err != nil {
-			log.Println(err)
-			return nil
-		}
-
-		dbc, err := databases.PostgreSQLConnect(cs)
-
-		if err != nil {
-			log.Println(err)
-			return nil
-		}
-
-		return dbc
-
-	default:
-		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)
-	}
-
-	return nil
-}
-
-// ConnectAsGuest - подключаемся к базе с ролью гостя
-func (SQLsrv *SQLServer) ConnectAsGuest() *pgxpool.Pool {
-	switch {
-	case SQLsrv.Type == "PostgreSQL":
-		cs, err := GetConnectionString(SQLsrv, "guest_role_read_only")
-
-		if err != nil {
-			log.Println(err)
-			return nil
-		}
-
-		dbc, err := databases.PostgreSQLConnect(cs)
-
-		if err != nil {
-			log.Println(err)
-			return nil
-		}
-
-		return dbc
-
-	default:
-		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)
-	}
-
-	return nil
-}
-
-// formRightsArray - формирует массив прав для таблицы
-func formRightsArray(rule TRule) []string {
-	var result []string
-
-	if rule.SELECT {
-		result = append(result, "SELECT")
-	}
-
-	if rule.INSERT {
-		result = append(result, "INSERT")
-	}
-
-	if rule.UPDATE {
-		result = append(result, "UPDATE")
-	}
-
-	if rule.DELETE {
-		result = append(result, "DELETE")
-	}
-
-	if rule.REFERENCES {
-		result = append(result, "REFERENCES")
-	}
-
-	return result
+	SQLsrv.ConnPool = nil
 }
 
 // CheckRoleForRead - проверяет роль для разрешения доступа к разделу системы

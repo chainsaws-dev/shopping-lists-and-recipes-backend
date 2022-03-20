@@ -105,10 +105,10 @@ func InitialSettings(initpar InitParams) {
 		CreateDB = strings.ToLower(CreateDB)
 
 		if CreateDB == "да" || CreateDB == "д" {
-			if initpar.ResetRolesPass {
-				ServerSettings.SQL.AutoFillRoles()
-			}
-			err := StartCreateDatabase(initpar.CreateRoles)
+
+			// Создаём базу данных
+			ServerSettings.SQL.AutoFillRoles()
+			err := StartCreateDatabase()
 			if err == nil {
 				if initpar.CreateAdmin {
 					SetDefaultAdmin(initpar.AdminLogin, initpar.AdminPass, initpar.WebsiteURL)
@@ -152,10 +152,9 @@ func InitialSettings(initpar InitParams) {
 
 		// Пересоздаём базу данных без перенастройки
 		if initpar.CreateDb {
-			if initpar.ResetRolesPass {
-				ServerSettings.SQL.AutoFillRoles()
-			}
-			err := StartCreateDatabase(initpar.CreateRoles)
+
+			ServerSettings.SQL.AutoFillRoles()
+			err := StartCreateDatabase()
 			if err == nil {
 				if initpar.CreateAdmin {
 					SetDefaultAdmin(initpar.AdminLogin, initpar.AdminPass, initpar.WebsiteURL)
@@ -287,9 +286,7 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 		}
 	}
 
-	dbc := ServerSettings.SQL.ConnectAsAdmin()
-
-	err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use, dbc)
+	err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use, ServerSettings.SQL.ConnPool)
 
 	shared.WriteErrToLog(err)
 
@@ -302,9 +299,7 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 			URI = websiteurl
 		}
 
-		messages.SendEmailConfirmationLetter(&ServerSettings.SQL, Email, URI, dbc)
-	} else {
-		defer dbc.Close()
+		messages.SendEmailConfirmationLetter(&ServerSettings.SQL, Email, URI, ServerSettings.SQL.ConnPool)
 	}
 
 	log.Println("Администратор сайта создан")
@@ -314,10 +309,10 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 }
 
 // StartCreateDatabase - запускает в фоне процесс создания базы данных
-func StartCreateDatabase(CreateRoles bool) error {
+func StartCreateDatabase() error {
 
 	donech := make(chan bool)
-	go ServerSettings.SQL.CreateDatabase(donech, CreateRoles)
+	go ServerSettings.SQL.CreateDatabase(donech)
 
 	if <-donech {
 		log.Println("Процедура создания базы данных завершена")
