@@ -114,6 +114,7 @@ func InitialSettings(initpar InitParams) {
 					SetDefaultAdmin(initpar.AdminLogin, initpar.AdminPass, initpar.WebsiteURL)
 				}
 			}
+
 		}
 
 		WriteToJSON()
@@ -141,6 +142,8 @@ func InitialSettings(initpar InitParams) {
 		}
 
 		log.Println("Файл настроек settings.json успешно прочитан")
+
+		ServerSettings.SQL.Connected = false
 
 		// Удаляем базу данных и роли
 		if initpar.DropDb {
@@ -229,7 +232,7 @@ func СheckExists(filename string) bool {
 
 // WriteToJSON - записывает объект настроек в JSON файл
 func WriteToJSON() {
-	bytes, err := json.Marshal(ServerSettings)
+	bytes, err := json.MarshalIndent(ServerSettings, "	", "	")
 
 	shared.WriteErrToLog(err)
 
@@ -285,6 +288,8 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 			fmt.Println("Пароль должен быть больше шести символов!")
 		}
 	}
+
+	ServerSettings.SQL.Connect(false)
 
 	err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use, ServerSettings.SQL.ConnPool)
 

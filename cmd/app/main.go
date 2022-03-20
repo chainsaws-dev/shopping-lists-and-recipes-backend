@@ -101,9 +101,11 @@ func main() {
 		go signinupout.RegularConfirmTokensCleanup()
 	}
 
-	if setup.ServerSettings.SQL.ConnPool != nil {
-		defer setup.ServerSettings.SQL.Disconnect()
+	// Создаём пул соединений
+	if setup.ServerSettings.SQL.Connected == false {
+		setup.ServerSettings.SQL.Connect(false)
 	}
+	defer setup.ServerSettings.SQL.Disconnect()
 
 	// Запускаем либо http либо https сервер, в зависимости от наличия сертификата в папке с сервером
 	if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {

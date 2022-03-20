@@ -39,6 +39,8 @@ func (SQLsrv *SQLServer) AutoFillRoles() {
 func (SQLsrv *SQLServer) DropDatabase(donech chan bool) {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
+		// Подключаемся без контекста базы данных
+		SQLsrv.Connect(true)
 
 		// Удаляем базу данных
 		databases.PostgreSQLDropDatabase(SQLsrv.DbName, SQLsrv.ConnPool)
@@ -53,11 +55,15 @@ func (SQLsrv *SQLServer) DropDatabase(donech chan bool) {
 func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
-		// Подключаемся к СУБД без указания базы данных
+
+		// Подключаемся без контекста базы данных
 		SQLsrv.Connect(true)
 
 		// Создаём базу данных
 		databases.PostgreSQLCreateDatabase(SQLsrv.DbName, SQLsrv.ConnPool)
+
+		// Подключаемся под базу данных
+		SQLsrv.Connect(false)
 
 		// Заполняем базу данных
 		err := databases.PostgreSQLCreateTables(SQLsrv.ConnPool)
@@ -111,7 +117,17 @@ func (SQLsrv *SQLServer) Connect(Init bool) {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
 
+		if SQLsrv.Connected {
+			SQLsrv.Disconnect()
+		}
+
 		SQLsrv.ConnPool = databases.PostgreSQLConnect(GetConnectionString(SQLsrv, Init))
+
+		if SQLsrv.ConnPool == nil {
+			SQLsrv.Connected = false
+		} else {
+			SQLsrv.Connected = true
+		}
 
 	default:
 		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)
@@ -126,6 +142,7 @@ func (SQLsrv *SQLServer) Disconnect() {
 	case SQLsrv.Type == "PostgreSQL":
 
 		databases.PostgreSQLDisconnect(SQLsrv.ConnPool)
+		SQLsrv.Connected = false
 
 	default:
 		log.Fatalln("Указан неподдерживаемый тип базы данных " + SQLsrv.Type)

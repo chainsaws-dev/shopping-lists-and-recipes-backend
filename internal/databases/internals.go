@@ -71,12 +71,14 @@ func PostgreSQLConnect(ConnectionString string) (dbc *pgxpool.Pool) {
 		log.Fatalln(err)
 		return nil
 	}
+	log.Println("Установлено соединение с СУБД")
 	return dbc
 }
 
 // PostgreSQLDisconnect - отключаемся от базы данных (убиваем пул соединений)
 func PostgreSQLDisconnect(dbc *pgxpool.Pool) {
 	dbc.Close()
+	dbc = nil
 }
 
 // PostgreSQLCheckLimitOffset - проверяем значение лимита и сдвига
