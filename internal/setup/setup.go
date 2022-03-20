@@ -100,6 +100,17 @@ func InitialSettings(initpar InitParams) {
 
 		AskString("Укажите пароль суперпользователя базы данных: ", &ServerSettings.SQL.Pass)
 
+		var UseSSL string
+		AskString("Использовать SSL для подключения к базе данных (Да или Нет): ", &UseSSL)
+
+		if UseSSL == "да" || UseSSL == "д" {
+			ServerSettings.SQL.SSL = true
+		} else {
+			ServerSettings.SQL.SSL = false
+		}
+
+		AskInt("Укажите максимальный размер пула соединений: ", &ServerSettings.SQL.MaxConnPool)
+
 		var CreateDB string
 		AskString("Создать базу данных с таблицами и ролями (Да или Нет): ", &CreateDB)
 		CreateDB = strings.ToLower(CreateDB)
@@ -142,8 +153,6 @@ func InitialSettings(initpar InitParams) {
 		}
 
 		log.Println("Файл настроек settings.json успешно прочитан")
-
-		ServerSettings.SQL.Connected = false
 
 		// Удаляем базу данных и роли
 		if initpar.DropDb {

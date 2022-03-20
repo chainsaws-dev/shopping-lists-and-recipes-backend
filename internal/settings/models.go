@@ -22,14 +22,16 @@ type CredSMTP struct {
 
 // SQLServer - данные для подключения к SQL серверу
 type SQLServer struct {
-	Type      string
-	DbName    string
-	Addr      string
-	Login     string
-	Pass      string
-	Roles     SQLRoles
-	Connected bool
-	ConnPool  *pgxpool.Pool
+	Type        string
+	DbName      string
+	Addr        string
+	Login       string
+	Pass        string
+	Roles       SQLRoles
+	SSL         bool
+	MaxConnPool int
+	Connected   bool          `json:"-"`
+	ConnPool    *pgxpool.Pool `json:"-"`
 }
 
 // SQLRoles - список ролей которые должны быть созданы на сервере

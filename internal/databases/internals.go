@@ -37,13 +37,20 @@ var (
 // PostgreSQLGetConnString - получаем строку соединения для PostgreSQL
 // При начальной настройке строка возвращается без базы данных (она создаётся в процессе)
 // При начальной настройке указывается пароль суперпользователя при штатной работе пароль соответствуещей роли
-func PostgreSQLGetConnString(Login string, Password string, Addr string, DbName string, initialsetup bool) string {
+func PostgreSQLGetConnString(Login string, Password string, Addr string, DbName string, initialsetup bool, SSLmode bool, MaxPoolConns int) string {
+	var strSSLmode string
 
-	if initialsetup {
-		return fmt.Sprintf("postgres://%v:%v@%v/?sslmode=disable", Login, Password, Addr)
+	if SSLmode {
+		strSSLmode = "enable"
+	} else {
+		strSSLmode = "disable"
 	}
 
-	return fmt.Sprintf("postgres://%v:%v@%v/%v?sslmode=disable", Login, Password, Addr, DbName)
+	if initialsetup {
+		return fmt.Sprintf("postgres://%v:%v@%v/?sslmode=%v&pool_max_conns=%v", Login, Password, Addr, strSSLmode, MaxPoolConns)
+	}
+
+	return fmt.Sprintf("postgres://%v:%v@%v/%v?sslmode=%v&pool_max_conns=%v", Login, Password, Addr, DbName, strSSLmode, MaxPoolConns)
 
 }
 
@@ -79,6 +86,7 @@ func PostgreSQLConnect(ConnectionString string) (dbc *pgxpool.Pool) {
 func PostgreSQLDisconnect(dbc *pgxpool.Pool) {
 	dbc.Close()
 	dbc = nil
+	log.Println("Соединение с СУБД разорвано")
 }
 
 // PostgreSQLCheckLimitOffset - проверяем значение лимита и сдвига

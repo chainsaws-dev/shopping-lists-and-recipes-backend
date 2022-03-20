@@ -108,7 +108,7 @@ func GetConnectionString(SQLsrv *SQLServer, Init bool) string {
 		SQLsrv.Pass,
 		SQLsrv.Addr,
 		SQLsrv.DbName,
-		Init)
+		Init, SQLsrv.SSL, SQLsrv.MaxConnPool)
 }
 
 // Connect - открывает соединение с базой данных
