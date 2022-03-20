@@ -122,16 +122,16 @@ function UserProfileComponent_form_3_Template(rf, ctx) { if (rf & 1) {
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](18, "label", 18);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](19, "Password");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]();
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](20, "div", 19)(21, "div", 20)(22, "div", 21)(23, "input", 22);
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵlistener"]("ngModelChange", function UserProfileComponent_form_3_Template_input_ngModelChange_23_listener($event) { _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵrestoreView"](_r9); const ctx_r10 = _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵnextContext"](); return ctx_r10.changepassword = $event; });
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]()()();
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelement"](24, "input", 23);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](20, "div", 19)(21, "div", 20)(22, "input", 21);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵlistener"]("ngModelChange", function UserProfileComponent_form_3_Template_input_ngModelChange_22_listener($event) { _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵrestoreView"](_r9); const ctx_r10 = _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵnextContext"](); return ctx_r10.changepassword = $event; });
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]()();
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelement"](23, "input", 22);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]();
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](25, "button", 24);
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](26, "Save");
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](24, "button", 23);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](25, "Save");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]();
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](27, "button", 25);
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](28, "Cancel");
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](26, "button", 24);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](27, "Cancel");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]()()()();
 } if (rf & 2) {
     const _r7 = _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵreference"](1);
@@ -142,7 +142,7 @@ function UserProfileComponent_form_3_Template(rf, ctx) { if (rf & 1) {
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵproperty"]("ngModel", ctx_r2.UserToEdit.Email);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵadvance"](4);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵproperty"]("ngModel", ctx_r2.UserToEdit.Phone);
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵadvance"](6);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵadvance"](5);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵproperty"]("ngModel", ctx_r2.changepassword);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵadvance"](1);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵproperty"]("disabled", !ctx_r2.changepassword);
@@ -154,26 +154,26 @@ function UserProfileComponent_div_4_Template(rf, ctx) { if (rf & 1) {
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](0, "div", 10)(1, "h2");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](2, "Second factor enabled");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]();
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](3, "button", 26);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](3, "button", 25);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵlistener"]("click", function UserProfileComponent_div_4_Template_button_click_3_listener() { _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵrestoreView"](_r12); const ctx_r11 = _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵnextContext"](); return ctx_r11.OnUnlinkTwoFactor(); });
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](4, "Disable");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]()();
 } }
 function UserProfileComponent_form_5_Template(rf, ctx) { if (rf & 1) {
     const _r15 = _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵgetCurrentView"]();
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](0, "form", 8, 27);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](0, "form", 8, 26);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵlistener"]("ngSubmit", function UserProfileComponent_form_5_Template_form_ngSubmit_0_listener() { _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵrestoreView"](_r15); const _r13 = _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵreference"](1); const ctx_r14 = _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵnextContext"](); return ctx_r14.OnLinkTwoFactor(_r13); });
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](2, "div", 10)(3, "div", 11)(4, "h2");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](5, "Set second factor");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]();
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](6, "h4");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](7, "1. Scan with ");
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](8, "a", 28);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](8, "a", 27);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](9, "Authenticator");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]();
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](10, ": ");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]();
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelement"](11, "img", 29);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelement"](11, "img", 28);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵpipe"](12, "async");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵpipe"](13, "secureImagePipe");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](14, "h4");
@@ -182,13 +182,13 @@ function UserProfileComponent_form_5_Template(rf, ctx) { if (rf & 1) {
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](16, "label", 18);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](17, "Token");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]();
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](18, "div", 19)(19, "div", 20)(20, "div", 21)(21, "input", 30);
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵlistener"]("ngModelChange", function UserProfileComponent_form_5_Template_input_ngModelChange_21_listener($event) { _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵrestoreView"](_r15); const ctx_r16 = _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵnextContext"](); return ctx_r16.SetTwoFactor = $event; });
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]()()();
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelement"](22, "input", 31);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](18, "div", 19)(19, "div", 20)(20, "input", 29);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵlistener"]("ngModelChange", function UserProfileComponent_form_5_Template_input_ngModelChange_20_listener($event) { _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵrestoreView"](_r15); const ctx_r16 = _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵnextContext"](); return ctx_r16.SetTwoFactor = $event; });
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]()();
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelement"](21, "input", 30);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]();
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](23, "button", 32);
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](24, "Save");
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](22, "button", 31);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtext"](23, "Save");
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]()()()();
 } if (rf & 2) {
     const ctx_r4 = _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵnextContext"]();
@@ -196,7 +196,7 @@ function UserProfileComponent_form_5_Template(rf, ctx) { if (rf & 1) {
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵproperty"]("href", ctx_r4.AuthUrl, _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵsanitizeUrl"]);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵadvance"](3);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵproperty"]("src", _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵpipeBind1"](12, 4, _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵpipeBind1"](13, 6, ctx_r4.QrUrl)), _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵsanitizeUrl"]);
-    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵadvance"](10);
+    _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵadvance"](9);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵproperty"]("ngModel", ctx_r4.SetTwoFactor);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵadvance"](1);
     _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵproperty"]("disabled", !ctx_r4.SetTwoFactor);
@@ -275,14 +275,14 @@ class UserProfileComponent {
     }
 }
 UserProfileComponent.ɵfac = function UserProfileComponent_Factory(t) { return new (t || UserProfileComponent)(_angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵdirectiveInject"](_angular_router__WEBPACK_IMPORTED_MODULE_4__.ActivatedRoute), _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵdirectiveInject"](_angular_router__WEBPACK_IMPORTED_MODULE_4__.Router), _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵdirectiveInject"](_shared_data_storage_service__WEBPACK_IMPORTED_MODULE_1__.DataStorageService)); };
-UserProfileComponent.ɵcmp = /*@__PURE__*/ _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵdefineComponent"]({ type: UserProfileComponent, selectors: [["app-user-profile"]], decls: 6, vars: 5, consts: [[1, "text-center"], ["class", "spinner-border", "role", "status", 4, "ngIf"], [3, "type", "close", 4, "ngIf"], [3, "ngSubmit", 4, "ngIf"], ["class", "form-group", 4, "ngIf"], ["role", "status", 1, "spinner-border"], [1, "sr-only"], [3, "type", "close"], [3, "ngSubmit"], ["UserProfileForm", "ngForm"], [1, "form-group"], [2, "margin", "3px"], ["for", "name"], ["type", "text", "id", "name", "placeholder", "example", "name", "username", "required", "", 1, "form-control", "mb-1", 3, "ngModel"], ["for", "email"], ["type", "email", "id", "email", "placeholder", "exampe@example.com", "name", "useremail", "required", "", "email", "", 1, "form-control", "mb-1", 3, "ngModel"], ["for", "phone"], ["type", "tel", "id", "phone", "placeholder", "+7 (965) 777-77-77", "name", "userphone", "pattern", "^((8|\\+7)[\\- ]?)?(\\(?\\d{3,4}\\)?[\\- ]?)?[\\d\\- ]{5,10}$", 1, "form-control", "mb-1", 3, "ngModel"], ["for", "newpassword"], [1, "input-group", "mb-3"], [1, "input-group-prepend"], [1, "input-group-text"], ["type", "checkbox", "id", "changepassword", "name", "changepassword", 3, "ngModel", "ngModelChange"], ["type", "password", "id", "newpassword", "name", "newpassword", "placeholder", "Enter new password", "ngModel", "", 1, "form-control", 3, "disabled"], ["type", "submit", 1, "btn", "btn-outline-primary", 3, "disabled"], ["type", "button", "routerLink", "..", 1, "btn", "btn-outline-danger", 2, "margin-left", "3px"], ["type", "button", 1, "btn", "btn-outline-danger", 3, "click"], ["UserTwoFactorForm", "ngForm"], [3, "href"], ["alt", "QR code", 3, "src"], ["type", "checkbox", "id", "enabletwofactor", "name", "enabletwofactor", "required", "", 3, "ngModel", "ngModelChange"], ["type", "text", "name", "passkey", "inputmode", "numeric", "pattern", "[0-9]*", "autocomplete", "one-time-code", "id", "newpasskey", "placeholder", "Token from Authenticator", "ngModel", "", "required", "", "minlength", "6", "ngbTooltip", "Minimum 6 numbers", 1, "form-control", 3, "disabled"], ["type", "submit", 1, "btn", "btn-outline-primary"]], template: function UserProfileComponent_Template(rf, ctx) { if (rf & 1) {
+UserProfileComponent.ɵcmp = /*@__PURE__*/ _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵdefineComponent"]({ type: UserProfileComponent, selectors: [["app-user-profile"]], decls: 6, vars: 5, consts: [[1, "text-center"], ["class", "spinner-border", "role", "status", 4, "ngIf"], [3, "type", "close", 4, "ngIf"], [3, "ngSubmit", 4, "ngIf"], ["class", "form-group", 4, "ngIf"], ["role", "status", 1, "spinner-border"], [1, "visually-hidden-focusable"], [3, "type", "close"], [3, "ngSubmit"], ["UserProfileForm", "ngForm"], [1, "form-group"], [2, "margin", "3px"], ["for", "name"], ["type", "text", "id", "name", "placeholder", "example", "name", "username", "required", "", 1, "form-control", "mb-1", 3, "ngModel"], ["for", "email"], ["type", "email", "id", "email", "placeholder", "exampe@example.com", "name", "useremail", "required", "", "email", "", 1, "form-control", "mb-1", 3, "ngModel"], ["for", "phone"], ["type", "tel", "id", "phone", "placeholder", "+7 (965) 777-77-77", "name", "userphone", "pattern", "^((8|\\+7)[\\- ]?)?(\\(?\\d{3,4}\\)?[\\- ]?)?[\\d\\- ]{5,10}$", 1, "form-control", "mb-1", 3, "ngModel"], ["for", "newpassword"], [1, "input-group", "mb-3"], [1, "input-group-text"], ["type", "checkbox", "id", "changepassword", "name", "changepassword", 1, "form-check-input", "mt-0", 3, "ngModel", "ngModelChange"], ["type", "password", "id", "newpassword", "name", "newpassword", "placeholder", "Enter new password", "ngModel", "", 1, "form-control", 3, "disabled"], ["type", "submit", 1, "btn", "btn-outline-primary", 3, "disabled"], ["type", "button", "routerLink", "..", 1, "btn", "btn-outline-danger", 2, "margin-left", "3px"], ["type", "button", 1, "btn", "btn-outline-danger", 3, "click"], ["UserTwoFactorForm", "ngForm"], [3, "href"], ["alt", "QR code", 3, "src"], ["type", "checkbox", "id", "enabletwofactor", "name", "enabletwofactor", "required", "", 3, "ngModel", "ngModelChange"], ["type", "text", "name", "passkey", "inputmode", "numeric", "pattern", "[0-9]*", "autocomplete", "one-time-code", "id", "newpasskey", "placeholder", "Token from Authenticator", "ngModel", "", "required", "", "minlength", "6", "ngbTooltip", "Minimum 6 numbers", 1, "form-control", 3, "disabled"], ["type", "submit", 1, "btn", "btn-outline-primary"]], template: function UserProfileComponent_Template(rf, ctx) { if (rf & 1) {
         _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementStart"](0, "div", 0);
         _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtemplate"](1, UserProfileComponent_div_1_Template, 3, 0, "div", 1);
         _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵelementEnd"]();
         _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtemplate"](2, UserProfileComponent_ngb_alert_2_Template, 2, 2, "ngb-alert", 2);
-        _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtemplate"](3, UserProfileComponent_form_3_Template, 29, 6, "form", 3);
+        _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtemplate"](3, UserProfileComponent_form_3_Template, 28, 6, "form", 3);
         _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtemplate"](4, UserProfileComponent_div_4_Template, 5, 0, "div", 4);
-        _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtemplate"](5, UserProfileComponent_form_5_Template, 25, 8, "form", 3);
+        _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵtemplate"](5, UserProfileComponent_form_5_Template, 24, 8, "form", 3);
     } if (rf & 2) {
         _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵadvance"](1);
         _angular_core__WEBPACK_IMPORTED_MODULE_3__["ɵɵproperty"]("ngIf", ctx.IsLoading);
