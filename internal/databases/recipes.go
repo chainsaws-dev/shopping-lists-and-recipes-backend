@@ -2,16 +2,16 @@
 package databases
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"math"
 	"shopping-lists-and-recipes/packages/shared"
 
-	_ "github.com/lib/pq" // Драйвер PostgreSQL
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // PostgreSQLRecipesSelect - получает информацию о рецептах и связанном файле обложки
-func PostgreSQLRecipesSelect(page int, limit int, dbc *sql.DB) (RecipesResponse, error) {
+func PostgreSQLRecipesSelect(page int, limit int, dbc *pgxpool.Pool) (RecipesResponse, error) {
 
 	var result RecipesResponse
 	result.Recipes = RecipesDB{}
@@ -21,7 +21,7 @@ func PostgreSQLRecipesSelect(page int, limit int, dbc *sql.DB) (RecipesResponse,
 			FROM 
 				public."Recipes"`
 
-	row := dbc.QueryRow(sqlreq)
+	row := dbc.QueryRow(context.Background(), sqlreq)
 
 	var countRows int
 
@@ -53,7 +53,7 @@ func PostgreSQLRecipesSelect(page int, limit int, dbc *sql.DB) (RecipesResponse,
 		return result, ErrLimitOffsetInvalid
 	}
 
-	rows, err := dbc.Query(sqlreq)
+	rows, err := dbc.Query(context.Background(), sqlreq)
 
 	if err != nil {
 		return result, err
@@ -86,7 +86,7 @@ func PostgreSQLRecipesSelect(page int, limit int, dbc *sql.DB) (RecipesResponse,
 				public."Ingredients" AS Ing
 			ON Ing.id = RecIng.ingredient_id`
 
-		ings, err := dbc.Query(sqlreq, cur.ID)
+		ings, err := dbc.Query(context.Background(), sqlreq, cur.ID)
 
 		if err != nil {
 			return result, err
@@ -109,7 +109,7 @@ func PostgreSQLRecipesSelect(page int, limit int, dbc *sql.DB) (RecipesResponse,
 }
 
 // PostgreSQLRecipesSelectSearch - получает информацию о рецептах и связанном файле обложки для поискового запроса
-func PostgreSQLRecipesSelectSearch(page int, limit int, search string, dbc *sql.DB) (RecipesResponse, error) {
+func PostgreSQLRecipesSelectSearch(page int, limit int, search string, dbc *pgxpool.Pool) (RecipesResponse, error) {
 
 	var result RecipesResponse
 	result.Recipes = RecipesDB{}
@@ -124,7 +124,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string, dbc *sql.
 				"Recipes".name LIKE $1
 				OR "Recipes".description LIKE $1`
 
-	row := dbc.QueryRow(sqlreq, search)
+	row := dbc.QueryRow(context.Background(), sqlreq, search)
 
 	var countRows int
 
@@ -159,7 +159,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string, dbc *sql.
 		return result, ErrLimitOffsetInvalid
 	}
 
-	rows, err := dbc.Query(sqlreq, search)
+	rows, err := dbc.Query(context.Background(), sqlreq, search)
 
 	if err != nil {
 		return result, err
@@ -192,7 +192,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string, dbc *sql.
 				public."Ingredients" AS Ing
 			ON Ing.id = RecIng.ingredient_id`
 
-		ings, err := dbc.Query(sqlreq, cur.ID)
+		ings, err := dbc.Query(context.Background(), sqlreq, cur.ID)
 
 		if err != nil {
 			return result, err
@@ -215,7 +215,7 @@ func PostgreSQLRecipesSelectSearch(page int, limit int, search string, dbc *sql.
 }
 
 // PostgreSQLRecipesInsertUpdate - обновляет существующий рецепт или вставляет новый рецепт в базу данных
-func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, error) {
+func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *pgxpool.Pool) (RecipeDB, error) {
 
 	if RecipeUpd.ImageDbID == 0 {
 		RecipeUpd.ImageDbID = 1
@@ -228,7 +228,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, e
 			WHERE 
 				id=$1;`
 
-	row := dbc.QueryRow(sqlreq, RecipeUpd.ID)
+	row := dbc.QueryRow(context.Background(), sqlreq, RecipeUpd.ID)
 
 	var recipecount int
 	err := row.Scan(&recipecount)
@@ -237,7 +237,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, e
 		return RecipeUpd, err
 	}
 
-	dbc.Exec("BEGIN")
+	dbc.Exec(context.Background(), "BEGIN")
 
 	if recipecount > 0 && RecipeUpd.ID != 0 {
 		// Если запись найдена по индексу и индекс не равен нулю (случай новой записи)
@@ -249,13 +249,13 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, e
 				WHERE 
 					id=$4;`
 
-		_, err = dbc.Exec(sqlreq, RecipeUpd.Name, RecipeUpd.Description, RecipeUpd.ImageDbID, RecipeUpd.ID)
+		_, err = dbc.Exec(context.Background(), sqlreq, RecipeUpd.Name, RecipeUpd.Description, RecipeUpd.ImageDbID, RecipeUpd.ID)
 
 	} else {
 		// Иначе вставляем новую запись
 		sqlreq = `INSERT INTO public."Recipes" (name, description, image_id) VALUES ($1, $2, $3) RETURNING id;`
 
-		row := dbc.QueryRow(sqlreq, RecipeUpd.Name, RecipeUpd.Description, RecipeUpd.ImageDbID)
+		row := dbc.QueryRow(context.Background(), sqlreq, RecipeUpd.Name, RecipeUpd.Description, RecipeUpd.ImageDbID)
 
 		err = row.Scan(&RecipeUpd.ID)
 	}
@@ -266,7 +266,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, e
 
 	sqlreq = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
 
-	_, err = dbc.Exec(sqlreq, RecipeUpd.ID)
+	_, err = dbc.Exec(context.Background(), sqlreq, RecipeUpd.ID)
 
 	if err != nil {
 		return RecipeUpd, PostgreSQLRollbackIfError(err, false, dbc)
@@ -282,7 +282,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, e
 					name = $1
 				LIMIT 1;`
 
-		row := dbc.QueryRow(sqlreq, OneRecipe.Name)
+		row := dbc.QueryRow(context.Background(), sqlreq, OneRecipe.Name)
 
 		var count int
 		err := row.Scan(&count)
@@ -303,7 +303,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, e
 						name = $1
 					LIMIT 1;`
 
-			row := dbc.QueryRow(sqlreq, OneRecipe.Name)
+			row := dbc.QueryRow(context.Background(), sqlreq, OneRecipe.Name)
 
 			err := row.Scan(&curid)
 
@@ -314,7 +314,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, e
 		} else {
 			sqlreq = `INSERT INTO public."Ingredients" (name) VALUES ($1) RETURNING id;`
 
-			row := dbc.QueryRow(sqlreq, OneRecipe.Name)
+			row := dbc.QueryRow(context.Background(), sqlreq, OneRecipe.Name)
 
 			err := row.Scan(&curid)
 
@@ -325,7 +325,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, e
 
 		sqlreq = `INSERT INTO public."RecipesIngredients" (recipe_id, ingredient_id, quantity) VALUES ($1,$2,$3);`
 
-		_, err = dbc.Exec(sqlreq, RecipeUpd.ID, curid, OneRecipe.Amount)
+		_, err = dbc.Exec(context.Background(), sqlreq, RecipeUpd.ID, curid, OneRecipe.Amount)
 
 		if err != nil {
 			return RecipeUpd, PostgreSQLRollbackIfError(err, false, dbc)
@@ -333,14 +333,14 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *sql.DB) (RecipeDB, e
 
 	}
 
-	dbc.Exec("COMMIT")
+	dbc.Exec(context.Background(), "COMMIT")
 
 	return RecipeUpd, nil
 
 }
 
 // PostgreSQLRecipesDelete - удаляет рецепт и связанные с ним ингредиенты по индексу рецепта
-func PostgreSQLRecipesDelete(ID int, dbc *sql.DB) error {
+func PostgreSQLRecipesDelete(ID int, dbc *pgxpool.Pool) error {
 
 	sqlreq := `SELECT 
 				COUNT(*)
@@ -349,7 +349,7 @@ func PostgreSQLRecipesDelete(ID int, dbc *sql.DB) error {
 			WHERE 
 				id=$1;`
 
-	row := dbc.QueryRow(sqlreq, ID)
+	row := dbc.QueryRow(context.Background(), sqlreq, ID)
 
 	var recipecount int
 	err := row.Scan(&recipecount)
@@ -360,11 +360,11 @@ func PostgreSQLRecipesDelete(ID int, dbc *sql.DB) error {
 		return ErrRecipeNotFound
 	}
 
-	dbc.Exec("BEGIN")
+	dbc.Exec(context.Background(), "BEGIN")
 
 	sqlreq = `DELETE FROM public."RecipesIngredients" WHERE recipe_id=$1;`
 
-	_, err = dbc.Exec(sqlreq, ID)
+	_, err = dbc.Exec(context.Background(), sqlreq, ID)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false, dbc)
@@ -372,7 +372,7 @@ func PostgreSQLRecipesDelete(ID int, dbc *sql.DB) error {
 
 	sqlreq = `DELETE FROM public."Recipes" WHERE id=$1;`
 
-	_, err = dbc.Exec(sqlreq, ID)
+	_, err = dbc.Exec(context.Background(), sqlreq, ID)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false, dbc)
@@ -380,13 +380,13 @@ func PostgreSQLRecipesDelete(ID int, dbc *sql.DB) error {
 
 	sqlreq = `select setval('"public"."Recipes_id_seq"',(select COALESCE(max("id"),1) from "public"."Recipes")::bigint);`
 
-	_, err = dbc.Exec(sqlreq)
+	_, err = dbc.Exec(context.Background(), sqlreq)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
-	dbc.Exec("COMMIT")
+	dbc.Exec(context.Background(), "COMMIT")
 
 	return nil
 }

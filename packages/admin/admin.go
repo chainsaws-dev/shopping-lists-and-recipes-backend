@@ -2,11 +2,12 @@
 package admin
 
 import (
-	"database/sql"
 	"errors"
 	"shopping-lists-and-recipes/internal/databases"
 	"shopping-lists-and-recipes/internal/settings"
 	"shopping-lists-and-recipes/packages/authentication"
+
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // Список типовых ошибок
@@ -15,7 +16,7 @@ var (
 )
 
 // CreateAdmin - создаём пользователя для администратора
-func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password string, ConfirmEnabled bool, dbc *sql.DB) error {
+func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password string, ConfirmEnabled bool, dbc *pgxpool.Pool) error {
 
 	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
 		return ErrBasicFieldsNotFilled
@@ -46,7 +47,7 @@ func CreateAdmin(SQL *settings.SQLServer, Login string, Email string, Password s
 }
 
 // CreateUser - создаём пользователя для гостя
-func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password string, ConfirmEnabled bool, dbc *sql.DB) error {
+func CreateUser(SQL *settings.SQLServer, Login string, Email string, Password string, ConfirmEnabled bool, dbc *pgxpool.Pool) error {
 
 	if len(Login) == 0 || len(Password) == 0 || len(Email) == 0 {
 		return ErrBasicFieldsNotFilled

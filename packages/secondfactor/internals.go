@@ -2,12 +2,12 @@ package secondfactor
 
 import (
 	"bytes"
-	"database/sql"
 	"errors"
 	"image/png"
 	"shopping-lists-and-recipes/internal/databases"
 	"shopping-lists-and-recipes/packages/aesencryptor"
 
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 )
@@ -25,7 +25,7 @@ type UserSecondFactor struct {
 }
 
 // GenerateUserKey - создаёт новый ключ пользователя
-func (usf *UserSecondFactor) GenerateUserKey(dbc *sql.DB) error {
+func (usf *UserSecondFactor) GenerateUserKey(dbc *pgxpool.Pool) error {
 
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      usf.URL,
@@ -61,7 +61,7 @@ func (usf *UserSecondFactor) GenerateUserKey(dbc *sql.DB) error {
 }
 
 // GetQR - получает буфер из байтов содержащий данные QR кода для приложения аутентификатора
-func (usf *UserSecondFactor) GetQR(width int, height int, dbc *sql.DB) (bytes.Buffer, error) {
+func (usf *UserSecondFactor) GetQR(width int, height int, dbc *pgxpool.Pool) (bytes.Buffer, error) {
 
 	var b bytes.Buffer
 
@@ -83,7 +83,7 @@ func (usf *UserSecondFactor) GetQR(width int, height int, dbc *sql.DB) (bytes.Bu
 }
 
 // EnableTOTP - проверяет правильность кода и сохраняет секрет если он верный
-func EnableTOTP(Passcode string, u databases.User, dbc *sql.DB) error {
+func EnableTOTP(Passcode string, u databases.User, dbc *pgxpool.Pool) error {
 
 	result, err := databases.PostgreSQLGetSecretByUserID(u.GUID, dbc)
 
@@ -119,7 +119,7 @@ func EnableTOTP(Passcode string, u databases.User, dbc *sql.DB) error {
 }
 
 // Validate - проверяет код токена против секрета из базы
-func Validate(Passcode string, u databases.User, dbc *sql.DB) (bool, error) {
+func Validate(Passcode string, u databases.User, dbc *pgxpool.Pool) (bool, error) {
 
 	result, err := databases.PostgreSQLGetSecretByUserID(u.GUID, dbc)
 

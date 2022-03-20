@@ -1,10 +1,10 @@
 // Package databases - реализует весь функционал необходимый для взаимодействия с базами данных
 package databases
 
-import "database/sql"
+import "github.com/jackc/pgx/v4/pgxpool"
 
 // PostgreSQLCreateTablesPublic - создаёт таблицы для схемы public (для рецептов и списка покупок)
-func PostgreSQLCreateTablesPublic(dbc *sql.DB) {
+func PostgreSQLCreateTablesPublic(dbc *pgxpool.Pool) {
 
 	// Рецепты и список покупок
 

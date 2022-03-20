@@ -2,19 +2,19 @@
 package databases
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
 
-	_ "github.com/lib/pq" // Драйвер PostgreSQL
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // PostgreSQLCleanAccessToken - Удаляет заданный токен доступа
-func PostgreSQLCleanAccessToken(Token string, TokenStorageTableName string, dbc *sql.DB) error {
+func PostgreSQLCleanAccessToken(Token string, TokenStorageTableName string, dbc *pgxpool.Pool) error {
 
-	_, err := dbc.Exec(fmt.Sprintf(`DELETE FROM %v WHERE token=$1;`, TokenStorageTableName), Token)
+	_, err := dbc.Exec(context.Background(), fmt.Sprintf(`DELETE FROM %v WHERE token=$1;`, TokenStorageTableName), Token)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false, dbc)
@@ -24,29 +24,29 @@ func PostgreSQLCleanAccessToken(Token string, TokenStorageTableName string, dbc 
 }
 
 // PostgreSQLCleanAccessTokens - Удаляет все истекшие токены доступа
-func PostgreSQLCleanAccessTokens(dbc *sql.DB) error {
+func PostgreSQLCleanAccessTokens(dbc *pgxpool.Pool) error {
 
-	dbc.Exec("BEGIN")
+	dbc.Exec(context.Background(), "BEGIN")
 
-	_, err := dbc.Exec(`DELETE FROM secret.confirmations WHERE expires < now();`)
-
-	if err != nil {
-		return PostgreSQLRollbackIfError(err, false, dbc)
-	}
-
-	_, err = dbc.Exec(`DELETE FROM secret.password_resets WHERE expires < now();`)
+	_, err := dbc.Exec(context.Background(), `DELETE FROM secret.confirmations WHERE expires < now();`)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
-	dbc.Exec("COMMIT")
+	_, err = dbc.Exec(context.Background(), `DELETE FROM secret.password_resets WHERE expires < now();`)
+
+	if err != nil {
+		return PostgreSQLRollbackIfError(err, false, dbc)
+	}
+
+	dbc.Exec(context.Background(), "COMMIT")
 
 	return nil
 }
 
 // PostgreSQLGetTokenConfirmEmail - Ищем токен из запроса и устанавливаем у пользователя подтверждение если он существует
-func PostgreSQLGetTokenConfirmEmail(Token string, dbc *sql.DB) error {
+func PostgreSQLGetTokenConfirmEmail(Token string, dbc *pgxpool.Pool) error {
 
 	sqlreq := `SELECT 
 				COUNT(*) 
@@ -57,7 +57,7 @@ func PostgreSQLGetTokenConfirmEmail(Token string, dbc *sql.DB) error {
 				AND expires >= now()
 			LIMIT 1;`
 
-	row := dbc.QueryRow(sqlreq, Token)
+	row := dbc.QueryRow(context.Background(), sqlreq, Token)
 
 	var TokenCount int
 
@@ -78,7 +78,7 @@ func PostgreSQLGetTokenConfirmEmail(Token string, dbc *sql.DB) error {
 					AND expires >= now()
 				LIMIT 1;`
 
-		row := dbc.QueryRow(sqlreq, Token)
+		row := dbc.QueryRow(context.Background(), sqlreq, Token)
 
 		var UID uuid.UUID
 
@@ -88,11 +88,11 @@ func PostgreSQLGetTokenConfirmEmail(Token string, dbc *sql.DB) error {
 			return err
 		}
 
-		dbc.Exec("BEGIN")
+		dbc.Exec(context.Background(), "BEGIN")
 
 		sqlreq = "UPDATE secret.users SET confirmed=true WHERE id=$1;"
 
-		_, err = dbc.Exec(sqlreq, UID)
+		_, err = dbc.Exec(context.Background(), sqlreq, UID)
 
 		if err != nil {
 			return PostgreSQLRollbackIfError(err, false, dbc)
@@ -104,7 +104,7 @@ func PostgreSQLGetTokenConfirmEmail(Token string, dbc *sql.DB) error {
 			return PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
-		dbc.Exec("COMMIT")
+		dbc.Exec(context.Background(), "COMMIT")
 
 	} else {
 		return ErrTokenExpired
@@ -115,7 +115,7 @@ func PostgreSQLGetTokenConfirmEmail(Token string, dbc *sql.DB) error {
 }
 
 // PostgreSQLGetTokenResetPassword - ищем токен среди выданных и не протухших и обновляем хеш пароля для пользователя
-func PostgreSQLGetTokenResetPassword(Token string, Hash string, dbc *sql.DB) error {
+func PostgreSQLGetTokenResetPassword(Token string, Hash string, dbc *pgxpool.Pool) error {
 
 	sqlreq := `SELECT 
 				COUNT(*) 
@@ -126,7 +126,7 @@ func PostgreSQLGetTokenResetPassword(Token string, Hash string, dbc *sql.DB) err
 				AND expires >= now()
 			LIMIT 1;`
 
-	row := dbc.QueryRow(sqlreq, Token)
+	row := dbc.QueryRow(context.Background(), sqlreq, Token)
 
 	var TokenCount int
 
@@ -147,7 +147,7 @@ func PostgreSQLGetTokenResetPassword(Token string, Hash string, dbc *sql.DB) err
 					AND expires >= now()
 				LIMIT 1;`
 
-		row := dbc.QueryRow(sqlreq, Token)
+		row := dbc.QueryRow(context.Background(), sqlreq, Token)
 
 		var UID uuid.UUID
 
@@ -157,13 +157,13 @@ func PostgreSQLGetTokenResetPassword(Token string, Hash string, dbc *sql.DB) err
 			return err
 		}
 
-		dbc.Exec("BEGIN")
+		dbc.Exec(context.Background(), "BEGIN")
 
 		if len(Hash) > 0 {
 
 			sqlreq = `UPDATE secret.hashes SET value=$2 WHERE user_id=$1;`
 
-			_, err = dbc.Exec(sqlreq, UID, Hash)
+			_, err = dbc.Exec(context.Background(), sqlreq, UID, Hash)
 
 			if err != nil {
 				return PostgreSQLRollbackIfError(err, false, dbc)
@@ -178,7 +178,7 @@ func PostgreSQLGetTokenResetPassword(Token string, Hash string, dbc *sql.DB) err
 			return PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
-		dbc.Exec("COMMIT")
+		dbc.Exec(context.Background(), "COMMIT")
 
 	} else {
 		return ErrTokenExpired
@@ -189,13 +189,13 @@ func PostgreSQLGetTokenResetPassword(Token string, Hash string, dbc *sql.DB) err
 }
 
 // PostgreSQLSaveAccessToken - сохраняем токен для подтверждения почты
-func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string, dbc *sql.DB) error {
+func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string, dbc *pgxpool.Pool) error {
 
 	if len(Token) > 0 && len(Email) > 0 {
 
 		sqlreq := `SELECT COUNT(*) FROM secret.users WHERE email=$1 LIMIT 1;`
 
-		row := dbc.QueryRow(sqlreq, Email)
+		row := dbc.QueryRow(context.Background(), sqlreq, Email)
 
 		var UsCount int
 
@@ -209,7 +209,7 @@ func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string
 
 			sqlreq = `SELECT id FROM secret.users WHERE email=$1 LIMIT 1;`
 
-			row = dbc.QueryRow(sqlreq, Email)
+			row = dbc.QueryRow(context.Background(), sqlreq, Email)
 
 			var CurUID uuid.UUID
 
@@ -219,11 +219,11 @@ func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string
 				return err
 			}
 
-			dbc.Exec("BEGIN")
+			dbc.Exec(context.Background(), "BEGIN")
 
 			sqlreq = fmt.Sprintf(`DELETE FROM %v WHERE user_id=$1;`, TokenTableName)
 
-			_, err = dbc.Exec(sqlreq, CurUID)
+			_, err = dbc.Exec(context.Background(), sqlreq, CurUID)
 
 			if err != nil {
 				return PostgreSQLRollbackIfError(err, false, dbc)
@@ -233,13 +233,13 @@ func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string
 
 			cd := time.Now()
 
-			_, err = dbc.Exec(sqlreq, CurUID, Token, cd, cd.Add(time.Minute*10))
+			_, err = dbc.Exec(context.Background(), sqlreq, CurUID, Token, cd, cd.Add(time.Minute*10))
 
 			if err != nil {
 				return PostgreSQLRollbackIfError(err, false, dbc)
 			}
 
-			dbc.Exec("COMMIT")
+			dbc.Exec(context.Background(), "COMMIT")
 		}
 
 	}
@@ -247,7 +247,7 @@ func PostgreSQLSaveAccessToken(Token string, Email string, TokenTableName string
 }
 
 // PostgreSQLGetTokenForUser - получает токен для проверки при авторизации
-func PostgreSQLGetTokenForUser(email string, dbc *sql.DB) (string, string, error) {
+func PostgreSQLGetTokenForUser(email string, dbc *pgxpool.Pool) (string, string, error) {
 
 	var UserCount int
 	var UserID uuid.UUID
@@ -255,7 +255,7 @@ func PostgreSQLGetTokenForUser(email string, dbc *sql.DB) (string, string, error
 	var UserRole string
 	var Confirmed bool
 
-	var Hash string
+	var Hash []byte
 
 	sqlreq := `SELECT 
 				COUNT(*) 
@@ -264,7 +264,7 @@ func PostgreSQLGetTokenForUser(email string, dbc *sql.DB) (string, string, error
 			WHERE 
 				email=$1;`
 
-	UserCountRow := dbc.QueryRow(sqlreq, email)
+	UserCountRow := dbc.QueryRow(context.Background(), sqlreq, email)
 
 	err := UserCountRow.Scan(&UserCount)
 
@@ -286,7 +286,7 @@ func PostgreSQLGetTokenForUser(email string, dbc *sql.DB) (string, string, error
 				email=$1 
 			LIMIT 1`
 
-	UserIDRow := dbc.QueryRow(sqlreq, email)
+	UserIDRow := dbc.QueryRow(context.Background(), sqlreq, email)
 
 	err = UserIDRow.Scan(&UserID, &UserRole, &Confirmed)
 
@@ -305,7 +305,7 @@ func PostgreSQLGetTokenForUser(email string, dbc *sql.DB) (string, string, error
 			WHERE 
 				user_id = $1;`
 
-	HashesRow := dbc.QueryRow(sqlreq, UserID)
+	HashesRow := dbc.QueryRow(context.Background(), sqlreq, UserID)
 
 	err = HashesRow.Scan(&HashesCount)
 
@@ -324,7 +324,7 @@ func PostgreSQLGetTokenForUser(email string, dbc *sql.DB) (string, string, error
 			WHERE 
 				user_id = $1;`
 
-	HashValueRow := dbc.QueryRow(sqlreq, UserID)
+	HashValueRow := dbc.QueryRow(context.Background(), sqlreq, UserID)
 
 	err = HashValueRow.Scan(&Hash)
 
@@ -332,5 +332,5 @@ func PostgreSQLGetTokenForUser(email string, dbc *sql.DB) (string, string, error
 		return "", "", err
 	}
 
-	return Hash, UserRole, nil
+	return string(Hash), UserRole, nil
 }

@@ -2,13 +2,11 @@
 package databases
 
 import (
-	"database/sql"
-
-	_ "github.com/lib/pq" // Драйвер PostgreSQL
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // PostgreSQLCreateTablesSecret - создаёт таблицы для схемы secret (для админки и авторизации)
-func PostgreSQLCreateTablesSecret(dbc *sql.DB) {
+func PostgreSQLCreateTablesSecret(dbc *pgxpool.Pool) {
 
 	// Админка
 

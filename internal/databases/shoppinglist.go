@@ -2,15 +2,15 @@
 package databases
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"math"
 
-	_ "github.com/lib/pq" // Драйвер PostgreSQL
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // PostgreSQLShoppingListSelect - получает информацию о списке покупок
-func PostgreSQLShoppingListSelect(page int, limit int, dbc *sql.DB) (ShoppingListResponse, error) {
+func PostgreSQLShoppingListSelect(page int, limit int, dbc *pgxpool.Pool) (ShoppingListResponse, error) {
 
 	var result ShoppingListResponse
 
@@ -21,7 +21,7 @@ func PostgreSQLShoppingListSelect(page int, limit int, dbc *sql.DB) (ShoppingLis
 			FROM 
 				public."ShoppingList"`
 
-	row := dbc.QueryRow(sqlreq)
+	row := dbc.QueryRow(context.Background(), sqlreq)
 
 	var countRows int
 
@@ -51,7 +51,7 @@ func PostgreSQLShoppingListSelect(page int, limit int, dbc *sql.DB) (ShoppingLis
 		return result, ErrLimitOffsetInvalid
 	}
 
-	rows, err := dbc.Query(sqlreq)
+	rows, err := dbc.Query(context.Background(), sqlreq)
 
 	if err != nil {
 		return result, err
@@ -71,7 +71,7 @@ func PostgreSQLShoppingListSelect(page int, limit int, dbc *sql.DB) (ShoppingLis
 }
 
 // PostgreSQLShoppingListInsertUpdate - обновляет существующую запись в списке покупок или вставляет новую в базу данных
-func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) error {
+func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *pgxpool.Pool) error {
 
 	sqlreq := `SELECT 
 				COUNT(*)
@@ -80,7 +80,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 			WHERE 
 				"Ingredients".name=$1;`
 
-	row := dbc.QueryRow(sqlreq, ShoppingItem.Name)
+	row := dbc.QueryRow(context.Background(), sqlreq, ShoppingItem.Name)
 
 	var IngCount int
 
@@ -94,7 +94,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 
 	var ingID int
 
-	dbc.Exec("BEGIN")
+	dbc.Exec(context.Background(), "BEGIN")
 
 	if IngCount > 0 {
 
@@ -105,7 +105,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 				WHERE 
 					"Ingredients".name=$1;`
 
-		ingrow := dbc.QueryRow(sqlreq, ShoppingItem.Name)
+		ingrow := dbc.QueryRow(context.Background(), sqlreq, ShoppingItem.Name)
 
 		err = ingrow.Scan(&ingID)
 
@@ -119,7 +119,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 					public."ShoppingList"
 				WHERE ingredient_id =$1;`
 
-		row := dbc.QueryRow(sqlreq, ingID)
+		row := dbc.QueryRow(context.Background(), sqlreq, ingID)
 
 		err := row.Scan(&countRows)
 
@@ -131,7 +131,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 			// Добавляем новую
 			sqlreq := `INSERT INTO public."ShoppingList" (ingredient_id, quantity) VALUES ($1,$2);`
 
-			_, err = dbc.Exec(sqlreq, ingID, ShoppingItem.Amount)
+			_, err = dbc.Exec(context.Background(), sqlreq, ingID, ShoppingItem.Amount)
 
 			if err != nil {
 				return PostgreSQLRollbackIfError(err, false, dbc)
@@ -140,7 +140,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 			// Обновляем существующую
 			sqlreq = `UPDATE public."ShoppingList" SET quantity = $1 WHERE ingredient_id=$2;`
 
-			_, err = dbc.Exec(sqlreq, ShoppingItem.Amount, ingID)
+			_, err = dbc.Exec(context.Background(), sqlreq, ShoppingItem.Amount, ingID)
 
 			if err != nil {
 				return PostgreSQLRollbackIfError(err, false, dbc)
@@ -150,7 +150,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 		// Добавляем ингредиент в справочник
 		sqlreq = `INSERT INTO public."Ingredients" (name) VALUES ($1) RETURNING id;`
 
-		ingrow := dbc.QueryRow(sqlreq, ShoppingItem.Name)
+		ingrow := dbc.QueryRow(context.Background(), sqlreq, ShoppingItem.Name)
 
 		err := ingrow.Scan(&ingID)
 
@@ -164,7 +164,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 					public."ShoppingList"
 				WHERE ingredient_id =$1;`
 
-		row := dbc.QueryRow(sqlreq, ingID)
+		row := dbc.QueryRow(context.Background(), sqlreq, ingID)
 
 		err = row.Scan(&countRows)
 
@@ -176,7 +176,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 			// Добавляем новую запись в список покупок
 			sqlreq = `INSERT INTO public."ShoppingList" (ingredient_id, quantity) VALUES ($1,$2);`
 
-			_, err = dbc.Exec(sqlreq, ingID, ShoppingItem.Amount)
+			_, err = dbc.Exec(context.Background(), sqlreq, ingID, ShoppingItem.Amount)
 
 			if err != nil {
 				return PostgreSQLRollbackIfError(err, false, dbc)
@@ -185,7 +185,7 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 			// Обновляем существующую
 			sqlreq = `UPDATE public."ShoppingList" SET quantity = $1 WHERE ingredient_id=$2;`
 
-			_, err = dbc.Exec(sqlreq, ShoppingItem.Amount, ingID)
+			_, err = dbc.Exec(context.Background(), sqlreq, ShoppingItem.Amount, ingID)
 
 			if err != nil {
 				return PostgreSQLRollbackIfError(err, false, dbc)
@@ -193,13 +193,13 @@ func PostgreSQLShoppingListInsertUpdate(ShoppingItem IngredientDB, dbc *sql.DB) 
 		}
 	}
 
-	dbc.Exec("COMMIT")
+	dbc.Exec(context.Background(), "COMMIT")
 
 	return nil
 }
 
 // PostgreSQLShoppingListDelete - удаляет запись из списка покупок по имени
-func PostgreSQLShoppingListDelete(IngName string, dbc *sql.DB) error {
+func PostgreSQLShoppingListDelete(IngName string, dbc *pgxpool.Pool) error {
 
 	sqlreq := `SELECT 
 				COUNT(*)
@@ -208,7 +208,7 @@ func PostgreSQLShoppingListDelete(IngName string, dbc *sql.DB) error {
 			WHERE 
 				"Ingredients".name=$1;`
 
-	row := dbc.QueryRow(sqlreq, IngName)
+	row := dbc.QueryRow(context.Background(), sqlreq, IngName)
 
 	var IngCount int
 
@@ -230,7 +230,7 @@ func PostgreSQLShoppingListDelete(IngName string, dbc *sql.DB) error {
 				WHERE 
 					"Ingredients".name=$1;`
 
-		ingrow := dbc.QueryRow(sqlreq, IngName)
+		ingrow := dbc.QueryRow(context.Background(), sqlreq, IngName)
 
 		err = ingrow.Scan(&ingID)
 
@@ -245,7 +245,7 @@ func PostgreSQLShoppingListDelete(IngName string, dbc *sql.DB) error {
 				WHERE 
 					ingredient_id=$1;`
 
-		slrow := dbc.QueryRow(sqlreq, ingID)
+		slrow := dbc.QueryRow(context.Background(), sqlreq, ingID)
 
 		err = slrow.Scan(&CountRows)
 
@@ -257,10 +257,10 @@ func PostgreSQLShoppingListDelete(IngName string, dbc *sql.DB) error {
 			return ErrShoppingListNotFound
 		}
 
-		dbc.Exec("BEGIN")
+		dbc.Exec(context.Background(), "BEGIN")
 
 		sqlreq = `DELETE FROM public."ShoppingList" WHERE ingredient_id=$1;`
-		_, err = dbc.Exec(sqlreq, ingID)
+		_, err = dbc.Exec(context.Background(), sqlreq, ingID)
 
 		if err != nil {
 			return PostgreSQLRollbackIfError(err, false, dbc)
@@ -268,13 +268,13 @@ func PostgreSQLShoppingListDelete(IngName string, dbc *sql.DB) error {
 
 		sqlreq = `select setval('"public"."ShoppingList_id_seq"',(select COALESCE(max("id"),1) from "public"."ShoppingList")::bigint);`
 
-		_, err = dbc.Exec(sqlreq)
+		_, err = dbc.Exec(context.Background(), sqlreq)
 
 		if err != nil {
 			return PostgreSQLRollbackIfError(err, false, dbc)
 		}
 
-		dbc.Exec("COMMIT")
+		dbc.Exec(context.Background(), "COMMIT")
 
 	} else {
 		return ErrShoppingListNotFound
@@ -285,13 +285,13 @@ func PostgreSQLShoppingListDelete(IngName string, dbc *sql.DB) error {
 }
 
 // PostgreSQLShoppingListDeleteAll - удаляет все записи из списка покупок
-func PostgreSQLShoppingListDeleteAll(dbc *sql.DB) error {
+func PostgreSQLShoppingListDeleteAll(dbc *pgxpool.Pool) error {
 
-	dbc.Exec("BEGIN")
+	dbc.Exec(context.Background(), "BEGIN")
 
 	sqlreq := `DELETE FROM public."ShoppingList";`
 
-	_, err := dbc.Exec(sqlreq)
+	_, err := dbc.Exec(context.Background(), sqlreq)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false, dbc)
@@ -299,13 +299,13 @@ func PostgreSQLShoppingListDeleteAll(dbc *sql.DB) error {
 
 	sqlreq = `select setval('"public"."ShoppingList_id_seq"',(select COALESCE(max("id"),1) from "public"."ShoppingList")::bigint);`
 
-	_, err = dbc.Exec(sqlreq)
+	_, err = dbc.Exec(context.Background(), sqlreq)
 
 	if err != nil {
 		return PostgreSQLRollbackIfError(err, false, dbc)
 	}
 
-	dbc.Exec("COMMIT")
+	dbc.Exec(context.Background(), "COMMIT")
 
 	return nil
 }

@@ -4,7 +4,6 @@ package messages
 import (
 	"bytes"
 	"crypto/sha1"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/url"
@@ -14,6 +13,7 @@ import (
 	"text/template"
 
 	send "github.com/go-mail/mail"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 var tpl *template.Template
@@ -72,7 +72,7 @@ func GetStringTemplate(TemplateName string, ObjectToInsert string) string {
 }
 
 // SendEmailConfirmationLetter - отправляет письмо с ссылкой для подтверждения электронной почты
-func SendEmailConfirmationLetter(SQL *settings.SQLServer, Recepient string, ReqHost string, dbc *sql.DB) {
+func SendEmailConfirmationLetter(SQL *settings.SQLServer, Recepient string, ReqHost string, dbc *pgxpool.Pool) {
 
 	if SendCred.Use {
 
@@ -98,7 +98,7 @@ func SendEmailConfirmationLetter(SQL *settings.SQLServer, Recepient string, ReqH
 }
 
 // SaveTokenForUser - сохраняем токен доступа в базу данных в заданную таблицу
-func SaveTokenForUser(SQL *settings.SQLServer, strtoken string, TableName string, Recepient string, dbc *sql.DB) {
+func SaveTokenForUser(SQL *settings.SQLServer, strtoken string, TableName string, Recepient string, dbc *pgxpool.Pool) {
 
 	log.Printf("Сохраняем токен для пользователя %v...", Recepient)
 
@@ -115,7 +115,7 @@ func SaveTokenForUser(SQL *settings.SQLServer, strtoken string, TableName string
 }
 
 // SendEmailPasswordReset - отправляет письмо с ссылкой для сброса пароля
-func SendEmailPasswordReset(SQL *settings.SQLServer, Recepient string, ReqHost string, dbc *sql.DB) {
+func SendEmailPasswordReset(SQL *settings.SQLServer, Recepient string, ReqHost string, dbc *pgxpool.Pool) {
 
 	if SendCred.Use {
 

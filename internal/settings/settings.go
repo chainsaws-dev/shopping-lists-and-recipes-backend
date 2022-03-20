@@ -2,13 +2,14 @@
 package settings
 
 import (
-	"database/sql"
 	"errors"
 	"log"
 	"net/http"
 	"shopping-lists-and-recipes/internal/databases"
 	"shopping-lists-and-recipes/packages/randompassword"
 	"shopping-lists-and-recipes/packages/shared"
+
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // Список типовых ошибок
@@ -330,7 +331,7 @@ func GetConnectionString(SQLsrv *SQLServer, Role string) (string, error) {
 }
 
 // Connect - открывает соединение с базой данных Postgresql
-func (SQLsrv *SQLServer) Connect(w http.ResponseWriter, role string) *sql.DB {
+func (SQLsrv *SQLServer) Connect(w http.ResponseWriter, role string) *pgxpool.Pool {
 
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
@@ -356,7 +357,7 @@ func (SQLsrv *SQLServer) Connect(w http.ResponseWriter, role string) *sql.DB {
 }
 
 // ConnectAsAdmin - подключаемся к базе с ролью администратора
-func (SQLsrv *SQLServer) ConnectAsAdmin() *sql.DB {
+func (SQLsrv *SQLServer) ConnectAsAdmin() *pgxpool.Pool {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
 		cs, err := GetConnectionString(SQLsrv, "admin_role_CRUD")
@@ -383,7 +384,7 @@ func (SQLsrv *SQLServer) ConnectAsAdmin() *sql.DB {
 }
 
 // ConnectAsGuest - подключаемся к базе с ролью гостя
-func (SQLsrv *SQLServer) ConnectAsGuest() *sql.DB {
+func (SQLsrv *SQLServer) ConnectAsGuest() *pgxpool.Pool {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
 		cs, err := GetConnectionString(SQLsrv, "guest_role_read_only")
