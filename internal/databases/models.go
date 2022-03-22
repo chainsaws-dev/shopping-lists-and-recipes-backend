@@ -72,6 +72,7 @@ type User struct {
 	Email        string
 	Phone        string
 	Name         string
+	Lang         string
 	IsAdmin      bool
 	Confirmed    bool
 	Disabled     bool

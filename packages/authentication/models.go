@@ -26,6 +26,7 @@ type AuthResponseData struct {
 	Registered   bool
 	Role         string
 	SecondFactor TOTP
+	Locale       string
 }
 
 // AuthSignUpRequestData - запрос при регистрации

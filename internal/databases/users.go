@@ -43,6 +43,7 @@ func PostgreSQLUsersSelect(page int, limit int, dbc *pgxpool.Pool) (UsersRespons
 								users.email,
 								users.phone,
 								users.name,
+								users.lang,
 								users.isadmin,
 								users.confirmed,
 								users.disabled,
@@ -65,7 +66,7 @@ func PostgreSQLUsersSelect(page int, limit int, dbc *pgxpool.Pool) (UsersRespons
 
 	for rows.Next() {
 		var cur User
-		rows.Scan(&cur.GUID, &cur.Role, &cur.Email, &cur.Phone, &cur.Name, &cur.IsAdmin, &cur.Confirmed, &cur.Disabled, &cur.SecondFactor)
+		rows.Scan(&cur.GUID, &cur.Role, &cur.Email, &cur.Phone, &cur.Name, &cur.Lang, &cur.IsAdmin, &cur.Confirmed, &cur.Disabled, &cur.SecondFactor)
 		result.Users = append(result.Users, cur)
 	}
 
@@ -121,10 +122,10 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 
 		// Обновляем существующего
 
-		sqlreq = `UPDATE secret.users SET (role, email, phone, name, isadmin, confirmed, disabled, totp_active) = ($1,$2,$3,$4,$5,$6,$7,$8) WHERE id=$9;`
+		sqlreq = `UPDATE secret.users SET (role, email, phone, name, lang, isadmin, confirmed, disabled, totp_active) = ($1,$2,$3,$4,$5,$6,$7,$8,$9) WHERE id=$10;`
 
 		_, err = dbc.Exec(context.Background(), sqlreq, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone, NewUserInfo.Name,
-			NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.Disabled, NewUserInfo.SecondFactor, NewUserInfo.GUID)
+			NewUserInfo.Lang, NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.Disabled, NewUserInfo.SecondFactor, NewUserInfo.GUID)
 
 		if err != nil {
 			return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)
@@ -152,10 +153,10 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 		// Генерируем новый уникальный идентификатор
 		NewUserInfo.GUID = uuid.NewV4()
 
-		sqlreq = `INSERT INTO secret.users (id, role, email, phone, name, isadmin, confirmed, disabled, totp_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);`
+		sqlreq = `INSERT INTO secret.users (id, role, email, phone, name, lang, isadmin, confirmed, disabled, totp_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);`
 
 		_, err = dbc.Exec(context.Background(), sqlreq, NewUserInfo.GUID, NewUserInfo.Role, NewUserInfo.Email, NewUserInfo.Phone,
-			NewUserInfo.Name, NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.Disabled, NewUserInfo.SecondFactor)
+			NewUserInfo.Name, NewUserInfo.Lang, NewUserInfo.IsAdmin, NewUserInfo.Confirmed, NewUserInfo.Disabled, NewUserInfo.SecondFactor)
 
 		if err != nil {
 			return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)
@@ -308,6 +309,7 @@ func PostgreSQLGetUserByEmail(Email string, dbc *pgxpool.Pool) (User, error) {
 							users.email,
 							users.phone,
 							users.name,
+							users.lang,
 							users.isadmin,
 							users.confirmed,
 							users.disabled,
@@ -327,7 +329,7 @@ func PostgreSQLGetUserByEmail(Email string, dbc *pgxpool.Pool) (User, error) {
 			for rows.Next() {
 
 				err = rows.Scan(&result.GUID, &result.Role, &result.Email, &result.Phone, &result.Name,
-					&result.IsAdmin, &result.Confirmed, &result.Disabled, &result.SecondFactor)
+					&result.Lang, &result.IsAdmin, &result.Confirmed, &result.Disabled, &result.SecondFactor)
 
 				if err != nil {
 					return result, err
@@ -366,9 +368,9 @@ func PostgreSQLCurrentUserUpdate(NewUserInfo User, Hash string, UpdatePassword b
 
 	if UserCount > 0 {
 		// Обновляем существующего
-		sqlreq = `UPDATE secret.users SET (phone, name) = ($1,$2) WHERE id=$3;`
+		sqlreq = `UPDATE secret.users SET (phone, name, lang) = ($1,$2,$3) WHERE id=$4;`
 
-		_, err = dbc.Exec(context.Background(), sqlreq, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.GUID)
+		_, err = dbc.Exec(context.Background(), sqlreq, NewUserInfo.Phone, NewUserInfo.Name, NewUserInfo.Lang, NewUserInfo.GUID)
 
 		if err != nil {
 			return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)

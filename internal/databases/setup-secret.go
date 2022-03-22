@@ -20,6 +20,7 @@ func PostgreSQLCreateTablesSecret(dbc *pgxpool.Pool) {
 				email character varying(50) NOT NULL,
 				phone character varying(50),
 				name character varying(150),
+				lang character varying(2),
 				isadmin boolean,
 				confirmed boolean,
 				disabled boolean,

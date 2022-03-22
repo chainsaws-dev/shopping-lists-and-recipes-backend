@@ -173,6 +173,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 				Enabled:     FoundUser.SecondFactor,
 				CheckResult: false,
 			},
+			Locale: FoundUser.Lang,
 		}
 
 		// Формируем и запоминаем сессию
