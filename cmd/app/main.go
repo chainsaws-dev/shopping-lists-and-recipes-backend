@@ -15,7 +15,6 @@ import (
 	"shopping-lists-and-recipes/internal/shoppinglist"
 	"shopping-lists-and-recipes/packages/files"
 	"shopping-lists-and-recipes/packages/gzipwrap"
-	"shopping-lists-and-recipes/packages/multilangtranslator"
 	"shopping-lists-and-recipes/packages/secondfactor"
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/signinupout"
@@ -96,7 +95,7 @@ func ServerSetup() {
 
 			if !errors.Is(err, http.ErrServerClosed) {
 				setup.ServerSettings.SQL.Disconnect()
-				log.Fatalln(multilangtranslator.TranslateError(err, setup.ServerSettings.Lang))
+				log.Fatalln(err)
 			}
 
 		} else {
@@ -107,7 +106,7 @@ func ServerSetup() {
 
 			if !errors.Is(err, http.ErrServerClosed) {
 				setup.ServerSettings.SQL.Disconnect()
-				log.Fatalln(multilangtranslator.TranslateError(err, setup.ServerSettings.Lang))
+				log.Fatalln(err)
 			}
 		}
 	}()
@@ -127,7 +126,7 @@ func ServerSetup() {
 	err := srv.Shutdown(ctx)
 
 	if err != nil {
-		log.Println(multilangtranslator.TranslateError(err, setup.ServerSettings.Lang))
+		log.Println(err)
 	}
 
 	setup.ServerSettings.SQL.Disconnect()
