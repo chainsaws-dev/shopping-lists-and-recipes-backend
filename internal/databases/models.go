@@ -1,7 +1,7 @@
 // Package databases - реализует весь функционал необходимый для взаимодействия с базами данных
 package databases
 
-import uuid "github.com/satori/go.uuid"
+import uuid "github.com/gofrs/uuid"
 
 // RecipeDB - тип для хранения информации о рецепте в базе данных
 type RecipeDB struct {

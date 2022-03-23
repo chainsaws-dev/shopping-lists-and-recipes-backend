@@ -71,12 +71,12 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
-					shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+					shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest)
 					return
 				}
 			}
 
-			if shared.HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, req, err) {
 				return
 			}
 
@@ -87,7 +87,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 					result.Confirmed = false
 					result.UserID = FoundUser.GUID
 				} else {
-					if shared.HandleInternalServerError(w, err) {
+					if shared.HandleInternalServerError(w, req, err) {
 						return
 					}
 				}
@@ -96,10 +96,10 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 				result.UserID = Totp.UserID
 			}
 
-			shared.WriteObjectToJSON(w, result)
+			shared.WriteObjectToJSON(w, req, result)
 
 		} else {
-			shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 			return
 		}
 
@@ -115,7 +115,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 				err := json.NewDecoder(req.Body).Decode(&CurUser)
 
-				if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+				if shared.HandleOtherError(w, req, "Bad request", err, http.StatusBadRequest) {
 					return
 				}
 
@@ -123,29 +123,29 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 				if err != nil {
 					if errors.Is(ErrSecretNotSaved, err) {
-						shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+						shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest)
 						return
 					}
 
 					if errors.Is(databases.ErrUserTOTPNotFound, err) {
-						shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+						shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest)
 						return
 					}
 
-					if shared.HandleInternalServerError(w, err) {
+					if shared.HandleInternalServerError(w, req, err) {
 						return
 					}
 				}
 
-				shared.HandleSuccessMessage(w, "Второй фактор успешно настроен")
+				shared.HandleSuccessMessage(w, req, "Второй фактор успешно настроен")
 
 			} else {
-				shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest)
+				shared.HandleOtherError(w, req, "Bad request", err, http.StatusBadRequest)
 				return
 			}
 
 		} else {
-			shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 			return
 		}
 
@@ -160,30 +160,30 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
-					shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+					shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest)
 					return
 				}
 			}
 
-			if shared.HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, req, err) {
 				return
 			}
 
 			err = databases.PostgreSQLDeleteSecondFactorSecret(FoundUser.GUID, setup.ServerSettings.SQL.ConnPool)
 
-			if shared.HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, req, err) {
 				return
 			}
 
-			shared.HandleSuccessMessage(w, "Второй фактор успешно удалён")
+			shared.HandleSuccessMessage(w, req, "Второй фактор успешно удалён")
 
 		} else {
-			shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 			return
 		}
 
 	default:
-		shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, req, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -230,12 +230,12 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 
 			if err != nil {
 				if errors.Is(databases.ErrNoUserWithEmail, err) {
-					shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+					shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest)
 					return
 				}
 			}
 
-			if shared.HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, req, err) {
 				return
 			}
 
@@ -248,23 +248,23 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 
 			if err != nil {
 				if errors.Is(databases.ErrTOTPConfirmed, err) {
-					shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+					shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest)
 					return
 				}
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 			}
 
-			shared.WriteBufferToPNG(w, b)
+			shared.WriteBufferToPNG(w, req, b)
 
 		} else {
-			shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 		}
 
 	default:
-		shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, req, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -300,30 +300,30 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 
 				if err != nil {
 					if errors.Is(databases.ErrNoUserWithEmail, err) {
-						shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+						shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest)
 						return
 					}
 				}
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
 				if !FoundUser.SecondFactor {
-					shared.HandleOtherError(w, ErrSecondFactorInactive.Error(), ErrSecondFactorInactive, http.StatusBadRequest)
+					shared.HandleOtherError(w, req, ErrSecondFactorInactive.Error(), ErrSecondFactorInactive, http.StatusBadRequest)
 					return
 				}
 
 				Correct, err := Validate(PassStr, FoundUser, setup.ServerSettings.SQL.ConnPool)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
 				if Correct {
 					at, err := signinupout.GetCurrentSession(w, req)
 
-					if shared.HandleInternalServerError(w, err) {
+					if shared.HandleInternalServerError(w, req, err) {
 						return
 					}
 
@@ -331,22 +331,22 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 
 					signinupout.SetTokenStrict(at)
 
-					shared.HandleSuccessMessage(w, "Двухфакторная авторизация успешно пройдена")
+					shared.HandleSuccessMessage(w, req, "Двухфакторная авторизация успешно пройдена")
 				} else {
-					shared.HandleOtherError(w, "Указан неверный ключ", shared.ErrNotAuthorized, http.StatusUnauthorized)
+					shared.HandleOtherError(w, req, "Указан неверный ключ", shared.ErrNotAuthorized, http.StatusUnauthorized)
 				}
 
 			} else {
-				shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest)
+				shared.HandleOtherError(w, req, "Bad request", err, http.StatusBadRequest)
 				return
 			}
 
 		} else {
-			shared.HandleOtherError(w, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
 		}
 
 	default:
-		shared.HandleOtherError(w, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, req, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

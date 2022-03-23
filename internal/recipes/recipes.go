@@ -15,8 +15,8 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrRecipeIDNotFilled      = errors.New("Не заполнен обязательный заголовок RecipeID в запросе на удаление рецепта")
-	ErrHeadersSearchNotFilled = errors.New("Не заполнены обязательные параметры поискового запроса: Page, Limit, Search")
+	ErrRecipeIDNotFilled      = errors.New("Http request to delete recipe does not contain reqired header RecipeID")
+	ErrHeadersSearchNotFilled = errors.New("Http request to search recipes does not contain required parameters: Page, Limit, Search")
 )
 
 // HandleRecipes - обрабатывает POST, GET и DELETE запросы для изменения рецептов
@@ -31,6 +31,7 @@ var (
 //
 //	Заголовки:
 //  Auth - Токен доступа
+//  Lang - Язык (ru или en)
 //
 //	и
 //
@@ -74,31 +75,31 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 				Page, err := strconv.Atoi(PageStr)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
 				Limit, err := strconv.Atoi(LimitStr)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
 				recipesresp, err = databases.PostgreSQLRecipesSelect(Page, Limit, setup.ServerSettings.SQL.ConnPool)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
 			} else {
-				shared.HandleOtherError(w, shared.ErrHeadersFetchNotFilled.Error(), shared.ErrHeadersFetchNotFilled, http.StatusBadRequest)
+				shared.HandleOtherError(w, req, shared.ErrHeadersFetchNotFilled.Error(), shared.ErrHeadersFetchNotFilled, http.StatusBadRequest)
 				return
 			}
 
-			shared.WriteObjectToJSON(w, recipesresp)
+			shared.WriteObjectToJSON(w, req, recipesresp)
 
 		} else {
-			shared.HandleOtherError(w, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	case req.Method == http.MethodPost:
@@ -110,20 +111,20 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 			err = json.NewDecoder(req.Body).Decode(&Recipe)
 
-			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+			if shared.HandleOtherError(w, req, "Bad request", err, http.StatusBadRequest) {
 				return
 			}
 
 			recipesresp, err := databases.PostgreSQLRecipesInsertUpdate(Recipe, setup.ServerSettings.SQL.ConnPool)
 
-			if shared.HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, req, err) {
 				return
 			}
 
-			shared.WriteObjectToJSON(w, recipesresp)
+			shared.WriteObjectToJSON(w, req, recipesresp)
 
 		} else {
-			shared.HandleOtherError(w, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	case req.Method == http.MethodDelete:
@@ -137,7 +138,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 				RecipeID, err := strconv.Atoi(RecipeIDToDelStr)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
@@ -145,27 +146,27 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 				if err != nil {
 					if errors.Is(err, databases.ErrRecipeNotFound) {
-						shared.HandleOtherError(w, "Рецепт не найден, невозможно удалить", err, http.StatusBadRequest)
+						shared.HandleOtherError(w, req, "Рецепт не найден, невозможно удалить", err, http.StatusBadRequest)
 						return
 					}
 				}
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
-				shared.HandleSuccessMessage(w, "Запись удалена")
+				shared.HandleSuccessMessage(w, req, "Запись удалена")
 
 			} else {
-				shared.HandleOtherError(w, "Bad request", ErrRecipeIDNotFilled, http.StatusBadRequest)
+				shared.HandleOtherError(w, req, "Bad request", ErrRecipeIDNotFilled, http.StatusBadRequest)
 			}
 
 		} else {
-			shared.HandleOtherError(w, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	default:
-		shared.HandleOtherError(w, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, req, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -218,40 +219,40 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 
 				Page, err := strconv.Atoi(PageStr)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
 				Limit, err := strconv.Atoi(LimitStr)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
 				SearchStr, err := url.QueryUnescape(SearchStr)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
 				recipesresp, err = databases.PostgreSQLRecipesSelectSearch(Page, Limit, SearchStr, setup.ServerSettings.SQL.ConnPool)
 
 			} else {
-				shared.HandleOtherError(w, ErrHeadersSearchNotFilled.Error(), ErrHeadersSearchNotFilled, http.StatusBadRequest)
+				shared.HandleOtherError(w, req, ErrHeadersSearchNotFilled.Error(), ErrHeadersSearchNotFilled, http.StatusBadRequest)
 				return
 			}
 
-			if shared.HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, req, err) {
 				return
 			}
 
-			shared.WriteObjectToJSON(w, recipesresp)
+			shared.WriteObjectToJSON(w, req, recipesresp)
 
 		} else {
-			shared.HandleOtherError(w, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 	default:
-		shared.HandleOtherError(w, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, req, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

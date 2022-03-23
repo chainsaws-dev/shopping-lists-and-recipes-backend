@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/lib/pq"
 )
 
 // Schemas - список схем, которые должны быть созданы перед созданием таблиц базы
@@ -196,7 +195,7 @@ func PostgreSQLCreateSchemas(dbc *pgxpool.Pool) error {
 			WHERE 
 				table_schema = ANY($1);`
 
-	rows, err := dbc.Query(context.Background(), sqlreq, pq.Array(Schemas))
+	rows, err := dbc.Query(context.Background(), sqlreq, Schemas)
 
 	shared.WriteErrToLog(err)
 

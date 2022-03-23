@@ -13,16 +13,23 @@ import (
 	"strconv"
 )
 
-// Список типовых ошибок
-var (
-	ErrNotAllowedMethod = errors.New("Запрошен недопустимый метод для списка покупок")
-	ErrNoKeyInParams    = errors.New("API ключ не указан в параметрах")
-	ErrWrongKeyInParams = errors.New("API ключ не зарегистрирован")
-	ErrNotAuthorized    = errors.New("Пройдите авторизацию")
-	ErrForbidden        = errors.New("Доступ запрещён")
-)
-
 // HandleShoppingList - обрабатывает GET, POST и DELETE запросы для списка покупок
+//
+// Аутентификация
+//
+//  Куки
+//  Session - шифрованная сессия
+//	Email - шифрованный электронный адрес пользователя
+//
+//  или
+//
+//	Заголовки:
+//  Auth - Токен доступа
+//  Lang - Язык (ru или en)
+//
+//	и
+//
+//	ApiKey - Постоянный ключ доступа к API *
 //
 // GET
 //
@@ -66,13 +73,13 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 				Page, err := strconv.Atoi(PageStr)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
 				Limit, err := strconv.Atoi(LimitStr)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
@@ -82,14 +89,14 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 				resp, err = databases.PostgreSQLShoppingListSelect(0, 0, setup.ServerSettings.SQL.ConnPool)
 			}
 
-			if shared.HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, req, err) {
 				return
 			}
 
-			shared.WriteObjectToJSON(w, resp)
+			shared.WriteObjectToJSON(w, req, resp)
 
 		} else {
-			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	case req.Method == http.MethodPost:
@@ -100,20 +107,20 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 			err = json.NewDecoder(req.Body).Decode(&Ingredient)
 
-			if shared.HandleOtherError(w, "Bad request", err, http.StatusBadRequest) {
+			if shared.HandleOtherError(w, req, "Bad request", err, http.StatusBadRequest) {
 				return
 			}
 
 			err = databases.PostgreSQLShoppingListInsertUpdate(Ingredient, setup.ServerSettings.SQL.ConnPool)
 
-			if shared.HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, req, err) {
 				return
 			}
 
-			shared.HandleSuccessMessage(w, "Запись сохранена")
+			shared.HandleSuccessMessage(w, req, "Запись сохранена")
 
 		} else {
-			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	case req.Method == http.MethodDelete:
@@ -126,7 +133,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 			if IngName != "" {
 				IngName, err := url.QueryUnescape(IngName)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
@@ -134,34 +141,34 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 				if err != nil {
 					if errors.Is(err, databases.ErrShoppingListNotFound) {
-						shared.HandleOtherError(w, "Не найдено ни одной записи в списке покупок с указанным названием", err, http.StatusBadRequest)
+						shared.HandleOtherError(w, req, "Не найдено ни одной записи в списке покупок с указанным названием", err, http.StatusBadRequest)
 						return
 					}
 				}
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
-				shared.HandleSuccessMessage(w, "Запись удалена")
+				shared.HandleSuccessMessage(w, req, "Запись удалена")
 
 			} else {
 
 				err = databases.PostgreSQLShoppingListDeleteAll(setup.ServerSettings.SQL.ConnPool)
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 
-				shared.HandleSuccessMessage(w, "Все записи удалены")
+				shared.HandleSuccessMessage(w, req, "Все записи удалены")
 			}
 
 		} else {
-			shared.HandleOtherError(w, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	default:
-		shared.HandleOtherError(w, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, req, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

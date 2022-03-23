@@ -71,28 +71,28 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 		if PageStr != "" && LimitStr != "" {
 			Page, err := strconv.Atoi(PageStr)
 
-			if shared.HandleBadRequestError(w, err) {
+			if shared.HandleBadRequestError(w, req, err) {
 				return
 			}
 
 			Limit, err := strconv.Atoi(LimitStr)
 
-			if shared.HandleBadRequestError(w, err) {
+			if shared.HandleBadRequestError(w, req, err) {
 				return
 			}
 
 			FilesResponse, err = databases.PostgreSQLFilesSelect(Page, Limit, setup.ServerSettings.SQL.ConnPool)
 
-			if shared.HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, req, err) {
 				return
 			}
 
 		} else {
-			shared.HandleOtherError(w, shared.ErrHeadersFetchNotFilled.Error(), shared.ErrHeadersFetchNotFilled, http.StatusBadRequest)
+			shared.HandleOtherError(w, req, shared.ErrHeadersFetchNotFilled.Error(), shared.ErrHeadersFetchNotFilled, http.StatusBadRequest)
 			return
 		}
 
-		shared.WriteObjectToJSON(w, FilesResponse)
+		shared.WriteObjectToJSON(w, req, FilesResponse)
 
 	case req.Method == http.MethodPost:
 
@@ -106,10 +106,10 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			shared.WriteObjectToJSON(w, furesp)
+			shared.WriteObjectToJSON(w, req, furesp)
 
 		} else {
-			shared.HandleOtherError(w, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	case req.Method == http.MethodDelete:
@@ -122,7 +122,7 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 
 			ID, err := strconv.Atoi(FileID)
 
-			if shared.HandleBadRequestError(w, err) {
+			if shared.HandleBadRequestError(w, req, err) {
 				return
 			}
 
@@ -132,34 +132,34 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 
 			if err != nil {
 				if errors.Is(databases.ErrFirstNotDelete, err) {
-					shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+					shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest)
 					return
 				}
 
 				if errors.Is(sql.ErrNoRows, err) {
-					shared.HandleOtherError(w, shared.ErroNoRowsInResult.Error(), shared.ErroNoRowsInResult, http.StatusBadRequest)
+					shared.HandleOtherError(w, req, shared.ErroNoRowsInResult.Error(), shared.ErroNoRowsInResult, http.StatusBadRequest)
 					return
 				}
 
 				if strings.Contains(err.Error(), "violates foreign key constraint") {
-					shared.HandleOtherError(w, shared.ErrFkeyViolation.Error(), shared.ErrFkeyViolation, http.StatusBadRequest)
+					shared.HandleOtherError(w, req, shared.ErrFkeyViolation.Error(), shared.ErrFkeyViolation, http.StatusBadRequest)
 					return
 				}
 
-				if shared.HandleInternalServerError(w, err) {
+				if shared.HandleInternalServerError(w, req, err) {
 					return
 				}
 			}
 
-			shared.HandleSuccessMessage(w, fmt.Sprintf("Файл с индексом %v удалён", FileID))
+			shared.HandleSuccessMessage(w, req, fmt.Sprintf("Файл с индексом %v удалён", FileID))
 
 		} else {
-			shared.HandleOtherError(w, ErrHeaderDeleteNotFilled.Error(), ErrHeaderDeleteNotFilled, http.StatusBadRequest)
+			shared.HandleOtherError(w, req, ErrHeaderDeleteNotFilled.Error(), ErrHeaderDeleteNotFilled, http.StatusBadRequest)
 			return
 		}
 
 	default:
-		shared.HandleOtherError(w, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(w, req, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

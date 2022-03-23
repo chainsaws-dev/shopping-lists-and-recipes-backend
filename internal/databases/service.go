@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )

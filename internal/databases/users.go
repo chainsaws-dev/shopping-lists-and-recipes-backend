@@ -7,7 +7,7 @@ import (
 	"math"
 	"shopping-lists-and-recipes/packages/shared"
 
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -151,7 +151,11 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 		// Создаём нового
 
 		// Генерируем новый уникальный идентификатор
-		NewUserInfo.GUID = uuid.NewV4()
+		NewUserInfo.GUID, err = uuid.NewV4()
+
+		if err != nil {
+			return NewUserInfo, PostgreSQLRollbackIfError(err, false, dbc)
+		}
 
 		sqlreq = `INSERT INTO secret.users (id, role, email, phone, name, lang, isadmin, confirmed, disabled, totp_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);`
 

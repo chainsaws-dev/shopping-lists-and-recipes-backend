@@ -42,7 +42,7 @@ func AuthBasic(w http.ResponseWriter, req *http.Request) bool {
 	found, err := CheckAPIKey(w, req)
 
 	if err != nil {
-		if shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest) {
+		if shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest) {
 			return false
 		}
 	}
@@ -51,7 +51,7 @@ func AuthBasic(w http.ResponseWriter, req *http.Request) bool {
 		return true
 	}
 
-	shared.HandleOtherError(w, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
+	shared.HandleOtherError(w, req, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
 	return false
 }
 
@@ -68,7 +68,7 @@ func AuthNoSecondFactor(w http.ResponseWriter, req *http.Request) (string, bool)
 		return role, true
 	}
 
-	shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
+	shared.HandleOtherError(w, req, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 	return "", false
 
 }
@@ -90,11 +90,11 @@ func AuthGeneral(w http.ResponseWriter, req *http.Request) (string, bool) {
 			return role, true
 		}
 
-		shared.HandleOtherError(w, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
+		shared.HandleOtherError(w, req, shared.ErrNotAuthorizedTwoFactor.Error(), shared.ErrNotAuthorizedTwoFactor, http.StatusUnauthorized)
 		return "", false
 	}
 
-	shared.HandleOtherError(w, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
+	shared.HandleOtherError(w, req, shared.ErrNotAuthorized.Error(), shared.ErrNotAuthorized, http.StatusUnauthorized)
 	return "", false
 
 }
@@ -104,7 +104,7 @@ func AuthGeneral(w http.ResponseWriter, req *http.Request) (string, bool) {
 func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentication.AuthRequestData) {
 
 	if len(AuthRequest.Password) < 6 {
-		shared.HandleOtherError(w, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
+		shared.HandleOtherError(w, req, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
 		return
 	}
 
@@ -115,7 +115,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 	strhash, strrole, err := databases.PostgreSQLGetTokenForUser(AuthRequest.Email, setup.ServerSettings.SQL.ConnPool)
 
 	if err != nil {
-		if shared.HandleOtherError(w, err.Error(), err, http.StatusTeapot) {
+		if shared.HandleOtherError(w, req, err.Error(), err, http.StatusTeapot) {
 			return
 		}
 	}
@@ -123,7 +123,7 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 	// Проверяем пароль против хеша
 	match, err := authentication.Argon2ComparePasswordAndHash(AuthRequest.Password, strhash)
 
-	if shared.HandleInternalServerError(w, err) {
+	if shared.HandleInternalServerError(w, req, err) {
 		return
 	}
 
@@ -142,23 +142,23 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 
 		if err != nil {
 			if errors.Is(databases.ErrNoUserWithEmail, err) {
-				shared.HandleOtherError(w, err.Error(), err, http.StatusBadRequest)
+				shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest)
 			}
 		}
 
-		if shared.HandleInternalServerError(w, err) {
+		if shared.HandleInternalServerError(w, req, err) {
 			return
 		}
 
 		if FoundUser.Disabled {
-			shared.HandleOtherError(w, ErrUserDisabled.Error(), ErrUserDisabled, http.StatusForbidden)
+			shared.HandleOtherError(w, req, ErrUserDisabled.Error(), ErrUserDisabled, http.StatusForbidden)
 			return
 		}
 
 		// Генерим случайные 32 байта
 		tokenb, err := authentication.GenerateRandomBytes(32)
 
-		if shared.HandleInternalServerError(w, err) {
+		if shared.HandleInternalServerError(w, req, err) {
 			return
 		}
 
@@ -203,15 +203,15 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 
 			err = securecookies.SetCookies(te, NewActiveToken, w)
 
-			if shared.HandleInternalServerError(w, err) {
+			if shared.HandleInternalServerError(w, req, err) {
 				return
 			}
 		}
 
-		shared.WriteObjectToJSON(w, AuthResponse)
+		shared.WriteObjectToJSON(w, req, AuthResponse)
 
 	} else {
-		shared.HandleOtherError(w, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
+		shared.HandleOtherError(w, req, ErrNotAuthorized.Error(), ErrNotAuthorized, http.StatusUnauthorized)
 	}
 }
 

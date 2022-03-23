@@ -4,8 +4,8 @@ package databases
 import (
 	"context"
 
+	uuid "github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
-	uuid "github.com/satori/go.uuid"
 )
 
 // PostgreSQLGetSecretByUserID - получает секрет и расшифровывает его

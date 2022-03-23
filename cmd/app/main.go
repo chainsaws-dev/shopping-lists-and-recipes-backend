@@ -15,6 +15,7 @@ import (
 	"shopping-lists-and-recipes/internal/shoppinglist"
 	"shopping-lists-and-recipes/packages/files"
 	"shopping-lists-and-recipes/packages/gzipwrap"
+	"shopping-lists-and-recipes/packages/multilangtranslator"
 	"shopping-lists-and-recipes/packages/secondfactor"
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/signinupout"
@@ -27,7 +28,7 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrWrongArgumentFormat = errors.New("неверный формат данных для логина: ожидатся -admincred:example@example.ru@@password")
+	ErrWrongArgumentFormat = errors.New("incorrect data format for login: expected -admincred:example@example.ru@@password")
 )
 
 // main - главная точка входа в программу
@@ -95,7 +96,7 @@ func ServerSetup() {
 
 			if !errors.Is(err, http.ErrServerClosed) {
 				setup.ServerSettings.SQL.Disconnect()
-				log.Fatalln(err)
+				log.Fatalln(multilangtranslator.TranslateError(err, setup.ServerSettings.Lang))
 			}
 
 		} else {
@@ -106,7 +107,7 @@ func ServerSetup() {
 
 			if !errors.Is(err, http.ErrServerClosed) {
 				setup.ServerSettings.SQL.Disconnect()
-				log.Fatalln(err)
+				log.Fatalln(multilangtranslator.TranslateError(err, setup.ServerSettings.Lang))
 			}
 		}
 	}()
@@ -126,12 +127,12 @@ func ServerSetup() {
 	err := srv.Shutdown(ctx)
 
 	if err != nil {
-		log.Println(err)
+		log.Println(multilangtranslator.TranslateError(err, setup.ServerSettings.Lang))
 	}
 
 	setup.ServerSettings.SQL.Disconnect()
 
-	log.Println("Завершение работы сервера...")
+	log.Println("server is shutting down...")
 
 	os.Exit(0)
 }
