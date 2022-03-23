@@ -60,5 +60,16 @@
     "QrCode":"QR code",
     "SecondFactor":"Second factor",
     "Check":"Check",
-    "Passkey":"Passkey"
+    "Passkey":"Passkey",
+    "Clear":"Clear",
+    "NameSL":"Name",
+    "Amount":"Amount",
+    "Update":"Update",
+    "ListOfIngredients":"List of ingredients",
+    "ManageRecipe":"Manage recipe",
+    "ToShoppingList":"To shopping list",
+    "EditRecipe":"Edit recipe",
+    "DeleteRecipe":"Delete recipe",
+    "PleaseSelectRecipe":"Please select recipe!",
+    "SearchResults":"Search results:"
 }
