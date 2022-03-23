@@ -51,7 +51,7 @@ func AuthBasic(w http.ResponseWriter, req *http.Request) bool {
 		return true
 	}
 
-	shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", ErrWrongKeyInParams, http.StatusBadRequest)
+	shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", ErrWrongKeyInParams, http.StatusBadRequest)
 	return false
 }
 

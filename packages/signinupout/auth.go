@@ -43,7 +43,7 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 
 		err := json.NewDecoder(req.Body).Decode(&AuthRequest)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 			return
 		}
 
@@ -56,7 +56,7 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 
 		AuthRequest.Password, err = url.QueryUnescape(AuthRequest.Password)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 			return
 		}
 
@@ -64,7 +64,7 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 		secretauth(w, req, AuthRequest)
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -91,7 +91,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 
 		err := json.NewDecoder(req.Body).Decode(&SignUpRequest)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 			return
 		}
 
@@ -104,13 +104,13 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 
 		SignUpRequest.Password, err = url.QueryUnescape(SignUpRequest.Password)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 			return
 		}
 
 		SignUpRequest.Name, err = url.QueryUnescape(SignUpRequest.Name)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 			return
 		}
 
@@ -136,7 +136,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 		messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, SignUpRequest.Email, shared.CurrentPrefix+req.Host, setup.ServerSettings.SQL.ConnPool)
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -187,7 +187,7 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -211,7 +211,7 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 
 		Token, err := url.QueryUnescape(Token)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 			return
 		}
 
@@ -227,7 +227,7 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 		shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Электронная почта подтверждена")
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -277,7 +277,7 @@ func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -302,7 +302,7 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 
 		Token, err := url.QueryUnescape(Token)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 			return
 		}
 
@@ -328,7 +328,7 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 		shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Пароль обновлён.")
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -429,7 +429,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 			err := json.NewDecoder(req.Body).Decode(&User)
 
-			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 				return
 			}
 
@@ -536,7 +536,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Запись удалена")
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", ErrHeadersNotFilled, http.StatusBadRequest)
 			}
 
 		} else {
@@ -544,7 +544,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -672,7 +672,7 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 				}
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", ErrHeadersNotFilled, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", ErrHeadersNotFilled, http.StatusBadRequest)
 			}
 
 		} else {
@@ -680,7 +680,7 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -753,7 +753,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 
 			err = json.NewDecoder(req.Body).Decode(&User)
 
-			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 				return
 			}
 
@@ -850,7 +850,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
 		}
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

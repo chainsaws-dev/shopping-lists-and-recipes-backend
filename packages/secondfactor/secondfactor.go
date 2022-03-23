@@ -115,7 +115,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 				err := json.NewDecoder(req.Body).Decode(&CurUser)
 
-				if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+				if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 					return
 				}
 
@@ -140,7 +140,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Второй фактор успешно настроен")
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest)
 				return
 			}
 
@@ -183,7 +183,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -264,7 +264,7 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -337,7 +337,7 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 				}
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest)
 				return
 			}
 
@@ -346,7 +346,7 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

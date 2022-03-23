@@ -111,7 +111,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 			err = json.NewDecoder(req.Body).Decode(&Recipe)
 
-			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
+			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
 				return
 			}
 
@@ -158,7 +158,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Запись удалена")
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", ErrRecipeIDNotFilled, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", ErrRecipeIDNotFilled, http.StatusBadRequest)
 			}
 
 		} else {
@@ -166,7 +166,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -252,7 +252,7 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
