@@ -13,6 +13,7 @@ import (
 	"shopping-lists-and-recipes/packages/admin"
 	"shopping-lists-and-recipes/packages/messages"
 	"shopping-lists-and-recipes/packages/shared"
+
 	"strconv"
 	"strings"
 )
@@ -136,11 +137,11 @@ func InitialSettings(initpar InitParams) {
 
 		bytes, err := ioutil.ReadFile("settings.json")
 
-		shared.WriteErrToLog(err)
+		shared.WriteErrToLog(err, ServerSettings.Lang)
 
 		err = json.Unmarshal(bytes, &ServerSettings)
 
-		shared.WriteErrToLog(err)
+		shared.WriteErrToLog(err, ServerSettings.Lang)
 
 		messages.SetCredentials(ServerSettings.SMTP)
 
@@ -200,7 +201,7 @@ func AskInt(Question string, fieldToWriteIn *int) {
 	fmt.Println(Question)
 	fmt.Scanln(&inputstring)
 	value, err := strconv.Atoi(inputstring)
-	shared.WriteErrToLog(err)
+	shared.WriteErrToLog(err, ServerSettings.Lang)
 	*fieldToWriteIn = value
 
 }
@@ -209,23 +210,23 @@ func AskInt(Question string, fieldToWriteIn *int) {
 func FolderCreate() {
 
 	if !СheckExists("public") {
-		shared.WriteErrToLog(os.Mkdir("public", 0700))
+		shared.WriteErrToLog(os.Mkdir("public", 0700), ServerSettings.Lang)
 	}
 
 	if !СheckExists("public/frontend") {
-		shared.WriteErrToLog(os.Mkdir("public/frontend", 0700))
+		shared.WriteErrToLog(os.Mkdir("public/frontend", 0700), ServerSettings.Lang)
 	}
 
 	if !СheckExists("public/templates") {
-		shared.WriteErrToLog(os.Mkdir("public/templates", 0700))
+		shared.WriteErrToLog(os.Mkdir("public/templates", 0700), ServerSettings.Lang)
 	}
 
 	if !СheckExists("public/uploads") {
-		shared.WriteErrToLog(os.Mkdir("public/uploads", 0700))
+		shared.WriteErrToLog(os.Mkdir("public/uploads", 0700), ServerSettings.Lang)
 	}
 
 	if !СheckExists("logs") {
-		shared.WriteErrToLog(os.Mkdir("logs", 0700))
+		shared.WriteErrToLog(os.Mkdir("logs", 0700), ServerSettings.Lang)
 	}
 }
 
@@ -243,15 +244,15 @@ func СheckExists(filename string) bool {
 func WriteToJSON() {
 	bytes, err := json.MarshalIndent(ServerSettings, "	", "	")
 
-	shared.WriteErrToLog(err)
+	shared.WriteErrToLog(err, ServerSettings.Lang)
 
 	setfile, err := os.Create("settings.json")
 
-	shared.WriteErrToLog(err)
+	shared.WriteErrToLog(err, ServerSettings.Lang)
 
 	_, err = setfile.Write(bytes)
 
-	shared.WriteErrToLog(err)
+	shared.WriteErrToLog(err, ServerSettings.Lang)
 
 	log.Println("Файл настроек settings.json успешно создан")
 }
@@ -302,7 +303,7 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 
 	err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use, ServerSettings.SQL.ConnPool)
 
-	shared.WriteErrToLog(err)
+	shared.WriteErrToLog(err, ServerSettings.Lang)
 
 	if ServerSettings.SMTP.Use {
 		if len(websiteurl) < 1 {
@@ -326,7 +327,7 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 func StartCreateDatabase() error {
 
 	donech := make(chan bool)
-	go ServerSettings.SQL.CreateDatabase(donech)
+	go ServerSettings.SQL.CreateDatabase(donech, ServerSettings.Lang)
 
 	if <-donech {
 		log.Println("Процедура создания базы данных завершена")
@@ -341,7 +342,7 @@ func StartCreateDatabase() error {
 func StartDropDatabase() error {
 
 	donech := make(chan bool)
-	go ServerSettings.SQL.DropDatabase(donech)
+	go ServerSettings.SQL.DropDatabase(donech, ServerSettings.Lang)
 
 	if <-donech {
 		log.Println("Процедура удаления базы данных завершена")

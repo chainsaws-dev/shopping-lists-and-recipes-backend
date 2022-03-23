@@ -187,7 +187,7 @@ func PostgreSQLUsersInsertUpdate(NewUserInfo User, Hash string, UpdatePassword b
 }
 
 // PostgreSQLUsersDelete - удаляет пользователя с указанным GUID
-func PostgreSQLUsersDelete(UserID uuid.UUID, dbc *pgxpool.Pool) error {
+func PostgreSQLUsersDelete(UserID uuid.UUID, dbc *pgxpool.Pool, locale string) error {
 
 	sqlreq := `SELECT 
 				COUNT(*)
@@ -201,7 +201,7 @@ func PostgreSQLUsersDelete(UserID uuid.UUID, dbc *pgxpool.Pool) error {
 	var usercount int
 	err := row.Scan(&usercount)
 
-	shared.WriteErrToLog(err)
+	shared.WriteErrToLog(err, locale)
 
 	if usercount <= 0 {
 		return ErrUserNotFound

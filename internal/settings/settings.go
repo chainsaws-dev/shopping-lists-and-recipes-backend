@@ -36,14 +36,14 @@ func (SQLsrv *SQLServer) AutoFillRoles() {
 }
 
 // DropDatabase - автоматизировано удаляет базу и роли
-func (SQLsrv *SQLServer) DropDatabase(donech chan bool) {
+func (SQLsrv *SQLServer) DropDatabase(donech chan bool, locale string) {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
 		// Подключаемся без контекста базы данных
 		SQLsrv.Connect(true)
 
 		// Удаляем базу данных
-		databases.PostgreSQLDropDatabase(SQLsrv.DbName, SQLsrv.ConnPool)
+		databases.PostgreSQLDropDatabase(SQLsrv.DbName, SQLsrv.ConnPool, locale)
 		donech <- true
 
 	default:
@@ -52,7 +52,7 @@ func (SQLsrv *SQLServer) DropDatabase(donech chan bool) {
 }
 
 // CreateDatabase - Создаёт базу данных если её нет
-func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
+func (SQLsrv *SQLServer) CreateDatabase(donech chan bool, locale string) {
 	switch {
 	case SQLsrv.Type == "PostgreSQL":
 
@@ -60,13 +60,13 @@ func (SQLsrv *SQLServer) CreateDatabase(donech chan bool) {
 		SQLsrv.Connect(true)
 
 		// Создаём базу данных
-		databases.PostgreSQLCreateDatabase(SQLsrv.DbName, SQLsrv.ConnPool)
+		databases.PostgreSQLCreateDatabase(SQLsrv.DbName, SQLsrv.ConnPool, locale)
 
 		// Подключаемся под базу данных
 		SQLsrv.Connect(false)
 
 		// Заполняем базу данных
-		err := databases.PostgreSQLCreateTables(SQLsrv.ConnPool)
+		err := databases.PostgreSQLCreateTables(SQLsrv.ConnPool, locale)
 
 		if err != nil {
 			if errors.Is(databases.ErrTablesAlreadyExist, err) {

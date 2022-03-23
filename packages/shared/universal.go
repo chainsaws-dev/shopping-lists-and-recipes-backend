@@ -38,20 +38,20 @@ type ErrorResponse struct {
 }
 
 // WriteErrToLog - пишем критическую ошибку в лог
-func WriteErrToLog(err error) {
+func WriteErrToLog(err error, locale string) {
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln(multilangtranslator.TranslateError(err, locale))
 	}
 }
 
 // HandleInternalServerError - обработчик внутренних ошибок сервера
-func HandleInternalServerError(w http.ResponseWriter, r *http.Request, err error) bool {
+func HandleInternalServerError(ServerLanguage string, w http.ResponseWriter, r *http.Request, err error) bool {
 
 	locale := r.Header.Get("Lang")
 
 	if err != nil {
 
-		log.Println(err)
+		log.Println(multilangtranslator.TranslateError(err, ServerLanguage))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -65,7 +65,7 @@ func HandleInternalServerError(w http.ResponseWriter, r *http.Request, err error
 
 		w.WriteHeader(Response.Error.Code)
 
-		WriteObjectToJSON(w, r, Response)
+		WriteObjectToJSON(ServerLanguage, w, r, Response)
 
 		return true
 	}
@@ -74,13 +74,13 @@ func HandleInternalServerError(w http.ResponseWriter, r *http.Request, err error
 }
 
 // HandleBadRequestError - обработчик ошибки кривого запроса
-func HandleBadRequestError(w http.ResponseWriter, r *http.Request, err error) bool {
+func HandleBadRequestError(ServerLanguage string, w http.ResponseWriter, r *http.Request, err error) bool {
 
 	locale := r.Header.Get("Lang")
 
 	if err != nil {
 
-		log.Println(err)
+		log.Println(multilangtranslator.TranslateError(err, ServerLanguage))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -94,7 +94,7 @@ func HandleBadRequestError(w http.ResponseWriter, r *http.Request, err error) bo
 
 		w.WriteHeader(Response.Error.Code)
 
-		WriteObjectToJSON(w, r, Response)
+		WriteObjectToJSON(ServerLanguage, w, r, Response)
 
 		return true
 	}
@@ -103,13 +103,13 @@ func HandleBadRequestError(w http.ResponseWriter, r *http.Request, err error) bo
 }
 
 // HandleOtherError - обработчик прочих ошибок
-func HandleOtherError(w http.ResponseWriter, r *http.Request, message string, err error, statuscode int) bool {
+func HandleOtherError(ServerLanguage string, w http.ResponseWriter, r *http.Request, message string, err error, statuscode int) bool {
 
 	locale := r.Header.Get("Lang")
 
 	if err != nil {
 
-		log.Println(err)
+		log.Println(multilangtranslator.TranslateError(err, ServerLanguage))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -123,7 +123,7 @@ func HandleOtherError(w http.ResponseWriter, r *http.Request, message string, er
 
 		w.WriteHeader(Response.Error.Code)
 
-		WriteObjectToJSON(w, r, Response)
+		WriteObjectToJSON(ServerLanguage, w, r, Response)
 
 		return true
 	}
@@ -132,7 +132,7 @@ func HandleOtherError(w http.ResponseWriter, r *http.Request, message string, er
 }
 
 // HandleSuccessMessage - возвращает сообщение об успехе
-func HandleSuccessMessage(w http.ResponseWriter, r *http.Request, message string) {
+func HandleSuccessMessage(ServerLanguage string, w http.ResponseWriter, r *http.Request, message string) {
 
 	locale := r.Header.Get("Lang")
 
@@ -145,9 +145,9 @@ func HandleSuccessMessage(w http.ResponseWriter, r *http.Request, message string
 		},
 	}
 
-	log.Println(message)
+	log.Println(multilangtranslator.TranslateString(message, ServerLanguage))
 
-	WriteObjectToJSON(w, r, Response)
+	WriteObjectToJSON(ServerLanguage, w, r, Response)
 
 }
 
@@ -162,31 +162,31 @@ func FindInStringSlice(slice []string, val string) (int, bool) {
 }
 
 // WriteObjectToJSON - записывает в ответ произвольный объект
-func WriteObjectToJSON(w http.ResponseWriter, r *http.Request, v interface{}) {
+func WriteObjectToJSON(ServerLanguage string, w http.ResponseWriter, r *http.Request, v interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 
 	js, err := json.Marshal(v)
 
-	if HandleInternalServerError(w, r, err) {
+	if HandleInternalServerError(ServerLanguage, w, r, err) {
 		return
 	}
 
 	_, err = w.Write(js)
 
-	if HandleInternalServerError(w, r, err) {
+	if HandleInternalServerError(ServerLanguage, w, r, err) {
 		return
 	}
 }
 
 // WriteBufferToPNG - записывает двоичный буффер в поток ответа для формата png
-func WriteBufferToPNG(w http.ResponseWriter, r *http.Request, b bytes.Buffer) {
+func WriteBufferToPNG(ServerLanguage string, w http.ResponseWriter, r *http.Request, b bytes.Buffer) {
 
 	w.Header().Set("Content-Type", "image/png")
 
 	_, err := w.Write(b.Bytes())
 
-	if HandleInternalServerError(w, r, err) {
+	if HandleInternalServerError(ServerLanguage, w, r, err) {
 		return
 	}
 

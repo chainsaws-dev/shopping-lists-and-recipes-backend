@@ -20,14 +20,14 @@ var Schemas = []string{
 }
 
 // PostgreSQLCreateTables - Создаём таблицы в базе данных
-func PostgreSQLCreateTables(dbc *pgxpool.Pool) error {
+func PostgreSQLCreateTables(dbc *pgxpool.Pool, locale string) error {
 
 	// Начало транзакции
 	dbc.Exec(context.Background(), "BEGIN")
 
 	log.Println("Создаём базу и схемы...")
 
-	err := PostgreSQLCreateSchemas(dbc)
+	err := PostgreSQLCreateSchemas(dbc, locale)
 
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func PostgreSQLCreateTables(dbc *pgxpool.Pool) error {
 }
 
 // PostgreSQLCreateDatabase - создаём базу данных для СУБД PostgreSQL
-func PostgreSQLCreateDatabase(dbName string, dbc *pgxpool.Pool) {
+func PostgreSQLCreateDatabase(dbName string, dbc *pgxpool.Pool, locale string) {
 
 	if dbc != nil {
 		log.Println("Идёт создание базы данных...")
@@ -61,7 +61,7 @@ func PostgreSQLCreateDatabase(dbName string, dbc *pgxpool.Pool) {
 		// Считаем количество баз данных с заданным именем
 		rows, err := dbc.Query(context.Background(), `SELECT COUNT(datname) FROM pg_catalog.pg_database WHERE datname = $1;`, dbName)
 
-		shared.WriteErrToLog(err)
+		shared.WriteErrToLog(err, locale)
 
 		var dbq int
 
@@ -90,7 +90,7 @@ func PostgreSQLCreateDatabase(dbName string, dbc *pgxpool.Pool) {
 
 		_, err = dbc.Exec(context.Background(), sqlreq)
 
-		shared.WriteErrToLog(err)
+		shared.WriteErrToLog(err, locale)
 
 		log.Println("База данных успешно создана")
 	}
@@ -98,7 +98,7 @@ func PostgreSQLCreateDatabase(dbName string, dbc *pgxpool.Pool) {
 }
 
 // PostgreSQLDropDatabase - удаляет базу данных с заданным именем
-func PostgreSQLDropDatabase(dbName string, dbc *pgxpool.Pool) {
+func PostgreSQLDropDatabase(dbName string, dbc *pgxpool.Pool, locale string) {
 
 	if dbc != nil {
 
@@ -107,7 +107,7 @@ func PostgreSQLDropDatabase(dbName string, dbc *pgxpool.Pool) {
 		// Считаем количество баз данных с заданным именем
 		rows, err := dbc.Query(context.Background(), `SELECT COUNT(datname) FROM pg_catalog.pg_database WHERE datname = $1;`, dbName)
 
-		shared.WriteErrToLog(err)
+		shared.WriteErrToLog(err, locale)
 
 		var dbq int
 
@@ -148,14 +148,14 @@ func PostgreSQLDropDatabase(dbName string, dbc *pgxpool.Pool) {
 }
 
 // PostgreSQLDropRole - удаляет роль с заданным именем
-func PostgreSQLDropRole(rolename string, dbc *pgxpool.Pool) {
+func PostgreSQLDropRole(rolename string, dbc *pgxpool.Pool, locale string) {
 
 	if dbc != nil {
 		var rq int
 		// Считаем количество ролей с заданным именем
 		rows, err := dbc.Query(context.Background(), `SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE	rolname = $1;`, rolename)
 
-		shared.WriteErrToLog(err)
+		shared.WriteErrToLog(err, locale)
 
 		for rows.Next() {
 			rows.Scan(&rq)
@@ -183,7 +183,7 @@ func PostgreSQLDropRole(rolename string, dbc *pgxpool.Pool) {
 }
 
 // PostgreSQLCreateSchemas - Создаём cхемы в базе данных
-func PostgreSQLCreateSchemas(dbc *pgxpool.Pool) error {
+func PostgreSQLCreateSchemas(dbc *pgxpool.Pool, locale string) error {
 
 	log.Println("Проверяем, что база пустая")
 
@@ -197,13 +197,13 @@ func PostgreSQLCreateSchemas(dbc *pgxpool.Pool) error {
 
 	rows, err := dbc.Query(context.Background(), sqlreq, Schemas)
 
-	shared.WriteErrToLog(err)
+	shared.WriteErrToLog(err, locale)
 
 	var tbq int
 
 	for rows.Next() {
 		err = rows.Scan(&tbq)
-		shared.WriteErrToLog(err)
+		shared.WriteErrToLog(err, locale)
 	}
 
 	if tbq > 0 {
@@ -223,11 +223,11 @@ func PostgreSQLCreateSchemas(dbc *pgxpool.Pool) error {
 }
 
 // PostgreSQLCreateRole - создание отдельной роли для базы данных
-func PostgreSQLCreateRole(roleName string, password string, dbName string, dbc *pgxpool.Pool) {
+func PostgreSQLCreateRole(roleName string, password string, dbName string, dbc *pgxpool.Pool, locale string) {
 
 	rows, err := dbc.Query(context.Background(), `SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE  rolname = $1`, roleName)
 
-	shared.WriteErrToLog(err)
+	shared.WriteErrToLog(err, locale)
 
 	var rq int
 

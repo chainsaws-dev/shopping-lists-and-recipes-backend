@@ -73,13 +73,13 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 				Page, err := strconv.Atoi(PageStr)
 
-				if shared.HandleInternalServerError(w, req, err) {
+				if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 					return
 				}
 
 				Limit, err := strconv.Atoi(LimitStr)
 
-				if shared.HandleInternalServerError(w, req, err) {
+				if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 					return
 				}
 
@@ -89,14 +89,14 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 				resp, err = databases.PostgreSQLShoppingListSelect(0, 0, setup.ServerSettings.SQL.ConnPool)
 			}
 
-			if shared.HandleInternalServerError(w, req, err) {
+			if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 				return
 			}
 
-			shared.WriteObjectToJSON(w, req, resp)
+			shared.WriteObjectToJSON(setup.ServerSettings.Lang, w, req, resp)
 
 		} else {
-			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	case req.Method == http.MethodPost:
@@ -107,20 +107,20 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 			err = json.NewDecoder(req.Body).Decode(&Ingredient)
 
-			if shared.HandleOtherError(w, req, "Bad request", err, http.StatusBadRequest) {
+			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Bad request", err, http.StatusBadRequest) {
 				return
 			}
 
 			err = databases.PostgreSQLShoppingListInsertUpdate(Ingredient, setup.ServerSettings.SQL.ConnPool)
 
-			if shared.HandleInternalServerError(w, req, err) {
+			if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 				return
 			}
 
-			shared.HandleSuccessMessage(w, req, "Запись сохранена")
+			shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Запись сохранена")
 
 		} else {
-			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	case req.Method == http.MethodDelete:
@@ -133,7 +133,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 			if IngName != "" {
 				IngName, err := url.QueryUnescape(IngName)
 
-				if shared.HandleInternalServerError(w, req, err) {
+				if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 					return
 				}
 
@@ -141,34 +141,34 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 				if err != nil {
 					if errors.Is(err, databases.ErrShoppingListNotFound) {
-						shared.HandleOtherError(w, req, "Не найдено ни одной записи в списке покупок с указанным названием", err, http.StatusBadRequest)
+						shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Не найдено ни одной записи в списке покупок с указанным названием", err, http.StatusBadRequest)
 						return
 					}
 				}
 
-				if shared.HandleInternalServerError(w, req, err) {
+				if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 					return
 				}
 
-				shared.HandleSuccessMessage(w, req, "Запись удалена")
+				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Запись удалена")
 
 			} else {
 
 				err = databases.PostgreSQLShoppingListDeleteAll(setup.ServerSettings.SQL.ConnPool)
 
-				if shared.HandleInternalServerError(w, req, err) {
+				if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 					return
 				}
 
-				shared.HandleSuccessMessage(w, req, "Все записи удалены")
+				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Все записи удалены")
 			}
 
 		} else {
-			shared.HandleOtherError(w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	default:
-		shared.HandleOtherError(w, req, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

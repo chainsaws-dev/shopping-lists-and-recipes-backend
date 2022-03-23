@@ -340,7 +340,7 @@ func PostgreSQLRecipesInsertUpdate(RecipeUpd RecipeDB, dbc *pgxpool.Pool) (Recip
 }
 
 // PostgreSQLRecipesDelete - удаляет рецепт и связанные с ним ингредиенты по индексу рецепта
-func PostgreSQLRecipesDelete(ID int, dbc *pgxpool.Pool) error {
+func PostgreSQLRecipesDelete(ID int, dbc *pgxpool.Pool, locale string) error {
 
 	sqlreq := `SELECT 
 				COUNT(*)
@@ -354,7 +354,7 @@ func PostgreSQLRecipesDelete(ID int, dbc *pgxpool.Pool) error {
 	var recipecount int
 	err := row.Scan(&recipecount)
 
-	shared.WriteErrToLog(err)
+	shared.WriteErrToLog(err, locale)
 
 	if recipecount <= 0 {
 		return ErrRecipeNotFound

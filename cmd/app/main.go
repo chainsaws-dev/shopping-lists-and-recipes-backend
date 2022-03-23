@@ -15,6 +15,7 @@ import (
 	"shopping-lists-and-recipes/internal/shoppinglist"
 	"shopping-lists-and-recipes/packages/files"
 	"shopping-lists-and-recipes/packages/gzipwrap"
+	"shopping-lists-and-recipes/packages/multilangtranslator"
 	"shopping-lists-and-recipes/packages/secondfactor"
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/signinupout"
@@ -88,7 +89,7 @@ func ServerSetup() {
 		if setup.СheckExists("cert.pem") && setup.СheckExists("key.pem") {
 			//go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host=localhost
 			shared.CurrentPrefix = "https://"
-			log.Println("Запущен SSL веб сервер")
+			log.Println(multilangtranslator.TranslateString("encrypted webserver is up", setup.ServerSettings.Lang))
 			srv.Addr = fmt.Sprintf(":%v", setup.ServerSettings.HTTPS)
 
 			err := srv.ListenAndServeTLS("cert.pem", "key.pem")
@@ -100,7 +101,8 @@ func ServerSetup() {
 
 		} else {
 			shared.CurrentPrefix = "http://"
-			log.Println("Запущен веб сервер без шифрования")
+			log.Println("")
+			log.Println(multilangtranslator.TranslateString("unencrypted webserver is up", setup.ServerSettings.Lang))
 			srv.Addr = fmt.Sprintf(":%v", setup.ServerSettings.HTTP)
 			err := srv.ListenAndServe()
 
@@ -131,7 +133,7 @@ func ServerSetup() {
 
 	setup.ServerSettings.SQL.Disconnect()
 
-	log.Println("server is shutting down...")
+	log.Println(multilangtranslator.TranslateString("server is shutting down...", setup.ServerSettings.Lang))
 
 	os.Exit(0)
 }
@@ -286,6 +288,6 @@ func SetAdminCredentials(runarg string, initpar *setup.InitParams) {
 		initpar.AdminPass = lp[1]
 	} else {
 		log.Println(lp)
-		shared.WriteErrToLog(ErrWrongArgumentFormat)
+		shared.WriteErrToLog(ErrWrongArgumentFormat, setup.ServerSettings.Lang)
 	}
 }

@@ -28,7 +28,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 	// Читаем из формы двоичные данные
 	f, fh, err := req.FormFile("file")
 
-	if shared.HandleInternalServerError(w, req, err) {
+	if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 		return NewFile, err
 	}
 	defer f.Close()
@@ -37,7 +37,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 	buff := make([]byte, 512)
 	_, err = f.Read(buff)
 
-	if shared.HandleInternalServerError(w, req, err) {
+	if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 		return NewFile, err
 	}
 
@@ -63,7 +63,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 
 		nf, err := os.Create(pathtofile)
 
-		if shared.HandleInternalServerError(w, req, err) {
+		if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 			return NewFile, err
 		}
 
@@ -71,13 +71,13 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 
 		_, err = f.Seek(0, 0)
 
-		if shared.HandleInternalServerError(w, req, err) {
+		if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 			return NewFile, err
 		}
 
 		_, err = io.Copy(nf, f)
 
-		if shared.HandleInternalServerError(w, req, err) {
+		if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 			return NewFile, err
 		}
 
@@ -98,7 +98,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 
 		var previewname string
 
-		if shared.HandleInternalServerError(w, req, err) {
+		if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 			return NewFile, err
 		}
 
@@ -114,7 +114,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 
 		nfp, err := os.Create(pathtopreview)
 
-		if shared.HandleInternalServerError(w, req, err) {
+		if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 			return NewFile, err
 		}
 
@@ -134,11 +134,11 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 
 		if err != nil {
 			if errors.Is(databases.ErrFirstNotUpdate, err) {
-				shared.HandleOtherError(w, req, err.Error(), err, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, err.Error(), err, http.StatusBadRequest)
 				return NewFile, err
 			}
 
-			if shared.HandleInternalServerError(w, req, err) {
+			if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
 				return NewFile, err
 			}
 		}
@@ -148,7 +148,7 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 
 	} else {
 
-		shared.HandleOtherError(w, req, ErrUnsupportedFileType.Error(), ErrUnsupportedFileType, http.StatusBadRequest)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrUnsupportedFileType.Error(), ErrUnsupportedFileType, http.StatusBadRequest)
 		return NewFile, ErrUnsupportedFileType
 	}
 

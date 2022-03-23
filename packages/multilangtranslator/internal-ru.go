@@ -70,6 +70,38 @@ func GetRussianTranslations() Translations {
 			SearchKey:  "server is shutting down...",
 			Translated: "завершение работы сервера...",
 		},
+		Translation{
+			SearchKey:  "unencrypted webserver is up",
+			Translated: "запущен веб сервер без шифрования",
+		},
+		Translation{
+			SearchKey:  "encrypted webserver is up",
+			Translated: "запущен веб сервер с шифрованием",
+		},
+		Translation{
+			SearchKey:  "",
+			Translated: "",
+		},
+		Translation{
+			SearchKey:  "",
+			Translated: "",
+		},
+		Translation{
+			SearchKey:  "",
+			Translated: "",
+		},
+		Translation{
+			SearchKey:  "",
+			Translated: "",
+		},
+		Translation{
+			SearchKey:  "",
+			Translated: "",
+		},
+		Translation{
+			SearchKey:  "",
+			Translated: "",
+		},
 	}
 
 }
