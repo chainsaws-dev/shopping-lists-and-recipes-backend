@@ -119,10 +119,11 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 
 		if err != nil {
 
-			if errors.Is(err, databases.ErrEmailIsOccupied) {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, databases.ErrEmailIsOccupied.Error(), err, http.StatusInternalServerError)
+			if errors.Is(err, databases.ErrEmailIsOccupied) || errors.Is(err, admin.ErrBasicFieldsNotFilled) {
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, err.Error(), err, http.StatusBadRequest)
 				return
 			}
+
 		}
 
 		if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {

@@ -12,7 +12,7 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrBasicFieldsNotFilled = errors.New("не заполнены обязательные поля, невозможно создать пользователя")
+	ErrBasicFieldsNotFilled = errors.New("не заполнены обязательные поля")
 )
 
 // CreateAdmin - создаём пользователя для администратора
