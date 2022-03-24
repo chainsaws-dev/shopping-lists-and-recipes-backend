@@ -4,11 +4,9 @@ package files
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
 	"shopping-lists-and-recipes/internal/databases"
 	"shopping-lists-and-recipes/internal/setup"
-	"shopping-lists-and-recipes/packages/multilangtranslator"
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/signinupout"
 	"strconv"
@@ -19,6 +17,10 @@ import (
 var (
 	ErrHeaderDeleteNotFilled = errors.New("http request does not contain required parameter: FileID")
 	ErrUnsupportedFileType   = errors.New("unsupported file type")
+)
+
+var (
+	MsgFileDeleted = "file deleted"
 )
 
 // HandleFiles - обрабатывает POST, GET и DELETE запросы для работы с файлами
@@ -152,8 +154,7 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 				}
 			}
 
-			shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req,
-				fmt.Sprintf(multilangtranslator.TranslateString("file with index %v deleted", setup.ServerSettings.Lang), FileID))
+			shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MsgFileDeleted)
 
 		} else {
 			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrHeaderDeleteNotFilled.Error(), ErrHeaderDeleteNotFilled, http.StatusBadRequest)

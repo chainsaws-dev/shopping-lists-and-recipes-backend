@@ -79,8 +79,8 @@ func GetRussianTranslations() Translations {
 			Translated: "запущен веб сервер с шифрованием",
 		},
 		Translation{
-			SearchKey:  "file with index %v deleted",
-			Translated: "файл с индексом %v удалён",
+			SearchKey:  "file deleted",
+			Translated: "файл удалён",
 		},
 		Translation{
 			SearchKey:  "http request does not contain required parameter: FileID",
