@@ -20,20 +20,29 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrNotAllowedMethod       = errors.New("Запрошен недопустимый метод при авторизации")
-	ErrNoKeyInParams          = errors.New("API ключ не указан в параметрах")
-	ErrWrongKeyInParams       = errors.New("API ключ не зарегистрирован")
-	ErrPasswordTooShort       = errors.New("Выбран слишком короткий пароль")
-	ErrNotAuthorized          = errors.New("Неверный логин или пароль")
-	ErrForbidden              = errors.New("Доступ запрещён")
-	ErrBadEmail               = errors.New("Указана некорректная электронная почта")
-	ErrBadPhone               = errors.New("Указан некорректный телефонный номер")
-	ErrBadRole                = errors.New("Указана некорректная роль")
-	ErrHeadersNotFilled       = errors.New("Не заполнены обязательные параметры запроса")
-	ErrLimitOffsetInvalid     = errors.New("Limit и Offset приняли недопустимое значение")
-	ErrSessionNotFoundByEmail = errors.New("Сессия не найдена для данной электронной почты")
-	ErrSessionNotFoundByToken = errors.New("Сессия не найдена для данного токена")
-	ErrUserDisabled           = errors.New("Вам закрыт доступ на ресурс")
+	ErrPasswordTooShort         = errors.New("password is too short")
+	ErrPasswordLength           = errors.New("password must be more than six characters")
+	ErrPasswordNewUserNotFilled = errors.New("password of the new user must be set")
+	ErrNotAuthorized            = errors.New("wrong login or password")
+	ErrBadEmail                 = errors.New("invalid email specified")
+	ErrBadPhone                 = errors.New("invalid phone number specified")
+	ErrBadRole                  = errors.New("invalid role specified")
+	ErrSessionNotFoundByEmail   = errors.New("session is not found for specified email")
+	ErrSessionNotFoundByToken   = errors.New("session is not found for specified token")
+	ErrUserDisabled             = errors.New("you are denied access to the resource")
+	ErrPasswdHashCalc           = errors.New("error calculating password hash")
+	ErrEmailRegistered          = errors.New("specified email address is already taken")
+	ErrIncorrectUserID          = errors.New("invalid user id specified")
+	ErrUnableToDeleteAbsent     = errors.New("user not found, unable to delete")
+)
+
+var (
+	MesEmailSent       = "email was sent"
+	MesEmailConfirmed  = "email successfully confirmed"
+	MesPasswdChanged   = "password changed"
+	MesUserDeleted     = "user deleted"
+	MesSessionsDeleted = "sessions deleted"
+	MesSessionDeleted  = "session deleted"
 )
 
 // AuthBasic - базовая аутентификация проверка API ключа
@@ -50,8 +59,7 @@ func AuthBasic(w http.ResponseWriter, req *http.Request) bool {
 	if found {
 		return true
 	}
-
-	shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", ErrWrongKeyInParams, http.StatusBadRequest)
+	shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, shared.ErrWrongKeyInParams)
 	return false
 }
 
@@ -104,7 +112,7 @@ func AuthGeneral(w http.ResponseWriter, req *http.Request) (string, bool) {
 func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentication.AuthRequestData) {
 
 	if len(AuthRequest.Password) < 6 {
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrPasswordLength.Error(), ErrPasswordLength, http.StatusBadRequest)
 		return
 	}
 
@@ -221,13 +229,13 @@ func CheckAPIKey(w http.ResponseWriter, req *http.Request) (bool, error) {
 	APIKey := req.Header.Get("ApiKey")
 
 	if len(APIKey) < 1 {
-		return false, ErrNoKeyInParams
+		return false, shared.ErrNoKeyInParams
 	}
 
 	_, found := shared.FindInStringSlice(setup.APIkeys, APIKey)
 
 	if !found {
-		return false, ErrWrongKeyInParams
+		return false, shared.ErrWrongKeyInParams
 	}
 
 	return true, nil
@@ -363,7 +371,7 @@ func GetSessionsList(page int, limit int) (SessionsResponse, error) {
 		}
 
 	} else {
-		return result, ErrLimitOffsetInvalid
+		return result, shared.ErrLimitOffsetInvalid
 	}
 
 	return result, nil

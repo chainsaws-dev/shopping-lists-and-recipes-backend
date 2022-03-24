@@ -15,8 +15,13 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrRecipeIDNotFilled      = errors.New("Http request to delete recipe does not contain reqired header RecipeID")
-	ErrHeadersSearchNotFilled = errors.New("Http request to search recipes does not contain required parameters: Page, Limit, Search")
+	ErrRecipeIDNotFilled          = errors.New("http request to delete recipe does not contain reqired header RecipeID")
+	ErrHeadersSearchNotFilled     = errors.New("http request to search recipes does not contain required parameters: Page, Limit, Search")
+	ErrRecipeNotFoundCannotDelete = errors.New("recipe not found, unable to delete")
+)
+
+var (
+	MesRecipeDeleted = "recipe deleted"
 )
 
 // HandleRecipes - обрабатывает POST, GET и DELETE запросы для изменения рецептов
@@ -111,7 +116,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 			err = json.NewDecoder(req.Body).Decode(&Recipe)
 
-			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+			if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 				return
 			}
 
@@ -146,7 +151,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 
 				if err != nil {
 					if errors.Is(err, databases.ErrRecipeNotFound) {
-						shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Рецепт не найден, невозможно удалить", err, http.StatusBadRequest)
+						shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrRecipeNotFoundCannotDelete.Error(), err, http.StatusBadRequest)
 						return
 					}
 				}
@@ -155,10 +160,10 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Запись удалена")
+				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesRecipeDeleted)
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", ErrRecipeIDNotFilled, http.StatusBadRequest)
+				shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, ErrRecipeIDNotFilled)
 			}
 
 		} else {
@@ -166,7 +171,7 @@ func HandleRecipes(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -252,7 +257,7 @@ func HandleRecipesSearch(w http.ResponseWriter, req *http.Request) {
 			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

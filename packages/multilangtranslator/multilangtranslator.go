@@ -1,5 +1,7 @@
 package multilangtranslator
 
+import "errors"
+
 func TranslateString(SearchKey string, Locale string) string {
 
 	var ts Translations
@@ -16,6 +18,6 @@ func TranslateString(SearchKey string, Locale string) string {
 	return ts.SearchTranslation(SearchKey)
 }
 
-func TranslateError(err error, Locale string) string {
-	return TranslateString(err.Error(), Locale)
+func TranslateError(err error, Locale string) error {
+	return errors.New(TranslateString(err.Error(), Locale))
 }

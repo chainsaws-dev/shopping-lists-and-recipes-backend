@@ -61,7 +61,7 @@ func PostgreSQLCreateDatabase(dbName string, dbc *pgxpool.Pool, locale string) {
 		// Считаем количество баз данных с заданным именем
 		rows, err := dbc.Query(context.Background(), `SELECT COUNT(datname) FROM pg_catalog.pg_database WHERE datname = $1;`, dbName)
 
-		shared.WriteErrToLog(err, locale)
+		shared.WriteErrToLog(err)
 
 		var dbq int
 
@@ -90,7 +90,7 @@ func PostgreSQLCreateDatabase(dbName string, dbc *pgxpool.Pool, locale string) {
 
 		_, err = dbc.Exec(context.Background(), sqlreq)
 
-		shared.WriteErrToLog(err, locale)
+		shared.WriteErrToLog(err)
 
 		log.Println("База данных успешно создана")
 	}
@@ -107,7 +107,7 @@ func PostgreSQLDropDatabase(dbName string, dbc *pgxpool.Pool, locale string) {
 		// Считаем количество баз данных с заданным именем
 		rows, err := dbc.Query(context.Background(), `SELECT COUNT(datname) FROM pg_catalog.pg_database WHERE datname = $1;`, dbName)
 
-		shared.WriteErrToLog(err, locale)
+		shared.WriteErrToLog(err)
 
 		var dbq int
 
@@ -155,7 +155,7 @@ func PostgreSQLDropRole(rolename string, dbc *pgxpool.Pool, locale string) {
 		// Считаем количество ролей с заданным именем
 		rows, err := dbc.Query(context.Background(), `SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE	rolname = $1;`, rolename)
 
-		shared.WriteErrToLog(err, locale)
+		shared.WriteErrToLog(err)
 
 		for rows.Next() {
 			rows.Scan(&rq)
@@ -197,13 +197,13 @@ func PostgreSQLCreateSchemas(dbc *pgxpool.Pool, locale string) error {
 
 	rows, err := dbc.Query(context.Background(), sqlreq, Schemas)
 
-	shared.WriteErrToLog(err, locale)
+	shared.WriteErrToLog(err)
 
 	var tbq int
 
 	for rows.Next() {
 		err = rows.Scan(&tbq)
-		shared.WriteErrToLog(err, locale)
+		shared.WriteErrToLog(err)
 	}
 
 	if tbq > 0 {
@@ -227,7 +227,7 @@ func PostgreSQLCreateRole(roleName string, password string, dbName string, dbc *
 
 	rows, err := dbc.Query(context.Background(), `SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE  rolname = $1`, roleName)
 
-	shared.WriteErrToLog(err, locale)
+	shared.WriteErrToLog(err)
 
 	var rq int
 

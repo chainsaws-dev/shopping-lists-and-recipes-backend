@@ -354,7 +354,7 @@ func PostgreSQLRecipesDelete(ID int, dbc *pgxpool.Pool, locale string) error {
 	var recipecount int
 	err := row.Scan(&recipecount)
 
-	shared.WriteErrToLog(err, locale)
+	shared.WriteErrToLog(err)
 
 	if recipecount <= 0 {
 		return ErrRecipeNotFound

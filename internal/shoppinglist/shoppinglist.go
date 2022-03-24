@@ -13,6 +13,16 @@ import (
 	"strconv"
 )
 
+var (
+	ErrNoEntryFoundByName = errors.New("no shopping list entry found with specified name")
+)
+
+var (
+	MesEntrySaved        = "entry saved"
+	MesEntryDeleted      = "entry deleted"
+	MesAllEntriesDeleted = "all entries deleted"
+)
+
 // HandleShoppingList - обрабатывает GET, POST и DELETE запросы для списка покупок
 //
 // Аутентификация
@@ -107,7 +117,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 			err = json.NewDecoder(req.Body).Decode(&Ingredient)
 
-			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+			if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 				return
 			}
 
@@ -117,7 +127,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Запись сохранена")
+			shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesEntrySaved)
 
 		} else {
 			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
@@ -141,7 +151,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 
 				if err != nil {
 					if errors.Is(err, databases.ErrShoppingListNotFound) {
-						shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Не найдено ни одной записи в списке покупок с указанным названием", err, http.StatusBadRequest)
+						shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrNoEntryFoundByName.Error(), err, http.StatusBadRequest)
 						return
 					}
 				}
@@ -150,7 +160,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Запись удалена")
+				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesEntryDeleted)
 
 			} else {
 
@@ -160,7 +170,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Все записи удалены")
+				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesAllEntriesDeleted)
 			}
 
 		} else {
@@ -168,7 +178,7 @@ func HandleShoppingList(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

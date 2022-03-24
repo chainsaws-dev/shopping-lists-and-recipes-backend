@@ -43,20 +43,20 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 
 		err := json.NewDecoder(req.Body).Decode(&AuthRequest)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+		if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 			return
 		}
 
 		re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 		if !re.MatchString(AuthRequest.Email) {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 			return
 		}
 
 		AuthRequest.Password, err = url.QueryUnescape(AuthRequest.Password)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+		if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 			return
 		}
 
@@ -64,7 +64,7 @@ func SignIn(w http.ResponseWriter, req *http.Request) {
 		secretauth(w, req, AuthRequest)
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -91,26 +91,26 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 
 		err := json.NewDecoder(req.Body).Decode(&SignUpRequest)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+		if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 			return
 		}
 
 		re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 		if !re.MatchString(SignUpRequest.Email) {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 			return
 		}
 
 		SignUpRequest.Password, err = url.QueryUnescape(SignUpRequest.Password)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+		if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 			return
 		}
 
 		SignUpRequest.Name, err = url.QueryUnescape(SignUpRequest.Name)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+		if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 			return
 		}
 
@@ -120,7 +120,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 
 			if errors.Is(err, databases.ErrEmailIsOccupied) {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Указанный адрес электронной почты уже занят", err, http.StatusInternalServerError)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, databases.ErrEmailIsOccupied.Error(), err, http.StatusInternalServerError)
 				return
 			}
 		}
@@ -136,7 +136,7 @@ func SignUp(w http.ResponseWriter, req *http.Request) {
 		messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, SignUpRequest.Email, shared.CurrentPrefix+req.Host, setup.ServerSettings.SQL.ConnPool)
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -163,7 +163,7 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 			re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 			if !re.MatchString(Email) {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 				return
 			}
 
@@ -176,7 +176,7 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 			if mailexist {
 				messages.SendEmailConfirmationLetter(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host, setup.ServerSettings.SQL.ConnPool)
 
-				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Письмо отправлено")
+				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesEmailSent)
 
 			} else {
 				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
@@ -187,7 +187,7 @@ func ResendEmail(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -211,7 +211,7 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 
 		Token, err := url.QueryUnescape(Token)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+		if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 			return
 		}
 
@@ -224,10 +224,10 @@ func ConfirmEmail(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 
-		shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Электронная почта подтверждена")
+		shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesEmailConfirmed)
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -254,7 +254,7 @@ func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 			re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 			if !re.MatchString(Email) {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 				return
 			}
 
@@ -267,7 +267,7 @@ func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 			if mailexist {
 				messages.SendEmailPasswordReset(&setup.ServerSettings.SQL, Email, shared.CurrentPrefix+req.Host, setup.ServerSettings.SQL.ConnPool)
 
-				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Письмо отправлено")
+				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesEmailSent)
 			} else {
 				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 			}
@@ -277,7 +277,7 @@ func RequestResetEmail(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -302,7 +302,7 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 
 		Token, err := url.QueryUnescape(Token)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+		if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 			return
 		}
 
@@ -312,7 +312,7 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 
 		Hash, err := authentication.Argon2GenerateHash(NewPassword, &authentication.HashParams)
 
-		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Ошибка при расчете хеша", err, http.StatusInternalServerError) {
+		if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrPasswdHashCalc.Error(), err, http.StatusInternalServerError) {
 			return
 		}
 
@@ -325,10 +325,10 @@ func ResetPassword(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 
-		shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Пароль обновлён.")
+		shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesPasswdChanged)
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -413,12 +413,12 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 				shared.WriteObjectToJSON(setup.ServerSettings.Lang, w, req, usersresp)
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrHeadersNotFilled.Error(), ErrHeadersNotFilled, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrHeadersNotFilled.Error(), shared.ErrHeadersNotFilled, http.StatusBadRequest)
 				return
 			}
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	case req.Method == http.MethodPost:
@@ -429,14 +429,14 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 			err := json.NewDecoder(req.Body).Decode(&User)
 
-			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+			if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 				return
 			}
 
 			remai := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 			if !remai.MatchString(User.Email) {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 				return
 			}
 
@@ -445,13 +445,13 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 				repho := regexp.MustCompile(`^((8|\+7)[\- ]?)?(\(?\d{3,4}\)?[\- ]?)?[\d\- ]{5,10}$`)
 
 				if !repho.MatchString(User.Phone) {
-					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Некорректный телефонный номер", ErrBadPhone, http.StatusBadRequest)
+					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadPhone.Error(), ErrBadPhone, http.StatusBadRequest)
 					return
 				}
 			}
 
 			if !setup.ServerSettings.CheckExistingRole(User.Role) {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Указана некорректная роль", ErrBadRole, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadRole.Error(), ErrBadRole, http.StatusBadRequest)
 				return
 			}
 
@@ -466,7 +466,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 				NewPassword, err = url.QueryUnescape(NewPassword)
 
 				if len(NewPassword) < 6 {
-					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
+					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrPasswordLength.Error(), ErrPasswordLength, http.StatusBadRequest)
 					return
 				}
 				Hash, err = authentication.Argon2GenerateHash(NewPassword, &authentication.HashParams)
@@ -479,7 +479,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 			}
 
 			if len(NewPassword) == 0 && uuid.Nil.String() == User.GUID.String() {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Пароль нового пользователя должен быть задан", ErrPasswordTooShort, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrPasswordNewUserNotFilled.Error(), ErrPasswordNewUserNotFilled, http.StatusBadRequest)
 				return
 			}
 
@@ -488,7 +488,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 			if err != nil {
 				if errors.Is(err, databases.ErrEmailIsOccupied) {
-					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Указанный адрес электронной почты уже занят", err, http.StatusInternalServerError)
+					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrEmailRegistered.Error(), err, http.StatusBadRequest)
 					return
 				}
 			}
@@ -501,7 +501,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 			shared.WriteObjectToJSON(setup.ServerSettings.Lang, w, req, User)
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	case req.Method == http.MethodDelete:
@@ -516,7 +516,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 				UserID, err := uuid.FromString(UserIDtoDelStr)
 
-				if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Некорректный идентификатор пользователя", err, http.StatusBadRequest) {
+				if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrIncorrectUserID.Error(), err, http.StatusBadRequest) {
 					return
 				}
 
@@ -524,7 +524,7 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 
 				if err != nil {
 					if errors.Is(err, databases.ErrUserNotFound) {
-						shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Пользователь не найден, невозможно удалить", err, http.StatusBadRequest)
+						shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrUnableToDeleteAbsent.Error(), err, http.StatusBadRequest)
 						return
 					}
 				}
@@ -533,18 +533,18 @@ func HandleUsers(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Запись удалена")
+				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesUserDeleted)
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", ErrHeadersNotFilled, http.StatusBadRequest)
+				shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, shared.ErrHeadersNotFilled)
 			}
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -628,12 +628,12 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 				shared.WriteObjectToJSON(setup.ServerSettings.Lang, w, req, sessionsresp)
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrHeadersNotFilled.Error(), ErrHeadersNotFilled, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrHeadersNotFilled.Error(), shared.ErrHeadersNotFilled, http.StatusBadRequest)
 				return
 			}
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	case req.Method == http.MethodDelete:
@@ -650,12 +650,12 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 
 					if err != nil {
 						if errors.Is(err, ErrSessionNotFoundByEmail) {
-							shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Сессии не найдены, невозможно удалить", err, http.StatusBadRequest)
+							shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrSessionNotFoundByEmail.Error(), err, http.StatusBadRequest)
 							return
 						}
 					}
 
-					shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Сессии удалены")
+					shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesSessionsDeleted)
 				}
 
 				if len(Token) > 0 {
@@ -663,24 +663,24 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 
 					if err != nil {
 						if errors.Is(err, ErrSessionNotFoundByToken) {
-							shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Сессия не найдена, невозможно удалить", err, http.StatusBadRequest)
+							shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrSessionNotFoundByToken.Error(), err, http.StatusBadRequest)
 							return
 						}
 					}
 
-					shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Сессия удалена")
+					shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, MesSessionDeleted)
 				}
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", ErrHeadersNotFilled, http.StatusBadRequest)
+				shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, shared.ErrHeadersNotFilled)
 			}
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -744,7 +744,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 
 			shared.WriteObjectToJSON(setup.ServerSettings.Lang, w, req, FoundUser)
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 	case req.Method == http.MethodPost:
 		if setup.ServerSettings.CheckRoleForChange(role, "CurrentUser") {
@@ -753,7 +753,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 
 			err = json.NewDecoder(req.Body).Decode(&User)
 
-			if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+			if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 				return
 			}
 
@@ -782,7 +782,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 			remai := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 			if !remai.MatchString(User.Email) {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Некорректная электронная почта", ErrBadEmail, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadEmail.Error(), ErrBadEmail, http.StatusBadRequest)
 				return
 			}
 
@@ -791,13 +791,13 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 				repho := regexp.MustCompile(`^((8|\+7)[\- ]?)?(\(?\d{3,4}\)?[\- ]?)?[\d\- ]{5,10}$`)
 
 				if !repho.MatchString(User.Phone) {
-					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Некорректный телефонный номер", ErrBadPhone, http.StatusBadRequest)
+					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadPhone.Error(), ErrBadPhone, http.StatusBadRequest)
 					return
 				}
 			}
 
 			if !setup.ServerSettings.CheckExistingRole(User.Role) {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Указана некорректная роль", ErrBadRole, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrBadRole.Error(), ErrBadRole, http.StatusBadRequest)
 				return
 			}
 
@@ -812,7 +812,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 				NewPassword, err = url.QueryUnescape(NewPassword)
 
 				if len(NewPassword) < 6 {
-					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Пароль должен быть более шести символов", ErrPasswordTooShort, http.StatusBadRequest)
+					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrPasswordLength.Error(), ErrPasswordLength, http.StatusBadRequest)
 					return
 				}
 				Hash, err = authentication.Argon2GenerateHash(NewPassword, &authentication.HashParams)
@@ -825,7 +825,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 			}
 
 			if len(NewPassword) == 0 && uuid.Nil.String() == User.GUID.String() {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Пароль нового пользователя должен быть задан", ErrPasswordTooShort, http.StatusBadRequest)
+				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrPasswordNewUserNotFilled.Error(), ErrPasswordNewUserNotFilled, http.StatusBadRequest)
 				return
 			}
 
@@ -834,7 +834,7 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 
 			if err != nil {
 				if errors.Is(err, databases.ErrEmailIsOccupied) {
-					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "Указанный адрес электронной почты уже занят", err, http.StatusInternalServerError)
+					shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrEmailRegistered.Error(), err, http.StatusInternalServerError)
 					return
 				}
 			}
@@ -847,10 +847,10 @@ func CurrentUser(w http.ResponseWriter, req *http.Request) {
 			shared.WriteObjectToJSON(setup.ServerSettings.Lang, w, req, User)
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrForbidden.Error(), ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

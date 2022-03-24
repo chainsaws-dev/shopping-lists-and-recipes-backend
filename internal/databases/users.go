@@ -201,7 +201,7 @@ func PostgreSQLUsersDelete(UserID uuid.UUID, dbc *pgxpool.Pool, locale string) e
 	var usercount int
 	err := row.Scan(&usercount)
 
-	shared.WriteErrToLog(err, locale)
+	shared.WriteErrToLog(err)
 
 	if usercount <= 0 {
 		return ErrUserNotFound

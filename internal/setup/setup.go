@@ -137,11 +137,11 @@ func InitialSettings(initpar InitParams) {
 
 		bytes, err := ioutil.ReadFile("settings.json")
 
-		shared.WriteErrToLog(err, ServerSettings.Lang)
+		shared.WriteErrToLog(err)
 
 		err = json.Unmarshal(bytes, &ServerSettings)
 
-		shared.WriteErrToLog(err, ServerSettings.Lang)
+		shared.WriteErrToLog(err)
 
 		messages.SetCredentials(ServerSettings.SMTP)
 
@@ -201,7 +201,7 @@ func AskInt(Question string, fieldToWriteIn *int) {
 	fmt.Println(Question)
 	fmt.Scanln(&inputstring)
 	value, err := strconv.Atoi(inputstring)
-	shared.WriteErrToLog(err, ServerSettings.Lang)
+	shared.WriteErrToLog(err)
 	*fieldToWriteIn = value
 
 }
@@ -210,23 +210,23 @@ func AskInt(Question string, fieldToWriteIn *int) {
 func FolderCreate() {
 
 	if !СheckExists("public") {
-		shared.WriteErrToLog(os.Mkdir("public", 0700), ServerSettings.Lang)
+		shared.WriteErrToLog(os.Mkdir("public", 0700))
 	}
 
 	if !СheckExists("public/frontend") {
-		shared.WriteErrToLog(os.Mkdir("public/frontend", 0700), ServerSettings.Lang)
+		shared.WriteErrToLog(os.Mkdir("public/frontend", 0700))
 	}
 
 	if !СheckExists("public/templates") {
-		shared.WriteErrToLog(os.Mkdir("public/templates", 0700), ServerSettings.Lang)
+		shared.WriteErrToLog(os.Mkdir("public/templates", 0700))
 	}
 
 	if !СheckExists("public/uploads") {
-		shared.WriteErrToLog(os.Mkdir("public/uploads", 0700), ServerSettings.Lang)
+		shared.WriteErrToLog(os.Mkdir("public/uploads", 0700))
 	}
 
 	if !СheckExists("logs") {
-		shared.WriteErrToLog(os.Mkdir("logs", 0700), ServerSettings.Lang)
+		shared.WriteErrToLog(os.Mkdir("logs", 0700))
 	}
 }
 
@@ -244,15 +244,15 @@ func СheckExists(filename string) bool {
 func WriteToJSON() {
 	bytes, err := json.MarshalIndent(ServerSettings, "	", "	")
 
-	shared.WriteErrToLog(err, ServerSettings.Lang)
+	shared.WriteErrToLog(err)
 
 	setfile, err := os.Create("settings.json")
 
-	shared.WriteErrToLog(err, ServerSettings.Lang)
+	shared.WriteErrToLog(err)
 
 	_, err = setfile.Write(bytes)
 
-	shared.WriteErrToLog(err, ServerSettings.Lang)
+	shared.WriteErrToLog(err)
 
 	log.Println("Файл настроек settings.json успешно создан")
 }
@@ -303,7 +303,7 @@ func SetDefaultAdmin(login string, password string, websiteurl string) string {
 
 	err := admin.CreateAdmin(&ServerSettings.SQL, LoginAdmin, Email, PasswordAdmin, ServerSettings.SMTP.Use, ServerSettings.SQL.ConnPool)
 
-	shared.WriteErrToLog(err, ServerSettings.Lang)
+	shared.WriteErrToLog(err)
 
 	if ServerSettings.SMTP.Use {
 		if len(websiteurl) < 1 {

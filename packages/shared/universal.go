@@ -18,7 +18,10 @@ var (
 	ErrNotAuthorized          = errors.New("authorization required")
 	ErrNotAuthorizedTwoFactor = errors.New("two factor authorization required")
 	ErrForbidden              = errors.New("access forbidden")
+	ErrBadHttpRequest         = errors.New("bad http request")
 	ErrHeadersFetchNotFilled  = errors.New("http request does not contain required parameters: Page, Limit")
+	ErrHeadersNotFilled       = errors.New("http request does not contain required parameters")
+	ErrLimitOffsetInvalid     = errors.New("invalid http request parameters Limit and Offset")
 	ErrFkeyViolation          = errors.New("cannot delete record referenced from other tables")
 	ErroNoRowsInResult        = errors.New("nothing to delete")
 )
@@ -38,9 +41,9 @@ type ErrorResponse struct {
 }
 
 // WriteErrToLog - пишем критическую ошибку в лог
-func WriteErrToLog(err error, locale string) {
+func WriteErrToLog(err error) {
 	if err != nil {
-		log.Fatalln(multilangtranslator.TranslateError(err, locale))
+		log.Fatalln(err)
 	}
 }
 
@@ -88,7 +91,7 @@ func HandleBadRequestError(ServerLanguage string, w http.ResponseWriter, r *http
 		Response := RequestResult{
 			Error: ErrorResponse{
 				Code:    http.StatusBadRequest,
-				Message: multilangtranslator.TranslateString("Bad http request", locale),
+				Message: multilangtranslator.TranslateString(ErrBadHttpRequest.Error(), locale),
 			},
 		}
 

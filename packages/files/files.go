@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"shopping-lists-and-recipes/internal/databases"
 	"shopping-lists-and-recipes/internal/setup"
+	"shopping-lists-and-recipes/packages/multilangtranslator"
 	"shopping-lists-and-recipes/packages/shared"
 	"shopping-lists-and-recipes/packages/signinupout"
 	"strconv"
@@ -16,8 +17,8 @@ import (
 
 // Список типовых ошибок
 var (
-	ErrHeaderDeleteNotFilled = errors.New("Не заполнен обязательный параметр для удаления файла: FileID")
-	ErrUnsupportedFileType   = errors.New("Неподдерживаемый тип файла")
+	ErrHeaderDeleteNotFilled = errors.New("http request does not contain required parameter: FileID")
+	ErrUnsupportedFileType   = errors.New("unsupported file type")
 )
 
 // HandleFiles - обрабатывает POST, GET и DELETE запросы для работы с файлами
@@ -151,7 +152,8 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 				}
 			}
 
-			shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, fmt.Sprintf("Файл с индексом %v удалён", FileID))
+			shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req,
+				fmt.Sprintf(multilangtranslator.TranslateString("file with index %v deleted", setup.ServerSettings.Lang), FileID))
 
 		} else {
 			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, ErrHeaderDeleteNotFilled.Error(), ErrHeaderDeleteNotFilled, http.StatusBadRequest)
@@ -159,7 +161,7 @@ func HandleFiles(w http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

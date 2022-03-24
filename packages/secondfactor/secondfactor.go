@@ -99,7 +99,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 			shared.WriteObjectToJSON(setup.ServerSettings.Lang, w, req, result)
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 			return
 		}
 
@@ -115,7 +115,7 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 
 				err := json.NewDecoder(req.Body).Decode(&CurUser)
 
-				if shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest) {
+				if shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err) {
 					return
 				}
 
@@ -140,12 +140,12 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 				shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Второй фактор успешно настроен")
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest)
+				shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err)
 				return
 			}
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 			return
 		}
 
@@ -178,12 +178,12 @@ func SecondFactor(w http.ResponseWriter, req *http.Request) {
 			shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Второй фактор успешно удалён")
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 			return
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -260,11 +260,11 @@ func GetQRCode(w http.ResponseWriter, req *http.Request) {
 			shared.WriteBufferToPNG(setup.ServerSettings.Lang, w, req, b)
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }
@@ -337,16 +337,16 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 				}
 
 			} else {
-				shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "bad http request", err, http.StatusBadRequest)
+				shared.HandleBadRequestError(setup.ServerSettings.Lang, w, req, err)
 				return
 			}
 
 		} else {
-			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, signinupout.ErrForbidden.Error(), signinupout.ErrForbidden, http.StatusForbidden)
+			shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrForbidden.Error(), shared.ErrForbidden, http.StatusForbidden)
 		}
 
 	default:
-		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, "http request method is not allowed", signinupout.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
+		shared.HandleOtherError(setup.ServerSettings.Lang, w, req, shared.ErrNotAllowedMethod.Error(), shared.ErrNotAllowedMethod, http.StatusMethodNotAllowed)
 	}
 
 }

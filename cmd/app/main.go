@@ -101,7 +101,6 @@ func ServerSetup() {
 
 		} else {
 			shared.CurrentPrefix = "http://"
-			log.Println("")
 			log.Println(multilangtranslator.TranslateString("unencrypted webserver is up", setup.ServerSettings.Lang))
 			srv.Addr = fmt.Sprintf(":%v", setup.ServerSettings.HTTP)
 			err := srv.ListenAndServe()
@@ -288,6 +287,6 @@ func SetAdminCredentials(runarg string, initpar *setup.InitParams) {
 		initpar.AdminPass = lp[1]
 	} else {
 		log.Println(lp)
-		shared.WriteErrToLog(ErrWrongArgumentFormat, setup.ServerSettings.Lang)
+		shared.WriteErrToLog(multilangtranslator.TranslateError(ErrWrongArgumentFormat, setup.ServerSettings.Lang))
 	}
 }
