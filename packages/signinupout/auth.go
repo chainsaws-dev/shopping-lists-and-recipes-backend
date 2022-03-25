@@ -18,9 +18,6 @@ import (
 	uuid "github.com/gofrs/uuid"
 )
 
-// TokenList - список активных токенов
-var TokenList Sessions
-
 // SignIn - обработчик для авторизации пользователя POST запросом
 //
 // POST
@@ -597,7 +594,7 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 			PageStr := req.Header.Get("Page")
 			LimitStr := req.Header.Get("Limit")
 
-			var sessionsresp SessionsResponse
+			var sessionsresp databases.SessionsResponse
 
 			if PageStr != "" && LimitStr != "" {
 
@@ -613,7 +610,7 @@ func HandleSessions(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 
-				sessionsresp, err = GetSessionsList(Page, Limit)
+				sessionsresp, err = databases.PostgreSQLSessionsSelect(Page, Limit, setup.ServerSettings.SQL.ConnPool)
 
 				if err != nil {
 					if errors.Is(err, databases.ErrLimitOffsetInvalid) {

@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"log"
-	"math"
 	"net/http"
 	"time"
 
@@ -138,7 +137,13 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 	if match {
 
 		// Удаляем просроченые токены
-		CleanOldTokens()
+		err = databases.PostgreSQLDeleteExpiredSessions(setup.ServerSettings.SQL.ConnPool)
+
+		if err != nil {
+			if !errors.Is(err, databases.ErrSessionsNotFoundExpired) {
+				log.Println(err)
+			}
+		}
 
 		if CountTokensByEmail(AuthRequest.Email) > 1 {
 			// Удаляем остальные токены если число сессий превышает 2
@@ -203,7 +208,11 @@ func secretauth(w http.ResponseWriter, req *http.Request, AuthRequest authentica
 			},
 		}
 
-		TokenList = append(TokenList, NewActiveToken)
+		err = databases.PostgreSQLSessionsInsert(NewActiveToken, setup.ServerSettings.SQL.ConnPool)
+
+		if shared.HandleInternalServerError(setup.ServerSettings.Lang, w, req, err) {
+			return
+		}
 
 		// Если не возвращаем токен, то пишем куки
 		if !AuthRequest.ReturnSecureToken {
@@ -245,8 +254,13 @@ func CheckAPIKey(w http.ResponseWriter, req *http.Request) (bool, error) {
 // TwoWayAuthentication - выполняет аутентификацию как с помощью заголовка Auth, так и с помощью куки
 func TwoWayAuthentication(w http.ResponseWriter, req *http.Request) (issued bool, role string) {
 	// Освобождаем память от истекших токенов
-	CleanOldTokens()
+	err := databases.PostgreSQLDeleteExpiredSessions(setup.ServerSettings.SQL.ConnPool)
 
+	if err != nil {
+		if !errors.Is(err, databases.ErrSessionsNotFoundExpired) {
+			log.Println(err)
+		}
+	}
 	// Проверка кук и получение роли
 	cookiefound, role := CheckCookiesIssued(w, req)
 
@@ -321,14 +335,16 @@ func CheckTokensIssued(req *http.Request) (issued bool, role string) {
 	Token := req.Header.Get("Auth")
 
 	if len(Token) > 0 {
-		for _, t := range TokenList {
 
-			ct := time.Now()
+		at, err := databases.PostgreSQLGetActiveTokenByToken(Token, setup.ServerSettings.SQL.ConnPool)
 
-			if ct.Before(t.ExpDate) && t.Token == Token {
-				return true, t.Role
-			}
+		if err != nil {
+			log.Println(err)
+			return false, ""
+		} else {
+			return true, at.Role
 		}
+
 	}
 
 	return false, ""
@@ -337,139 +353,36 @@ func CheckTokensIssued(req *http.Request) (issued bool, role string) {
 // SearchIssuedSessions - ищет активный токен по электронной почте и с совпадающей сессией
 func SearchIssuedSessions(Email string, Session []byte) (authentication.ActiveToken, bool) {
 	if len(Email) != 0 {
-		for _, t := range TokenList {
 
-			ct := time.Now()
+		t, err := databases.PostgreSQLGetActiveTokenBySession(Email, Session, setup.ServerSettings.SQL.ConnPool)
 
-			if ct.Before(t.ExpDate) && t.Email == Email && CompareSessions(t, Session) {
-				return t, true
-			}
+		if err != nil {
+			log.Println(err)
+			return authentication.ActiveToken{}, false
+		} else {
+			return t, true
 		}
 	}
 
 	return authentication.ActiveToken{}, false
 }
 
-// GetSessionsList - получает список сессий в постраничной разбивке
-func GetSessionsList(page int, limit int) (SessionsResponse, error) {
-
-	var result SessionsResponse
-
-	offset := int(math.RoundToEven(float64((page - 1) * limit)))
-
-	result.Total = len(TokenList)
-	result.Limit = limit
-	result.Offset = offset
-
-	if databases.PostgreSQLCheckLimitOffset(limit, offset) &&
-		result.Total > result.Offset {
-
-		if offset+limit >= result.Total {
-			result.Sessions = TokenList[offset:]
-		} else {
-			result.Sessions = TokenList[offset : offset+limit]
-		}
-
-	} else {
-		return result, shared.ErrLimitOffsetInvalid
-	}
-
-	return result, nil
-
-}
-
 // DeleteSessionByEmail - ищет сессию по электронной почте и удаляет её
 func DeleteSessionByEmail(Email string) error {
 
-	var idx int
-	var found bool
+	return databases.PostgreSQLDeleteSessionsByEmail(Email, setup.ServerSettings.SQL.ConnPool)
 
-	for idx >= 0 {
-
-		idx = FindSessionIdxByEmail(Email)
-		if idx >= 0 {
-			found = true
-			SliceDelete(idx)
-		}
-	}
-
-	if !found {
-		return ErrSessionNotFoundByEmail
-	}
-
-	return nil
 }
 
 // DeleteSessionByToken - ищет сессию по токену и удаляет её
 func DeleteSessionByToken(Token string) error {
-	var idx int
-	var found bool
 
-	for idx >= 0 {
-
-		idx = FindSessionIdxByToken(Token)
-		if idx >= 0 {
-			found = true
-			SliceDelete(idx)
-		}
-	}
-
-	if !found {
+	if len(Token) > 0 {
+		return databases.PostgreSQLDeleteSessionsByToken(Token, setup.ServerSettings.SQL.ConnPool)
+	} else {
 		return ErrSessionNotFoundByToken
 	}
 
-	return nil
-}
-
-// SetSessionsByEmailSecondFactor - проставляет для всех сессий электронной почты прохождение двухфакторной авторизации
-func SetSessionsByEmailSecondFactor(Email string) int {
-
-	for idx, session := range TokenList {
-		if session.Email == Email && session.SecondFactor.CheckResult == false {
-			return idx
-		}
-	}
-
-	return -1
-}
-
-// FindSessionIdxByEmail - ищет сессию по электронному адресу и возвращает индекс
-func FindSessionIdxByEmail(Email string) int {
-
-	for idx, session := range TokenList {
-		if session.Email == Email {
-			return idx
-		}
-	}
-
-	return -1
-}
-
-// FindSessionIdxByToken - ищет сессию по токену и возвращает индекс
-func FindSessionIdxByToken(Token string) int {
-
-	for idx, session := range TokenList {
-		if session.Token == Token {
-			return idx
-		}
-	}
-
-	return -1
-}
-
-// FindSessionIdxExpired - ищет первую попавшуюся истёкшую сессию и возвращает её индекс
-func FindSessionIdxExpired() int {
-
-	ct := time.Now()
-
-	for idx, session := range TokenList {
-
-		if ct.After(session.ExpDate) {
-			return idx
-		}
-	}
-
-	return -1
 }
 
 // CompareSessions - выполняет сравнение сессий
@@ -483,47 +396,24 @@ func CompareSessions(at authentication.ActiveToken, SessionToCompare []byte) boo
 	return false
 }
 
-// CleanOldTokens - удаляет старые токены из списка
-func CleanOldTokens() error {
-
-	var idx int
-
-	for idx >= 0 {
-
-		idx = FindSessionIdxExpired()
-
-		if idx >= 0 {
-			SliceDelete(idx)
-		}
-	}
-
-	return nil
-
-}
-
 // CountTokensByEmail - cчитает количество токенов с одним Email в списке сессий
 func CountTokensByEmail(Email string) int {
 
-	var result int
+	if len(Email) > 0 {
 
-	for _, t := range TokenList {
+		count, err := databases.PostgreSQLCountTokensByEmail(Email, setup.ServerSettings.SQL.ConnPool)
 
-		if t.Email == Email {
-			result++
+		if err == nil {
+			return count
+		} else {
+			log.Println(err)
+			return 0
 		}
 
 	}
 
-	return result
-}
+	return 0
 
-// SliceDelete - удаляет элемент из списка токенов
-func SliceDelete(idx int) {
-	l := len(TokenList)
-
-	TokenList[idx] = TokenList[l-1]
-	TokenList[l-1] = authentication.ActiveToken{}
-	TokenList = TokenList[:l-1]
 }
 
 // GetIP - получает IP адрес клиента
@@ -557,7 +447,13 @@ func RegularConfirmTokensCleanup() {
 		log.Println("Очистка истекших токенов...")
 
 		// Освобождаем память от истекших токенов
-		CleanOldTokens()
+		err := databases.PostgreSQLDeleteExpiredSessions(setup.ServerSettings.SQL.ConnPool)
+
+		if err != nil {
+			if !errors.Is(err, databases.ErrSessionsNotFoundExpired) {
+				log.Println(err)
+			}
+		}
 
 		databases.PostgreSQLCleanAccessTokens(setup.ServerSettings.SQL.ConnPool)
 
@@ -572,7 +468,11 @@ func RegularConfirmTokensCleanup() {
 func GetCurrentUserEmail(w http.ResponseWriter, req *http.Request) (Email string) {
 
 	// Освобождаем память от истекших токенов
-	CleanOldTokens()
+	err := databases.PostgreSQLDeleteExpiredSessions(setup.ServerSettings.SQL.ConnPool)
+
+	if err != nil {
+		log.Println(err)
+	}
 
 	result := GetEmailBasedOnCookies(w, req)
 
@@ -619,14 +519,16 @@ func GetEmailBasedOnToken(req *http.Request) (Email string) {
 	Token := req.Header.Get("Auth")
 
 	if len(Token) > 0 {
-		for _, t := range TokenList {
 
-			ct := time.Now()
+		at, err := databases.PostgreSQLGetActiveTokenByToken(Token, setup.ServerSettings.SQL.ConnPool)
 
-			if ct.Before(t.ExpDate) && t.Token == Token {
-				return t.Email
-			}
+		if err != nil {
+			log.Println(err)
+			return ""
+		} else {
+			return at.Email
 		}
+
 	}
 
 	return ""
@@ -635,7 +537,13 @@ func GetEmailBasedOnToken(req *http.Request) (Email string) {
 // GetCurrentSession - получаем текущую сессию пользователя
 func GetCurrentSession(w http.ResponseWriter, req *http.Request) (authentication.ActiveToken, error) {
 	// Освобождаем память от истекших токенов
-	CleanOldTokens()
+	err := databases.PostgreSQLDeleteExpiredSessions(setup.ServerSettings.SQL.ConnPool)
+
+	if err != nil {
+		if !errors.Is(err, databases.ErrSessionsNotFoundExpired) {
+			log.Println(err)
+		}
+	}
 
 	result, err := GetTokenBasedOnCookies(w, req)
 
@@ -685,26 +593,10 @@ func GetTokenBasedOnToken(req *http.Request) (authentication.ActiveToken, error)
 	Token := req.Header.Get("Auth")
 
 	if len(Token) > 0 {
-		for _, t := range TokenList {
 
-			ct := time.Now()
+		return databases.PostgreSQLGetActiveTokenByToken(Token, setup.ServerSettings.SQL.ConnPool)
 
-			if ct.Before(t.ExpDate) && t.Token == Token {
-				return t, nil
-			}
-		}
 	}
 
 	return result, ErrSessionNotFoundByToken
-}
-
-// SetTokenStrict - перезаписывает токен новым значением
-func SetTokenStrict(NewValue authentication.ActiveToken) {
-	for idx, t := range TokenList {
-
-		if t.Token == NewValue.Token {
-			TokenList[idx] = NewValue
-		}
-
-	}
 }

@@ -120,6 +120,29 @@ func PostgreSQLCreateTablesSecret(dbc *pgxpool.Pool) {
 				(user_id ASC NULLS LAST)
 				TABLESPACE pg_default;`,
 		},
+		NamedCreateStatement{
+			TableName: "sessions",
+			CreateStatement: `CREATE TABLE secret.sessions
+			(
+				id bigserial NOT NULL,
+				email character varying(50) NOT NULL,
+				token character varying(100) NOT NULL,
+				session bytea NOT NULL,
+				iss_date timestamp with time zone NOT NULL,
+				exp_date timestamp with time zone NOT NULL,
+				role character varying(50) NOT NULL,
+				ip character varying(50),
+				user_agent character varying(200),
+				second_factor_enabled boolean NOT NULL,
+				second_factor_check_result boolean NOT NULL,
+				PRIMARY KEY (id)
+			)
+			
+			TABLESPACE pg_default;
+			
+			ALTER TABLE IF EXISTS secret.sessions
+				OWNER to postgres;`,
+		},
 	}
 
 	for _, ncs := range CreateStatements {

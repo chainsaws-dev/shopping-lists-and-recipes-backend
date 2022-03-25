@@ -1,7 +1,11 @@
 // Package databases - реализует весь функционал необходимый для взаимодействия с базами данных
 package databases
 
-import uuid "github.com/gofrs/uuid"
+import (
+	"shopping-lists-and-recipes/packages/authentication"
+
+	uuid "github.com/gofrs/uuid"
+)
 
 // RecipeDB - тип для хранения информации о рецепте в базе данных
 type RecipeDB struct {
@@ -117,3 +121,14 @@ type NamedCreateStatement struct {
 
 // NamedCreateStatements - массив объектов с названием таблицы и кодом для её создания
 type NamedCreateStatements []NamedCreateStatement
+
+// SessionsResponse - структура возвращаемая в ответ на запрос сессий
+type SessionsResponse struct {
+	Sessions
+	Total  int
+	Offset int
+	Limit  int
+}
+
+// Sessions - структура описывающая список активных сессий
+type Sessions []authentication.ActiveToken

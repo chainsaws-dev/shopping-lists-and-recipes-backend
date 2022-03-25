@@ -329,7 +329,7 @@ func CheckSecondFactor(w http.ResponseWriter, req *http.Request) {
 
 					at.SecondFactor.CheckResult = Correct
 
-					signinupout.SetTokenStrict(at)
+					databases.PostgreSQLSessionsUpdate(at, setup.ServerSettings.SQL.ConnPool)
 
 					shared.HandleSuccessMessage(setup.ServerSettings.Lang, w, req, "Двухфакторная авторизация успешно пройдена")
 				} else {
