@@ -7,6 +7,7 @@ shopping-lists-and-recipes
 __debug_bin
 postgres-data
 .env
+.vscode
 ##.dockerignore
 ##docker-compose.yml
 ##Dockerfile
