@@ -411,8 +411,6 @@ func PostgreSQLDeleteSessionsByEmail(Email string, dbc *pgxpool.Pool) error {
 // PostgreSQLDeleteExpiredSessions - удаляет устаревшие сессии
 func PostgreSQLDeleteExpiredSessions(dbc *pgxpool.Pool) error {
 
-	ct := time.Now()
-
 	sqlreq := `SELECT 
 				COUNT(*)
 			FROM 
@@ -420,7 +418,7 @@ func PostgreSQLDeleteExpiredSessions(dbc *pgxpool.Pool) error {
 			WHERE 
 				sessions.exp_date < now();`
 
-	row := dbc.QueryRow(context.Background(), sqlreq, ct)
+	row := dbc.QueryRow(context.Background(), sqlreq)
 
 	var SessionsCount int
 
@@ -435,7 +433,7 @@ func PostgreSQLDeleteExpiredSessions(dbc *pgxpool.Pool) error {
 		dbc.Exec(context.Background(), "BEGIN")
 
 		sqlreq = `DELETE FROM secret.sessions WHERE exp_date < now();`
-		_, err = dbc.Exec(context.Background(), sqlreq, ct)
+		_, err = dbc.Exec(context.Background(), sqlreq)
 
 		if err != nil {
 			return PostgreSQLRollbackIfError(err, false, dbc)

@@ -472,7 +472,9 @@ func GetCurrentUserEmail(w http.ResponseWriter, req *http.Request) (Email string
 	err := databases.PostgreSQLDeleteExpiredSessions(setup.ServerSettings.SQL.ConnPool)
 
 	if err != nil {
-		log.Println(err)
+		if !errors.Is(err, databases.ErrSessionsNotFoundExpired) {
+			log.Println(err)
+		}
 	}
 
 	result := GetEmailBasedOnCookies(w, req)
