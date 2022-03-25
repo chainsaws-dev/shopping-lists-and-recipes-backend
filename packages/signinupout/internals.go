@@ -15,6 +15,7 @@ import (
 	"shopping-lists-and-recipes/packages/shared"
 
 	"github.com/gorilla/securecookie"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // Список типовых ошибок
@@ -442,12 +443,12 @@ func ConvertToSignInRequest(SignUpRequest authentication.AuthSignUpRequestData) 
 }
 
 // RegularConfirmTokensCleanup - в фоновом режиме удаляет устаревшие токены
-func RegularConfirmTokensCleanup() {
+func RegularConfirmTokensCleanup(dbc *pgxpool.Pool) {
 	for {
 		log.Println("Очистка истекших токенов...")
 
 		// Освобождаем память от истекших токенов
-		err := databases.PostgreSQLDeleteExpiredSessions(setup.ServerSettings.SQL.ConnPool)
+		err := databases.PostgreSQLDeleteExpiredSessions(dbc)
 
 		if err != nil {
 			if !errors.Is(err, databases.ErrSessionsNotFoundExpired) {
@@ -455,7 +456,7 @@ func RegularConfirmTokensCleanup() {
 			}
 		}
 
-		databases.PostgreSQLCleanAccessTokens(setup.ServerSettings.SQL.ConnPool)
+		databases.PostgreSQLCleanAccessTokens(dbc)
 
 		log.Println("Таблица токенов очищена!")
 

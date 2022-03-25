@@ -418,7 +418,7 @@ func PostgreSQLDeleteExpiredSessions(dbc *pgxpool.Pool) error {
 			FROM 
 				secret.sessions
 			WHERE 
-				sessions.exp_date <= $1;`
+				sessions.exp_date < now();`
 
 	row := dbc.QueryRow(context.Background(), sqlreq, ct)
 
@@ -434,7 +434,7 @@ func PostgreSQLDeleteExpiredSessions(dbc *pgxpool.Pool) error {
 
 		dbc.Exec(context.Background(), "BEGIN")
 
-		sqlreq = `DELETE FROM secret.sessions WHERE exp_date <= $1;`
+		sqlreq = `DELETE FROM secret.sessions WHERE exp_date < now();`
 		_, err = dbc.Exec(context.Background(), sqlreq, ct)
 
 		if err != nil {

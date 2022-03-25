@@ -56,13 +56,13 @@ func main() {
 	// Иначе просто читаем данные из файла settings.json
 	setup.InitialSettings(initpar)
 
-	if initpar.CleanTokens {
-		go signinupout.RegularConfirmTokensCleanup()
-	}
-
 	// Создаём пул соединений c СУБД
 	if setup.ServerSettings.SQL.Connected == false {
 		setup.ServerSettings.SQL.Connect(false)
+	}
+
+	if initpar.CleanTokens {
+		go signinupout.RegularConfirmTokensCleanup(setup.ServerSettings.SQL.ConnPool)
 	}
 
 	ServerSetup()
