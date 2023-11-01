@@ -23,6 +23,7 @@ var (
 	ErrHeadersNotFilled       = errors.New("http request does not contain required parameters")
 	ErrLimitOffsetInvalid     = errors.New("invalid http request parameters Limit and Offset")
 	ErrFkeyViolation          = errors.New("cannot delete record referenced from other tables")
+	ErrUnsupportedFileType    = errors.New("unsupported file type")
 	ErroNoRowsInResult        = errors.New("nothing to delete")
 )
 

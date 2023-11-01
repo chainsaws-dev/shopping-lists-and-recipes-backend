@@ -1,9 +1,9 @@
-FROM golang:1.18-alpine
+FROM golang:1.21-alpine
 EXPOSE 10443
 EXPOSE 8080
 WORKDIR /go/src/shopping-lists-and-recipes
 ENV DATABASE_HOST db
-RUN apk add --no-cache ffmpeg-dev build-base git
+RUN apk add --no-cache build-base git
 COPY . . 
 RUN go get -d -v ./...
 WORKDIR /go/src/shopping-lists-and-recipes/cmd/app

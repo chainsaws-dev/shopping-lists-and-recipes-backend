@@ -14,9 +14,8 @@ import (
 	"shopping-lists-and-recipes/internal/databases"
 	"shopping-lists-and-recipes/internal/setup"
 	"shopping-lists-and-recipes/packages/shared"
+	"shopping-lists-and-recipes/packages/thumbnailgenerator"
 	"strings"
-
-	"github.com/bakape/thumbnailer/v2"
 )
 
 // fileUpload - выполняет загрузку файла на сервер и сохранение в файловой системе и информации в базе данных
@@ -89,12 +88,12 @@ func fileUpload(w http.ResponseWriter, req *http.Request, role string) (database
 		NewFile.FileID = filename
 
 		// Создаем превьюшку
-		_, thumb, err := thumbnailer.Process(f, thumbnailer.Options{
-			ThumbDims: thumbnailer.Dims{
+		thumb, err := thumbnailgenerator.Process(f, filetype,
+			thumbnailgenerator.Dimensions{
 				Width:  440,
 				Height: 248,
 			},
-		})
+		)
 
 		var previewname string
 
