@@ -2,7 +2,7 @@ package gzipwrap
 
 import (
 	"compress/gzip"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -26,8 +26,8 @@ func TestNoGzip(t *testing.T) {
 		t.Fatalf("expected 200 got %d", rec.Code)
 	}
 
-	if rec.HeaderMap.Get("Content-Encoding") != "" {
-		t.Fatalf(`expected Content-Encoding: "" got %s`, rec.HeaderMap.Get("Content-Encoding"))
+	if req.Header.Get("Content-Encoding") != "" {
+		t.Fatalf(`expected Content-Encoding: "" got %s`, req.Header.Get("Content-Encoding"))
 	}
 
 	if rec.Body.String() != "test" {
@@ -58,14 +58,14 @@ func TestGzip(t *testing.T) {
 		t.Fatalf("expected 200 got %d", rec.Code)
 	}
 
-	if rec.HeaderMap.Get("Content-Encoding") != "gzip" {
-		t.Fatalf("expected Content-Encoding: gzip got %s", rec.HeaderMap.Get("Content-Encoding"))
+	if req.Header.Get("Content-Encoding") != "gzip" {
+		t.Fatalf("expected Content-Encoding: gzip got %s", req.Header.Get("Content-Encoding"))
 	}
-	if rec.HeaderMap.Get("Content-Length") != "" {
-		t.Fatalf(`expected Content-Length: "" got %s`, rec.HeaderMap.Get("Content-Length"))
+	if req.Header.Get("Content-Length") != "" {
+		t.Fatalf(`expected Content-Length: "" got %s`, req.Header.Get("Content-Length"))
 	}
-	if rec.HeaderMap.Get("Content-Type") != "text/test" {
-		t.Fatalf(`expected Content-Type: "text/test" got %s`, rec.HeaderMap.Get("Content-Type"))
+	if req.Header.Get("Content-Type") != "text/test" {
+		t.Fatalf(`expected Content-Type: "text/test" got %s`, req.Header.Get("Content-Type"))
 	}
 
 	r, err := gzip.NewReader(rec.Body)
@@ -73,7 +73,7 @@ func TestGzip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	body, err := ioutil.ReadAll(r)
+	body, err := io.ReadAll(r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,8 +104,8 @@ func TestNoBody(t *testing.T) {
 		t.Fatalf("expected %d got %d", http.StatusNoContent, rec.Code)
 	}
 
-	if rec.HeaderMap.Get("Content-Encoding") != "" {
-		t.Fatalf(`expected Content-Encoding: "" got %s`, rec.HeaderMap.Get("Content-Encoding"))
+	if req.Header.Get("Content-Encoding") != "" {
+		t.Fatalf(`expected Content-Encoding: "" got %s`, req.Header.Get("Content-Encoding"))
 	}
 
 	if rec.Body.Len() > 0 {
