@@ -3,7 +3,6 @@ cert.pem
 key.pem
 cmd/app/public/uploads/*
 cmd/app/public/frontend/*
-cmd/app/public/frontend
 logs/*
 shopping-lists-and-recipes
 __debug_bin
