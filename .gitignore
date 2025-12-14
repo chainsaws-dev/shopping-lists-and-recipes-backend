@@ -1,7 +1,9 @@
 settings.json
 cert.pem
 key.pem
-public/uploads/*
+cmd/app/public/uploads/*
+cmd/app/public/frontend/*
+cmd/app/public/frontend
 logs/*
 shopping-lists-and-recipes
 __debug_bin
@@ -12,3 +14,4 @@ postgres-data
 ##.dockerignore
 ##docker-compose.yml
 ##Dockerfile
+
