@@ -1,7 +1,7 @@
 version: "3.7"
 services:
     db:
-        image: postgres:16
+        image: postgres:18
         environment: 
             POSTGRES_USER: ${DATABASE_USERNAME}
             POSTGRES_PASSWORD: ${DATABASE_PASSWORD} 

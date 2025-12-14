@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine
+FROM golang:1.25-alpine
 EXPOSE 10443
 EXPOSE 8080
 WORKDIR /go/src/shopping-lists-and-recipes

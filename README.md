@@ -6,11 +6,6 @@ Made as easy to handle as possible.
 Frontend source for this backend is available [here](https://github.com/chainsaws-dev/shopping-lists-and-recipes)
 
 ## Prerequisites
-Several ffmpeg libraries reqired:
-`sudo apt-get install libavcodec-dev`
-`sudo apt-get install libavformat-dev`
-`sudo apt-get install libavutil-dev`
-`sudo apt-get install libswscale-dev`
 
 PostgreSQL server installed and configured reqired:
 
